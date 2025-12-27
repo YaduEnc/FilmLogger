@@ -1,0 +1,56 @@
+export interface Movie {
+  id: number;
+  title: string;
+  year: number;
+  posterUrl?: string;
+  runtime?: number;
+  genres?: string[];
+  director?: string;
+  cast?: string[];
+  synopsis?: string;
+  language?: string;
+  countries?: string[];
+  rating?: number;
+  voteCount?: number;
+  backdropUrl?: string;
+  trailerUrl?: string;
+}
+
+export interface LogEntry {
+  id: string;
+  movieId: number;
+  movie: Movie;
+  watchedDate: string;
+  rating: number;
+  reviewShort?: string;
+  diaryLong?: string;
+  tags: string[];
+  mood?: string;
+  location?: string;
+  visibility: 'private' | 'followers' | 'public';
+  isRewatch: boolean;
+  rewatchCount: number;
+  favoriteScenes?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MovieList {
+  id: string;
+  name: string;
+  description?: string;
+  visibility: 'private' | 'followers' | 'public';
+  movies: Movie[];
+  createdAt: string;
+}
+
+export interface UserStats {
+  totalWatched: number;
+  thisYearWatched: number;
+  avgRating: number;
+  totalHours: number;
+  topGenres: { name: string; count: number }[];
+  topDirectors: { name: string; count: number }[];
+  topCountries: { name: string; count: number }[];
+  filmsPerMonth: { month: string; count: number }[];
+}

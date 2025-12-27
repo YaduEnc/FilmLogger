@@ -1,0 +1,61 @@
+import { Link } from "react-router-dom";
+import { Movie } from "@/types/movie";
+import { cn } from "@/lib/utils";
+
+interface MovieCardProps {
+  movie: Movie;
+  showRating?: boolean;
+  rating?: number;
+  size?: "sm" | "md" | "lg";
+}
+
+export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardProps) {
+  const sizeClasses = {
+    sm: "w-16",
+    md: "w-24",
+    lg: "w-32",
+  };
+
+  return (
+    <Link
+      to={`/movie/${movie.id}`}
+      className="group block"
+    >
+      <div className={cn("relative", sizeClasses[size])}>
+        {/* Poster */}
+        <div className="aspect-[2/3] bg-muted rounded-sm overflow-hidden border border-border">
+          {movie.posterUrl ? (
+            <img
+              src={movie.posterUrl}
+              alt={movie.title}
+              className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <span className="text-xs text-center px-1 leading-tight">
+                {movie.title}
+              </span>
+            </div>
+          )}
+        </div>
+        
+        {/* Rating badge */}
+        {showRating && rating !== undefined && (
+          <div className="absolute -bottom-1 -right-1 bg-foreground text-primary-foreground text-xs font-medium px-1.5 py-0.5 rounded-sm">
+            {rating.toFixed(1)}
+          </div>
+        )}
+      </div>
+      
+      {/* Title (optional for larger sizes) */}
+      {size !== "sm" && (
+        <div className="mt-2">
+          <p className="text-sm font-medium leading-tight truncate group-hover:underline underline-offset-2">
+            {movie.title}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">{movie.year}</p>
+        </div>
+      )}
+    </Link>
+  );
+}
