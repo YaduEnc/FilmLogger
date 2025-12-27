@@ -13,8 +13,11 @@ import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { CreateListModal } from "@/components/movies/CreateListModal";
 import { AddToListModal } from "@/components/movies/AddToListModal";
 import { ReviewSection } from "@/components/reviews/ReviewSection";
+import { CommunityRatingMeter } from "@/components/movies/CommunityRatingMeter";
+import { GenreTagger } from "@/components/movies/GenreTagger";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getCommunityRating, getUserCommunityInteraction } from "@/lib/db";
 
 
 export default function TVDetail() {
@@ -24,6 +27,8 @@ export default function TVDetail() {
     const [userLogs, setUserLogs] = useState<LogEntry[]>([]);
     const [inWatchlist, setInWatchlist] = useState(false);
     const [inFavorites, setInFavorites] = useState(false);
+    const [communityData, setCommunityData] = useState<any>(null);
+    const [userInteraction, setUserInteraction] = useState<{ rating: number | null, genres: string[] }>({ rating: null, genres: [] });
     const [isLoading, setIsLoading] = useState(true);
     const [isWatchlistActionLoading, setIsWatchlistActionLoading] = useState(false);
     const [isFavoriteActionLoading, setIsFavoriteActionLoading] = useState(false);
@@ -52,7 +57,13 @@ export default function TVDetail() {
                     setUserLogs(logs);
                     setInWatchlist(watchlistStatus);
                     setInFavorites(favoriteStatus);
+
+                    const interaction = await getUserCommunityInteraction(user.uid, id, 'tv');
+                    setUserInteraction(interaction);
                 }
+
+                const commData = await getCommunityRating(id, 'tv');
+                setCommunityData(commData);
             } catch (err) {
                 console.error("Failed to load tv show data:", err);
                 setError("TV Show not found");
@@ -265,6 +276,41 @@ export default function TVDetail() {
                             </div>
                         )}
 
+                        {/* Community Intelligence */}
+                        <div className="mb-10 p-4 bg-muted/20 border border-border/40 rounded-lg space-y-4">
+                            <div className="grid md:grid-cols-2 gap-8 items-start">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">Community Rating</p>
+                                    <CommunityRatingMeter
+                                        average={communityData?.averageRating || 0}
+                                        totalRatings={communityData?.totalRatings || 0}
+                                        userRating={userInteraction.rating}
+                                    />
+                                    {!communityData?.totalRatings && (
+                                        <p className="text-xs text-muted-foreground italic mt-1">Be the first to rate this show!</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Community Genres</p>
+                                    </div>
+                                    <GenreTagger
+                                        mediaId={id || ""}
+                                        mediaType="tv"
+                                        topGenres={communityData?.topGenres || []}
+                                        userGenres={userInteraction.genres}
+                                        onVoteComplete={async () => {
+                                            if (user && id) {
+                                                const updated = await getUserCommunityInteraction(user.uid, id, 'tv');
+                                                setUserInteraction(prev => ({ ...prev, genres: updated.genres }));
+                                                const newCommData = await getCommunityRating(id, 'tv');
+                                                setCommunityData(newCommData);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Primary Actions */}
                         <div className="flex flex-wrap gap-3 mb-12">

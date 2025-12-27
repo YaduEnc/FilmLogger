@@ -13,10 +13,184 @@ import {
     setDoc,
     deleteDoc,
     updateDoc,
-    arrayUnion
+    arrayUnion,
+    runTransaction
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { LogEntry, Movie, MovieList, Review, ReviewComment } from "@/types/movie";
+
+// Community Ratings & Genres
+export const updateCommunityRating = async (userId: string, mediaId: string, mediaType: 'movie' | 'tv', rating: number) => {
+    try {
+        const docId = `${mediaType}_${mediaId}`;
+        const ratingRef = doc(db, "community_ratings", docId);
+        const userRatingRef = doc(db, "community_ratings", docId, "user_ratings", userId);
+
+        await runTransaction(db, async (transaction) => {
+            const ratingDoc = await transaction.get(ratingRef);
+            const userRatingDoc = await transaction.get(userRatingRef);
+
+            let newTotal = 0;
+            let newSum = 0;
+
+            if (!ratingDoc.exists()) {
+                // Initialize if doesn't exist
+                newTotal = 1;
+                newSum = rating;
+                transaction.set(ratingRef, {
+                    mediaId,
+                    mediaType,
+                    totalRatings: newTotal,
+                    sumRatings: newSum,
+                    averageRating: rating,
+                    genreVotes: {},
+                    topGenres: [],
+                    lastUpdated: serverTimestamp()
+                });
+            } else {
+                const data = ratingDoc.data();
+                const currentTotal = data.totalRatings || 0;
+                const currentSum = data.sumRatings || 0;
+
+                if (userRatingDoc.exists()) {
+                    // Updating existing rating
+                    const oldRating = userRatingDoc.data().rating;
+                    newTotal = currentTotal; // Count doesn't change
+                    newSum = currentSum - oldRating + rating;
+                } else {
+                    // New rating
+                    newTotal = currentTotal + 1;
+                    newSum = currentSum + rating;
+                }
+
+                transaction.update(ratingRef, {
+                    totalRatings: newTotal,
+                    sumRatings: newSum,
+                    averageRating: newSum / newTotal,
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
+            transaction.set(userRatingRef, {
+                rating,
+                timestamp: serverTimestamp()
+            });
+        });
+    } catch (error) {
+        console.error("Error updating community rating:", error);
+        throw error;
+    }
+};
+
+export const voteGenre = async (userId: string, mediaId: string, mediaType: 'movie' | 'tv', genres: string[]) => {
+    try {
+        const docId = `${mediaType}_${mediaId}`;
+        const ratingRef = doc(db, "community_ratings", docId);
+        const userVoteRef = doc(db, "community_ratings", docId, "genre_votes", userId);
+
+        await runTransaction(db, async (transaction) => {
+            const ratingDoc = await transaction.get(ratingRef);
+            const userVoteDoc = await transaction.get(userVoteRef);
+
+            let genreVotes: Record<string, number> = {};
+
+            if (ratingDoc.exists()) {
+                genreVotes = ratingDoc.data().genreVotes || {};
+            } else {
+                // Initialize doc if needed (though usually rating comes first)
+                transaction.set(ratingRef, {
+                    mediaId,
+                    mediaType,
+                    totalRatings: 0,
+                    sumRatings: 0,
+                    averageRating: 0,
+                    genreVotes: {},
+                    topGenres: [],
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
+            // Remove old votes if any area existing
+            if (userVoteDoc.exists()) {
+                const oldGenres = userVoteDoc.data().genres as string[];
+                oldGenres.forEach(g => {
+                    if (genreVotes[g]) {
+                        genreVotes[g] = Math.max(0, genreVotes[g] - 1);
+                        if (genreVotes[g] === 0) delete genreVotes[g];
+                    }
+                });
+            }
+
+            // Add new votes
+            genres.forEach(g => {
+                const standardizedGenre = g.trim(); // We rely on UI for capitalization consistency for now, or normalize here
+                genreVotes[standardizedGenre] = (genreVotes[standardizedGenre] || 0) + 1;
+            });
+
+            // Calculate top 5
+            const topGenres = Object.entries(genreVotes)
+                .sort(([, a], [, b]) => b - a)
+                .slice(0, 5)
+                .map(([name]) => name);
+
+            if (ratingDoc.exists()) {
+                transaction.update(ratingRef, {
+                    genreVotes,
+                    topGenres
+                });
+            } else {
+                transaction.set(ratingRef, {
+                    mediaId,
+                    mediaType,
+                    totalRatings: 0,
+                    sumRatings: 0,
+                    averageRating: 0,
+                    genreVotes,
+                    topGenres,
+                    lastUpdated: serverTimestamp()
+                });
+            }
+
+            transaction.set(userVoteRef, {
+                genres,
+                timestamp: serverTimestamp()
+            });
+        });
+    } catch (error) {
+        console.error("Error voting genre:", error);
+        throw error;
+    }
+};
+
+export const getCommunityRating = async (mediaId: string, mediaType: 'movie' | 'tv') => {
+    try {
+        const docRef = doc(db, "community_ratings", `${mediaType}_${mediaId}`);
+        const docSnap = await getDoc(docRef);
+        return docSnap.exists() ? docSnap.data() : null;
+    } catch (error) {
+        console.error("Error getting community rating:", error);
+        return null;
+    }
+};
+
+export const getUserCommunityInteraction = async (userId: string, mediaId: string, mediaType: 'movie' | 'tv') => {
+    try {
+        const docId = `${mediaType}_${mediaId}`;
+        const ratingRef = doc(db, "community_ratings", docId, "user_ratings", userId);
+        const voteRef = doc(db, "community_ratings", docId, "genre_votes", userId);
+
+        const [ratingSnap, voteSnap] = await Promise.all([getDoc(ratingRef), getDoc(voteRef)]);
+
+        return {
+            rating: ratingSnap.exists() ? ratingSnap.data().rating : null,
+            genres: voteSnap.exists() ? voteSnap.data().genres : []
+        };
+    } catch (error) {
+        console.error("Error getting user interaction:", error);
+        return { rating: null, genres: [] };
+    }
+};
+
 
 
 export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" | "createdAt" | "updatedAt">) => {
@@ -29,6 +203,14 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
             updatedAt: serverTimestamp(),
             watchedDate: Timestamp.fromDate(new Date(entry.watchedDate))
         });
+
+        // Update community rating if rating is provided
+        if (entry.rating > 0) {
+            // We don't await this to keep UI snappy, but we catch errors
+            updateCommunityRating(userId, entry.movieId.toString(), entry.mediaType, entry.rating)
+                .catch(err => console.error("Failed to update community rating:", err));
+        }
+
         return docRef.id;
     } catch (error) {
         console.error("Error creating log entry:", error);

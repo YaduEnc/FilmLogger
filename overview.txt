@@ -1,50 +1,103 @@
-# CineLunatic - Technical Project Overview
+# CineLunatic - Technical Project Overview & Architecture
 
-CineLunatic is a premium, minimalist archival companion for obsessive cinema viewers. The platform allows users to log films, curate custom thematic collections, and visualize their viewing habits through detailed analytics.
+CineLunatic is a premium, minimalist architectural companion for obsessive cinema and television viewers. It combines rigorous personal archiving with a privacy-focused social graph.
 
-## 1. Core Architecture
-- **Framework**: React + Vite (TypeScript)
-- **Styling**: Vanilla CSS + Tailwind Utility Classes
-- **Authentication**: Firebase Authentication (Google OAuth)
-- **Database**: Firebase Firestore (Real-time NoSQL storage)
-- **Movie Data**: TMDB API integration (Bearer Token authorization)
+## 1. Technology Stack
+- **Frontend**: React 18 + Vite (TypeScript)
+- **Styling**: Tailwind CSS + Custom Utility Classes (clsx/tailwind-merge)
+- **Authentication**: Firebase Authentication (Google Provider)
+- **Database**: Firebase Firestore (NoSQL, Real-time)
+- **API**: TMDB (The Movie Database) v3 API
+- **Icons**: Lucide React
 
-## 2. Key Features & Implementation Details
+---
 
-### A. Personal Archiving (Diary)
-- **Log Entry System**: CRUD operations for logging films with date, rating, and personal notes.
-- **Personal History**: Every movie detail page pulls your specific viewing history for that film.
-- **Diary View**: Grouped-by-month chronological feed of your entire cinema journey.
+## 2. Database Architecture (Firestore)
+The application uses a **read-optimized, denormalized schema** to ensure fast profile loading and scalable social interactions.
 
-### B. Curated Collections (Lists)
-- **Watchlist**: A dedicated space for films you intend to watch, synced across devices.
-- **Custom Collections**: Create named, thematic lists (e.g., "70s Neo-Noir", "Slow Cinema Favorites").
-- **Collection Management**: Add/remove films from any collection with real-time Firestore array updates.
+### A. Core Collections
+1. **`/users`** (User Profiles)
+   - `uid`, `username`, `displayName`, `photoURL`, `bio`
+   - `privacy`: { `isPublic`: boolean } (Public/Private Profile Toggle)
+   - `stats`: { `totalWatched`, `listCount`, `connectionCount`, ... } (Aggregated for performance)
+   - **Subcollections**:
+     - `logs`: User's diary entries (Movies & TV)
+     - `lists`: Curated custom collections
+     - `watchlist`: Future viewing
+     - `favorites`: Top items
 
-### C. Advanced Analytics (Stats)
-- **Viewing Trends**: Monthly activity breakdown using Recharts bar visualizations.
-- **Genre Diversity**: Interactive pie charts showing your most-watched movie categories.
-- **World Cinema**: Breakdown of films by production country to track global viewing diversity.
-- **Personnel Tracking**: Automatic tracking of top directors and actors in your archive.
+2. **`/usernames`** (Uniqueness Constraint)
+   - Document ID is the lowercase username.
+   - Field: `uid` (Maps username -> User ID).
+   - Ensures globally unique handles during signup/profile edit.
 
-### D. Cinematic Discovery
-- **Rich Search**: Search by title with integrated genre filtering.
-- **Discovery Hub**: Real-time trending and popular movie carousels.
-- **Premium Detail View**: Narrative overviews, full credits, cinematic trailer overlays, and backdrop support.
+3. **`/connections`** (The Social Graph)
+   - Document ID: `{uid1}_{uid2}` (Sorted alphabetically)
+   - Fields: `uids`: [uid1, uid2], `status`: "accepted", `since`: timestamp.
+   - Enables O(1) checks for friendship status.
 
-### E. Social & Profile Identity
-- **Branding**: Unique "CineLunatic" identity with a custom-engineered SVG logo.
-- **User Bios**: Persistent personal bios and profile metadata stored in Firestore.
-- **Settings Management**: Real-time profile updates that sync with both Auth and Database layers.
+4. **`/connection_requests`**
+   - Stores pending friend requests with `from`, `to`, and `status`.
 
-## 3. Key Functions (lib/db.ts & lib/tmdb.ts)
+5. **`/reviews`** (Community Discussions)
+   - Flat collection for all reviews to enable global feeds.
+   - Fields: `movieId`, `mediaType`, `authorUid`, `authorName`, `rating`, `spoilerFlag`, `visibility` ('public' | 'connections').
+   - **Performance**: Author info is denormalized here to avoid N+1 joins when rendering feeds.
 
-- `createLogEntry`: Persists film logs to Firestore with server-side timestamps.
-- `getUserStats`: Calculates complex totals and array breakdowns on the fly.
-- `toggleWatchlist` / `toggleFavorite`: Atomic toggles for collection state.
-- `createCustomList` / `addMovieToList`: Multi-level collection management.
-- `getMovieDetails`: Deep data fetching including "append_to_response" for credits/trailers.
-- `updateUserData`: Syncs extended profile metadata like bios to the database.
+6. **`/comments`**
+   - 1-level deep threading for reviews.
+   - Fields: `reviewId`, `authorUid`, `text`, `spoilerFlag`.
 
-## 4. Design Principles
-CineLunatic adheres to "Archival Minimalism" — High-contrast typography, silver/charcoal color palettes, and a focus on data density without visual clutter. The UI is fully optimized for mobile devices with responsive grids and touch-friendly interactions.
+7. **Atomic Counters (Distributed)**
+   - Like counts are stored on `review` and `comment` documents.
+   - "Likes" themselves are stored in `review_likes/{reviewId_userId}` to prevent double-voting.
+
+---
+
+## 3. Feature Breakdown
+
+### A. Personal Archiving (The Core)
+- **Unified Logging**: Log both **Movies** and **TV Shows** with a consistent interface.
+- **Rich Metadata**: Logs include Date, Rating (0.5-5.0), Rewatch status, Tags, Mood, Location, and detailed Reviews.
+- **Smart Stats**: Visual analytics of your viewing habits (Top Directors, Genres, Countries, Decades).
+- **Lists System**: Create public or private thematic lists (e.g., "Cyberpunk 2024", "Comfort TV").
+
+### B. Social Evolution (The Graph)
+- **Two-Way Connections**: Explicit connection model (Request -> Accept) instead of asymmetric Following.
+- **Privacy Controls**:
+  - **Profile Level**: Public (visible to world) vs Private (visible only to connections).
+  - **Entry Level**: Each review/log can be toggled as **Public**, **Connections Only**, or **Private**.
+- **Notifications Hub**: Real-time management of incoming connection requests in the site header.
+
+### C. Community & Discussions
+- **Archival Reviews**: Long-form reviews tagged with "Spoiler" warnings.
+- **Spoiler Protection**: Content is visually blurred with a "frosted glass" effect until explicitly revealed by the user.
+- **Threaded Conversations**: Comment system to discuss specific reviews.
+- **Discovery**: Find users by unique username handling.
+
+### D. TV Show Integration (New)
+- **Polymorphic Data Handling**: The system seamlessly distinguishes between `mediaType: 'movie'` and `mediaType: 'tv'`.
+- **TV Detail Views**: Dedicated layouts showing **Seasons**, **Episode Counts**, **Creators**, **Networks**, and **Status**.
+- **Unified Search**: A tabbed search interface allowing users to toggle context between Films and Series without losing filters.
+
+---
+
+## 4. Key Implementation Details
+
+### TMDB Service (`lib/tmdb.ts`)
+- **Polymorphic Transformation**: A central `transformMovie` function normalizes raw API data (Movie vs TV) into a single `Movie` TypeScript interface.
+- **Extended Metadata**: Fetches "Created By" (Showrunners) for TV and "Director" for Movies ensuring correct credit attribution.
+
+### Authentication & Security
+- **Hybrid Profile Loading**:
+  - Checks Firebase Auth for immediate session availability.
+  - Fetches Firestore `/users/{uid}` for extended profile data (Bio, Stats).
+  - Handles "New User" states gracefully by falling back to Auth defaults.
+
+---
+
+## 5. Design Philosophy: "Archival Minimalism"
+- **Visuals**: High-contrast, monochromatic aesthetic (Black/White/Zinc).
+- **Interactions**: Subtle micro-interactions (hover states, scale effects).
+- **Mobile First**: All complex data tables (like Seasons lists or Filmographies) are responsive by design.
+- **Focus**: Data density over decoration. The content (the film art) provides the color.
