@@ -39,7 +39,6 @@ export function Header() {
 
   const navLinks = [
     { href: "/home", label: "Home" },
-    { href: "/search", label: "Films" },
     { href: "/diary", label: "Diary" },
     { href: "/community", label: "Community" },
     { href: "/lists", label: "Lists" },
