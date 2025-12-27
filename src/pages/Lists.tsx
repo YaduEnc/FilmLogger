@@ -74,7 +74,7 @@ export default function Lists() {
           {watchlist.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4 md:gap-5">
               {watchlist.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} size="sm" />
+                <MovieCard key={movie.id} movie={movie} size="md" />
               ))}
             </div>
           ) : (
@@ -106,12 +106,12 @@ export default function Lists() {
                   to={`/lists/${list.id}`}
                   className="group block p-5 border border-border rounded-xl hover:bg-muted/50 transition-all hover:shadow-lg hover:shadow-black/5"
                 >
-                  <div className="flex gap-1.5 mb-4 min-h-[100px] bg-muted/20 rounded-lg p-1">
+                  <div className="flex gap-2 mb-4 min-h-[110px] bg-muted/20 rounded-lg p-2 overflow-hidden">
                     {list.movies && list.movies.length > 0 ? (
                       list.movies.slice(0, 4).map((movie) => (
                         <div
                           key={movie.id}
-                          className="w-full aspect-[2/3] bg-muted rounded-md overflow-hidden border border-border/30 shadow-sm"
+                          className="w-16 aspect-[2/3] bg-muted rounded-md overflow-hidden border border-border/30 shadow-sm shrink-0"
                         >
                           {movie.posterUrl && (
                             <img

@@ -1,0 +1,50 @@
+# CineLunatic - Technical Project Overview
+
+CineLunatic is a premium, minimalist archival companion for obsessive cinema viewers. The platform allows users to log films, curate custom thematic collections, and visualize their viewing habits through detailed analytics.
+
+## 1. Core Architecture
+- **Framework**: React + Vite (TypeScript)
+- **Styling**: Vanilla CSS + Tailwind Utility Classes
+- **Authentication**: Firebase Authentication (Google OAuth)
+- **Database**: Firebase Firestore (Real-time NoSQL storage)
+- **Movie Data**: TMDB API integration (Bearer Token authorization)
+
+## 2. Key Features & Implementation Details
+
+### A. Personal Archiving (Diary)
+- **Log Entry System**: CRUD operations for logging films with date, rating, and personal notes.
+- **Personal History**: Every movie detail page pulls your specific viewing history for that film.
+- **Diary View**: Grouped-by-month chronological feed of your entire cinema journey.
+
+### B. Curated Collections (Lists)
+- **Watchlist**: A dedicated space for films you intend to watch, synced across devices.
+- **Custom Collections**: Create named, thematic lists (e.g., "70s Neo-Noir", "Slow Cinema Favorites").
+- **Collection Management**: Add/remove films from any collection with real-time Firestore array updates.
+
+### C. Advanced Analytics (Stats)
+- **Viewing Trends**: Monthly activity breakdown using Recharts bar visualizations.
+- **Genre Diversity**: Interactive pie charts showing your most-watched movie categories.
+- **World Cinema**: Breakdown of films by production country to track global viewing diversity.
+- **Personnel Tracking**: Automatic tracking of top directors and actors in your archive.
+
+### D. Cinematic Discovery
+- **Rich Search**: Search by title with integrated genre filtering.
+- **Discovery Hub**: Real-time trending and popular movie carousels.
+- **Premium Detail View**: Narrative overviews, full credits, cinematic trailer overlays, and backdrop support.
+
+### E. Social & Profile Identity
+- **Branding**: Unique "CineLunatic" identity with a custom-engineered SVG logo.
+- **User Bios**: Persistent personal bios and profile metadata stored in Firestore.
+- **Settings Management**: Real-time profile updates that sync with both Auth and Database layers.
+
+## 3. Key Functions (lib/db.ts & lib/tmdb.ts)
+
+- `createLogEntry`: Persists film logs to Firestore with server-side timestamps.
+- `getUserStats`: Calculates complex totals and array breakdowns on the fly.
+- `toggleWatchlist` / `toggleFavorite`: Atomic toggles for collection state.
+- `createCustomList` / `addMovieToList`: Multi-level collection management.
+- `getMovieDetails`: Deep data fetching including "append_to_response" for credits/trailers.
+- `updateUserData`: Syncs extended profile metadata like bios to the database.
+
+## 4. Design Principles
+CineLunatic adheres to "Archival Minimalism" — High-contrast typography, silver/charcoal color palettes, and a focus on data density without visual clutter. The UI is fully optimized for mobile devices with responsive grids and touch-friendly interactions.

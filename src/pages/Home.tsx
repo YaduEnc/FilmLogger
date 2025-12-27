@@ -10,7 +10,7 @@ import { Plus, Search, Clock, Film, Loader2 } from "lucide-react";
 import { LogEntry, Movie, UserStats } from "@/types/movie";
 import { getTrendingMovies, getPopularMovies } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserLogs, getUserStats } from "@/lib/db";
+import { getUserLogs, getUserStats, getUserLists } from "@/lib/db";
 
 // Mock data - will be replaced with real user data
 const recentLogs: LogEntry[] = [];
@@ -35,9 +35,12 @@ export default function Home() {
         setPopularMovies(popularData.movies.slice(0, 4));
 
         if (user) {
-          const fetchedLogs = await getUserLogs(user.uid, 5);
+          const [fetchedLogs, fetchedLists] = await Promise.all([
+            getUserLogs(user.uid, { limitCount: 5 }),
+            getUserLists(user.uid)
+          ]);
           setRecentLogs(fetchedLogs);
-          const calculatedStats = await getUserStats(fetchedLogs);
+          const calculatedStats = await getUserStats(fetchedLogs, fetchedLists.length);
           setStats(calculatedStats as any);
         }
       } catch (error) {

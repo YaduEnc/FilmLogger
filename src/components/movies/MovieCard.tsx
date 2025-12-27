@@ -11,9 +11,9 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardProps) {
   const sizeClasses = {
-    sm: "w-16",
-    md: "w-24",
-    lg: "w-32",
+    sm: "w-14",
+    md: "w-20",
+    lg: "w-28",
   };
 
   return (
@@ -38,7 +38,7 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
             </div>
           )}
         </div>
-        
+
         {/* Rating badge */}
         {showRating && rating !== undefined && (
           <div className="absolute -bottom-1 -right-1 bg-foreground text-primary-foreground text-xs font-medium px-1.5 py-0.5 rounded-sm">
@@ -46,14 +46,16 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
           </div>
         )}
       </div>
-      
+
       {/* Title (optional for larger sizes) */}
       {size !== "sm" && (
-        <div className="mt-2">
-          <p className="text-sm font-medium leading-tight truncate group-hover:underline underline-offset-2">
+        <div className="mt-2 group-hover:underline decoration-border underline-offset-4">
+          <p className="text-[13px] md:text-sm font-medium leading-tight truncate">
             {movie.title}
           </p>
-          <p className="text-xs text-muted-foreground mt-0.5">{movie.year}</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5 font-medium tracking-tight uppercase">
+            {movie.year}
+          </p>
         </div>
       )}
     </Link>

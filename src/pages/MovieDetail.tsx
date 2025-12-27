@@ -12,7 +12,9 @@ import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorit
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { CreateListModal } from "@/components/movies/CreateListModal";
 import { AddToListModal } from "@/components/movies/AddToListModal";
+import { ReviewSection } from "@/components/reviews/ReviewSection";
 import { toast } from "sonner";
+
 
 export default function MovieDetail() {
   const { id } = useParams();
@@ -344,9 +346,15 @@ export default function MovieDetail() {
                 </div>
               )}
             </section>
+
+            <Divider className="my-16 opacity-50" />
+
+            {/* Community Reviews Section */}
+            <ReviewSection movie={movie} />
           </main>
         </div>
       </div>
+
 
       <AddToListModal
         movie={movie}

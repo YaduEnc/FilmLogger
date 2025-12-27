@@ -16,14 +16,15 @@ import {
     arrayUnion
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { LogEntry, Movie, MovieList } from "@/types/movie";
+import { LogEntry, Movie, MovieList, Review, ReviewComment } from "@/types/movie";
+
 
 export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" | "createdAt" | "updatedAt">) => {
     try {
-        const logsRef = collection(db, "logs");
+        const logsRef = collection(db, "users", userId, "logs");
         const docRef = await addDoc(logsRef, {
             ...entry,
-            userId,
+            userId, // Keeping it for potential Collection Group queries
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             watchedDate: Timestamp.fromDate(new Date(entry.watchedDate))
@@ -35,17 +36,20 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
     }
 };
 
-export const getUserLogs = async (userId: string, limitCount = 50) => {
+export const getUserLogs = async (userId: string, options: { currentUserId?: string, isConnection?: boolean, limitCount?: number } = {}) => {
+    const { currentUserId, isConnection = false, limitCount = 50 } = options;
     try {
-        const logsRef = collection(db, "logs");
-        const q = query(
+        const logsRef = collection(db, "users", userId, "logs");
+        let q = query(
             logsRef,
-            where("userId", "==", userId),
+            orderBy("watchedDate", "desc"),
             limit(limitCount)
         );
-        const querySnapshot = await getDocs(q);
 
-        return querySnapshot.docs.map(doc => {
+
+
+        const querySnapshot = await getDocs(q);
+        let logs = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return {
                 id: doc.id,
@@ -54,19 +58,30 @@ export const getUserLogs = async (userId: string, limitCount = 50) => {
                 createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
                 updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
             } as LogEntry;
-        }).sort((a, b) => new Date(b.watchedDate).getTime() - new Date(a.watchedDate).getTime());
+        });
+
+        // If viewing someone else's profile, filter by visibility
+        if (currentUserId !== userId) {
+            logs = logs.filter(log => {
+                if (log.visibility === 'public') return true;
+                if (log.visibility === 'followers' && isConnection) return true;
+                return false;
+            });
+        }
+
+        return logs;
     } catch (error) {
         console.error("Error getting user logs:", error);
         throw error;
     }
 };
 
+
 export const getMovieLogs = async (userId: string, movieId: number) => {
     try {
-        const logsRef = collection(db, "logs");
+        const logsRef = collection(db, "users", userId, "logs");
         const q = query(
             logsRef,
-            where("userId", "==", userId),
             where("movieId", "==", movieId)
         );
         const querySnapshot = await getDocs(q);
@@ -87,7 +102,7 @@ export const getMovieLogs = async (userId: string, movieId: number) => {
     }
 };
 
-export const getUserStats = async (logs: LogEntry[]) => {
+export const getUserStats = async (logs: LogEntry[], listsCount: number = 0) => {
     const totalWatched = logs.length;
     const thisYear = new Date().getFullYear();
     const currentYearLogs = logs.filter(log => new Date(log.watchedDate).getFullYear() === thisYear);
@@ -152,7 +167,7 @@ export const getUserStats = async (logs: LogEntry[]) => {
         topDirectors,
         topCountries,
         filmsPerMonth: monthlyCounts,
-        lists: 0
+        lists: listsCount
     };
 };
 
@@ -287,3 +302,232 @@ export const addMovieToList = async (userId: string, listId: string, movie: Movi
         throw error;
     }
 };
+
+export const getUserByUsername = async (username: string) => {
+    try {
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", username.toLowerCase()), limit(1));
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return null;
+        return { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() };
+    } catch (error) {
+        console.error("Error getting user by username:", error);
+        return null;
+    }
+};
+
+export const updateUserData = async (userId: string, data: any) => {
+    try {
+        const userRef = doc(db, "users", userId);
+
+        // If updating username, also update the usernames collection
+        if (data.username) {
+            const usernameRef = doc(db, "usernames", data.username.toLowerCase());
+            await setDoc(usernameRef, { uid: userId });
+        }
+
+        await setDoc(userRef, data, { merge: true });
+    } catch (error) {
+        console.error("Error updating user data:", error);
+        throw error;
+    }
+};
+
+export const checkUsernameAvailable = async (username: string) => {
+    try {
+        const usernameRef = doc(db, "usernames", username.toLowerCase());
+        const usernameDoc = await getDoc(usernameRef);
+        return !usernameDoc.exists();
+    } catch (error) {
+        console.error("Error checking username:", error);
+        return false;
+    }
+};
+
+export const searchUsers = async (searchTerm: string) => {
+    try {
+        const usersRef = collection(db, "users");
+        // Simple prefix search using Firestore query
+        const q = query(
+            usersRef,
+            where("username", ">=", searchTerm.toLowerCase()),
+            where("username", "<=", searchTerm.toLowerCase() + "\uf8ff"),
+            limit(10)
+        );
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            uid: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error("Error searching users:", error);
+        return [];
+    }
+};
+
+// Connections Management
+export const getConnectionStatus = async (currentUid: string, targetUid: string) => {
+    try {
+        // Check if connected
+        const connId = [currentUid, targetUid].sort().join("_");
+        const connDoc = await getDoc(doc(db, "connections", connId));
+        if (connDoc.exists()) return { status: 'accepted' };
+
+        // Check for pending requests
+        const requestsRef = collection(db, "connection_requests");
+        const qOut = query(requestsRef, where("from", "==", currentUid), where("to", "==", targetUid));
+        const outSnapshot = await getDocs(qOut);
+        if (!outSnapshot.empty) return { status: 'pending', requestId: outSnapshot.docs[0].id };
+
+        const qIn = query(requestsRef, where("from", "==", targetUid), where("to", "==", currentUid));
+        const inSnapshot = await getDocs(qIn);
+        if (!inSnapshot.empty) return { status: 'incoming', requestId: inSnapshot.docs[0].id };
+
+        return { status: 'none' };
+    } catch (error) {
+        console.error("Error getting connection status:", error);
+        return { status: 'none' };
+    }
+};
+
+export const sendConnectionRequest = async (fromUid: string, toUid: string) => {
+    try {
+        const requestsRef = collection(db, "connection_requests");
+        await addDoc(requestsRef, {
+            from: fromUid,
+            to: toUid,
+            status: "pending",
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error sending connection request:", error);
+        throw error;
+    }
+};
+
+export const acceptConnectionRequest = async (requestId: string, fromUid: string, toUid: string) => {
+    try {
+        const connId = [fromUid, toUid].sort().join("_");
+        await setDoc(doc(db, "connections", connId), {
+            uids: [fromUid, toUid],
+            status: "accepted",
+            since: serverTimestamp()
+        });
+        await deleteDoc(doc(db, "connection_requests", requestId));
+    } catch (error) {
+        console.error("Error accepting connection request:", error);
+        throw error;
+    }
+};
+
+// Reviews & Comments
+export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "likeCount" | "commentCount">) => {
+    try {
+        const reviewsRef = collection(db, "reviews");
+        const docRef = await addDoc(reviewsRef, {
+            ...review,
+            likeCount: 0,
+            commentCount: 0,
+            createdAt: serverTimestamp()
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error submitting review:", error);
+        throw error;
+    }
+};
+
+export const getMovieReviews = async (movieId: number) => {
+    try {
+        const reviewsRef = collection(db, "reviews");
+        const q = query(reviewsRef, where("movieId", "==", movieId), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString()
+        } as Review));
+    } catch (error) {
+        console.error("Error getting reviews:", error);
+        return [];
+    }
+};
+
+export const submitComment = async (comment: Omit<ReviewComment, "id" | "createdAt" | "likeCount">) => {
+    try {
+        const commentsRef = collection(db, "comments");
+        const docRef = await addDoc(commentsRef, {
+            ...comment,
+            likeCount: 0,
+            createdAt: serverTimestamp()
+        });
+
+        // Increment comment count on review
+        const reviewRef = doc(db, "reviews", comment.reviewId);
+        const reviewSnapshot = await getDoc(reviewRef);
+        await updateDoc(reviewRef, {
+            commentCount: (reviewSnapshot.data()?.commentCount || 0) + 1
+        });
+
+        return docRef.id;
+    } catch (error) {
+        console.error("Error submitting comment:", error);
+        throw error;
+    }
+};
+
+export const getReviewComments = async (reviewId: string) => {
+    try {
+        const commentsRef = collection(db, "comments");
+        const q = query(commentsRef, where("reviewId", "==", reviewId), orderBy("createdAt", "asc"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString()
+        } as unknown as ReviewComment));
+    } catch (error) {
+        console.error("Error getting comments:", error);
+        return [];
+    }
+};
+
+
+export const toggleEntityLike = async (userId: string, entityId: string, entityType: 'review' | 'comment' | 'list') => {
+    try {
+        const likeRef = doc(db, `${entityType}_likes`, `${entityId}_${userId}`);
+        const entityRef = doc(db, entityType === 'review' ? 'reviews' : entityType === 'comment' ? 'comments' : 'users/' + userId + '/lists', entityId);
+
+        const likeDoc = await getDoc(likeRef);
+
+        if (likeDoc.exists()) {
+            await deleteDoc(likeRef);
+            await updateDoc(entityRef, {
+                likeCount: (await getDoc(entityRef)).data()?.likeCount - 1
+            });
+            return false;
+        } else {
+            await setDoc(likeRef, { userId, entityId, createdAt: serverTimestamp() });
+            await updateDoc(entityRef, {
+                likeCount: ((await getDoc(entityRef)).data()?.likeCount || 0) + 1
+            });
+            return true;
+        }
+    } catch (error) {
+        console.error("Error toggling like:", error);
+        throw error;
+    }
+};
+
+export const getUserData = async (userId: string) => {
+    try {
+        const userRef = doc(db, "users", userId);
+        const userDoc = await getDoc(userRef);
+        return userDoc.exists() ? { uid: userDoc.id, ...userDoc.data() } as any : null;
+    } catch (error) {
+        console.error("Error getting user data:", error);
+        return null;
+    }
+};
+
+

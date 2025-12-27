@@ -20,6 +20,7 @@ export function Header() {
     { href: "/home", label: "Home" },
     { href: "/search", label: "Films" },
     { href: "/diary", label: "Diary" },
+    { href: "/community", label: "Community" },
     { href: "/lists", label: "Lists" },
     { href: "/stats", label: "Stats" },
   ];

@@ -17,7 +17,7 @@ export default function Diary() {
     async function loadLogs() {
       if (!user) return;
       try {
-        const fetchedLogs = await getUserLogs(user.uid, 100);
+        const fetchedLogs = await getUserLogs(user.uid, { limitCount: 100 });
         setLogs(fetchedLogs);
       } catch (error) {
         console.error("Failed to fetch diary logs:", error);

@@ -13,6 +13,7 @@ import Log from "./pages/Log";
 import Diary from "./pages/Diary";
 import Lists from "./pages/Lists";
 import Stats from "./pages/Stats";
+import Community from "./pages/Community";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -37,7 +38,9 @@ const App = () => (
             <Route path="/lists" element={<Lists />} />
             <Route path="/lists/:id" element={<Lists />} />
             <Route path="/stats" element={<Stats />} />
+            <Route path="/community" element={<Community />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:username" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

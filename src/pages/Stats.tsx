@@ -3,7 +3,7 @@ import { Layout } from "@/components/layout/Layout";
 import { H1, H3 } from "@/components/ui/typography";
 import { Divider } from "@/components/ui/divider";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserLogs, getUserStats } from "@/lib/db";
+import { getUserLogs, getUserStats, getUserLists } from "@/lib/db";
 import { Loader2, TrendingUp } from "lucide-react";
 import {
   BarChart,
@@ -28,8 +28,11 @@ export default function Stats() {
     async function loadStats() {
       if (!user) return;
       try {
-        const logs = await getUserLogs(user.uid, 500); // Fetch more for stats
-        const calculatedStats = await getUserStats(logs);
+        const [logs, lists] = await Promise.all([
+          getUserLogs(user.uid, { limitCount: 500 }),
+          getUserLists(user.uid)
+        ]);
+        const calculatedStats = await getUserStats(logs, lists.length);
         setStats(calculatedStats);
       } catch (error) {
         console.error("Failed to load stats:", error);
@@ -71,18 +74,18 @@ export default function Stats() {
         <p className="text-muted-foreground mb-10">Your {currentYear} in film</p>
 
         {/* Overview cards */}
-        <div className="grid grid-cols-3 gap-4 mb-16">
-          <div className="p-8 border border-border/50 rounded-xl bg-muted/5 text-center shadow-sm">
-            <p className="text-4xl font-serif font-medium">{stats.totalWatched}</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2">films watched</p>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-16">
+          <div className="p-4 md:p-8 border border-border/50 rounded-xl bg-muted/5 text-center shadow-sm flex flex-col justify-center">
+            <p className="text-2xl md:text-4xl font-serif font-medium">{stats.totalWatched}</p>
+            <p className="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2">films watched</p>
           </div>
-          <div className="p-8 border border-border/50 rounded-xl bg-muted/5 text-center shadow-sm">
-            <p className="text-4xl font-serif font-medium">{stats.avgRating}</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2">average rating</p>
+          <div className="p-4 md:p-8 border border-border/50 rounded-xl bg-muted/5 text-center shadow-sm flex flex-col justify-center">
+            <p className="text-2xl md:text-4xl font-serif font-medium">{stats.avgRating}</p>
+            <p className="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2">average rating</p>
           </div>
-          <div className="p-8 border border-border/50 rounded-xl bg-muted/5 text-center shadow-sm">
-            <p className="text-4xl font-serif font-medium">{stats.totalHours}</p>
-            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2">hours watched</p>
+          <div className="p-4 md:p-8 border border-border/50 rounded-xl bg-muted/5 text-center shadow-sm flex flex-col justify-center col-span-2 md:col-span-1">
+            <p className="text-2xl md:text-4xl font-serif font-medium">{stats.totalHours}</p>
+            <p className="text-[10px] md:text-xs font-semibold uppercase tracking-widest text-muted-foreground mt-2">hours watched</p>
           </div>
         </div>
 
