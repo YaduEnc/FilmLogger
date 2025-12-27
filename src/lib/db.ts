@@ -196,13 +196,18 @@ export const getUserCommunityInteraction = async (userId: string, mediaId: strin
 export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" | "createdAt" | "updatedAt">) => {
     try {
         const logsRef = collection(db, "users", userId, "logs");
-        const docRef = await addDoc(logsRef, {
+        
+        // Clean undefined fields from the movie object and the entire entry
+        const cleanedEntry = cleanUndefinedFields({
             ...entry,
+            movie: cleanUndefinedFields(entry.movie), // Clean the nested movie object
             userId, // Keeping it for potential Collection Group queries
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             watchedDate: Timestamp.fromDate(new Date(entry.watchedDate))
         });
+        
+        const docRef = await addDoc(logsRef, cleanedEntry);
 
         // Update community rating if rating is provided
         if (entry.rating > 0) {
@@ -236,9 +241,9 @@ export const getUserLogs = async (userId: string, options: { currentUserId?: str
             return {
                 id: doc.id,
                 ...data,
-                watchedDate: (data.watchedDate as Timestamp).toDate().toISOString(),
-                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
-                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
+                watchedDate: safeTimestampToISO(data.watchedDate),
+                createdAt: safeTimestampToISO(data.createdAt),
+                updatedAt: safeTimestampToISO(data.updatedAt),
             } as LogEntry;
         });
 
@@ -274,15 +279,56 @@ export const getMovieLogs = async (userId: string, movieId: number, mediaType: '
             return {
                 id: doc.id,
                 ...data,
-                watchedDate: (data.watchedDate as Timestamp).toDate().toISOString(),
-                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString(),
-                updatedAt: (data.updatedAt as Timestamp)?.toDate().toISOString(),
+                watchedDate: safeTimestampToISO(data.watchedDate),
+                createdAt: safeTimestampToISO(data.createdAt),
+                updatedAt: safeTimestampToISO(data.updatedAt),
             } as LogEntry;
         }).sort((a, b) => new Date(b.watchedDate).getTime() - new Date(a.watchedDate).getTime());
     } catch (error) {
         console.error("Error getting movie logs:", error);
         throw error;
     }
+};
+
+// Helper function to remove undefined values from objects (Firestore doesn't support undefined)
+const cleanUndefinedFields = (obj: any): any => {
+    const cleaned: any = {};
+    Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        if (value !== undefined) {
+            if (Array.isArray(value)) {
+                cleaned[key] = value.map(item => 
+                    typeof item === 'object' && item !== null ? cleanUndefinedFields(item) : item
+                );
+            } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+                cleaned[key] = cleanUndefinedFields(value);
+            } else {
+                cleaned[key] = value;
+            }
+        }
+    });
+    return cleaned;
+};
+
+// Helper function to safely convert Firestore Timestamp to ISO string
+const safeTimestampToISO = (value: any): string => {
+    if (!value) return new Date().toISOString();
+    
+    // If it's already a string, return it
+    if (typeof value === 'string') return value;
+    
+    // If it's a Firestore Timestamp, convert it
+    if (value && typeof value.toDate === 'function') {
+        return value.toDate().toISOString();
+    }
+    
+    // If it's a Date object
+    if (value instanceof Date) {
+        return value.toISOString();
+    }
+    
+    // Fallback
+    return new Date().toISOString();
 };
 
 export const getUserStats = async (logs: LogEntry[], listsCount: number = 0) => {
@@ -363,11 +409,13 @@ export const toggleWatchlist = async (userId: string, movie: Movie) => {
             await deleteDoc(watchlistRef);
             return false; // Removed
         } else {
-            await setDoc(watchlistRef, {
+            // Clean undefined fields before saving to Firestore
+            const cleanedMovie = cleanUndefinedFields({
                 ...movie,
                 mediaType: movie.mediaType || 'movie',
                 addedAt: serverTimestamp()
             });
+            await setDoc(watchlistRef, cleanedMovie);
             return true; // Added
         }
     } catch (error) {
@@ -415,11 +463,13 @@ export const toggleFavorite = async (userId: string, movie: Movie) => {
             await deleteDoc(favoriteRef);
             return false; // Removed
         } else {
-            await setDoc(favoriteRef, {
+            // Clean undefined fields before saving to Firestore
+            const cleanedMovie = cleanUndefinedFields({
                 ...movie,
                 mediaType: movie.mediaType || 'movie',
                 addedAt: serverTimestamp()
             });
+            await setDoc(favoriteRef, cleanedMovie);
             return true; // Added
         }
     } catch (error) {
@@ -493,8 +543,10 @@ export const getUserLists = async (userId: string) => {
 export const addMovieToList = async (userId: string, listId: string, movie: Movie) => {
     try {
         const listRef = doc(db, "users", userId, "lists", listId);
+        // Clean undefined fields before adding to array
+        const cleanedMovie = cleanUndefinedFields(movie);
         await updateDoc(listRef, {
-            movies: arrayUnion(movie)
+            movies: arrayUnion(cleanedMovie)
         });
     } catch (error) {
         console.error("Error adding movie to list:", error);
@@ -642,7 +694,7 @@ export const getIncomingRequests = async (userId: string) => {
                 id: doc.id,
                 ...data,
                 fromUser,
-                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString()
+                createdAt: safeTimestampToISO(data.createdAt)
             };
         }));
 
@@ -684,7 +736,7 @@ export const getMovieReviews = async (movieId: number) => {
         return snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString()
+            createdAt: safeTimestampToISO(doc.data().createdAt)
         } as Review)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error getting reviews:", error);
@@ -723,7 +775,7 @@ export const getReviewComments = async (reviewId: string) => {
         return snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString()
+            createdAt: safeTimestampToISO(doc.data().createdAt)
         } as unknown as ReviewComment)).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } catch (error) {
         console.error("Error getting comments:", error);
