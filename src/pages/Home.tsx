@@ -11,8 +11,9 @@ import { LogEntry, Movie, UserStats } from "@/types/movie";
 import { getTrendingMovies, getPopularMovies } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserLogs, getUserStats, getUserLists } from "@/lib/db";
-import { ActivityFeed } from "@/components/social/ActivityFeed";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// Mock data - will be replaced with real user data
+const recentLogs: LogEntry[] = [];
 
 export default function Home() {
   const { user } = useAuth();
@@ -78,43 +79,31 @@ export default function Home() {
         </section>
 
         <div className="grid lg:grid-cols-3 gap-12">
-          {/* Main Feed Area */}
+          {/* Recent activity */}
           <div className="lg:col-span-2">
-            <Tabs defaultValue="network" className="w-full">
-              <div className="flex items-center justify-between mb-6">
-                <TabsList className="bg-muted/50 p-1 rounded-lg">
-                  <TabsTrigger value="network" className="text-sm px-4 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all shadow-none border-0">Network</TabsTrigger>
-                  <TabsTrigger value="personal" className="text-sm px-4 py-1.5 rounded-md data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all shadow-none border-0">You</TabsTrigger>
-                </TabsList>
-                <Link to="/profile" className="text-sm text-muted-foreground hover:text-foreground">
-                  My Profile →
-                </Link>
+            <div className="flex items-center justify-between mb-6">
+              <H2>Recent activity</H2>
+              <Link to="/profile" className="text-sm text-muted-foreground hover:text-foreground">
+                View profile →
+              </Link>
+            </div>
+            <div>
+              {recentLogs.map((entry) => (
+                <LogEntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
+            {!isLoading && recentLogs.length === 0 && (
+              <div className="py-12 text-center border border-dashed border-border rounded-sm">
+                <Film className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-muted-foreground">Your diary is empty.</p>
+                <p className="text-sm mt-1">
+                  <Link to="/search" className="text-foreground underline underline-offset-2">
+                    Find a film
+                  </Link>{" "}
+                  to get started.
+                </p>
               </div>
-
-              <TabsContent value="network" className="mt-0 animate-in fade-in-50 duration-300">
-                <ActivityFeed />
-              </TabsContent>
-
-              <TabsContent value="personal" className="mt-0 animate-in fade-in-50 duration-300">
-                <div>
-                  {recentLogs.map((entry) => (
-                    <LogEntryCard key={entry.id} entry={entry} />
-                  ))}
-                </div>
-                {!isLoading && recentLogs.length === 0 && (
-                  <div className="py-12 text-center border border-dashed border-border rounded-sm">
-                    <Film className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-50" />
-                    <p className="text-muted-foreground">Your diary is empty.</p>
-                    <p className="text-sm mt-1">
-                      <Link to="/search" className="text-foreground underline underline-offset-2">
-                        Find a film
-                      </Link>{" "}
-                      to get started.
-                    </p>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+            )}
           </div>
 
           {/* Sidebar */}

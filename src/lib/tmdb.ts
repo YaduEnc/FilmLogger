@@ -19,8 +19,8 @@ interface TMDBMovie {
   vote_average?: number;
   vote_count?: number;
   credits?: {
-    crew?: { job: string; name: string }[];
-    cast?: { name: string; character: string; order: number }[];
+    crew?: { id: number; job: string; name: string; profile_path?: string }[];
+    cast?: { id: number; name: string; character: string; order: number; profile_path?: string }[];
   };
   videos?: {
     results: { key: string; site: string; type: string }[];
@@ -35,8 +35,18 @@ interface TMDBSearchResponse {
 }
 
 function transformMovie(tmdbMovie: TMDBMovie): Movie {
-  const director = tmdbMovie.credits?.crew?.find((c) => c.job === "Director")?.name;
+  const directorInfo = tmdbMovie.credits?.crew?.find((c) => c.job === "Director");
+  const directorId = directorInfo?.id;
+  const director = directorInfo?.name;
+
   const cast = tmdbMovie.credits?.cast?.slice(0, 10).map((c) => c.name);
+  const castMembers = tmdbMovie.credits?.cast?.slice(0, 10).map((c) => ({
+    id: c.id,
+    name: c.name,
+    character: c.character,
+    profileUrl: c.profile_path ? `${TMDB_IMAGE_BASE}/w185${c.profile_path}` : undefined
+  }));
+
   const trailer = tmdbMovie.videos?.results?.find(
     (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
   );
@@ -55,7 +65,9 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     genres: tmdbMovie.genres?.map((g) => g.name),
     countries: tmdbMovie.production_countries?.map((c) => c.name),
     director,
+    directorId,
     cast,
+    castMembers,
     synopsis: tmdbMovie.overview,
     language: tmdbMovie.original_language?.toUpperCase(),
     rating: tmdbMovie.vote_average,
@@ -140,4 +152,48 @@ export async function getTrendingMovies(page = 1): Promise<{ movies: Movie[]; to
 export function getPosterUrl(posterPath: string | undefined, size: "w92" | "w154" | "w185" | "w300" | "w500" | "original" = "w300"): string | undefined {
   if (!posterPath) return undefined;
   return `${TMDB_IMAGE_BASE}/${size}${posterPath}`;
+}
+
+export async function getPersonDetails(personId: number): Promise<any> {
+  try {
+    const data = await fetchTMDB(`/person/${personId}`);
+    return {
+      id: data.id,
+      name: data.name,
+      biography: data.biography,
+      birthday: data.birthday,
+      place_of_birth: data.place_of_birth,
+      profile_path: data.profile_path ? `${TMDB_IMAGE_BASE}/original${data.profile_path}` : undefined,
+      known_for_department: data.known_for_department
+    };
+  } catch (error) {
+    console.error("TMDB person details error:", error);
+    throw new Error("Failed to fetch person details");
+  }
+}
+
+export async function getPersonCredits(personId: number): Promise<Movie[]> {
+  try {
+    const data = await fetchTMDB(`/person/${personId}/movie_credits`);
+    const cast = data.cast || [];
+    const crew = data.crew || [];
+
+    // Combine and deduplicate by ID
+    const all = [...cast, ...crew].reduce((acc, current) => {
+      const x = acc.find((item: any) => item.id === current.id);
+      if (!x) {
+        return acc.concat([current]);
+      } else {
+        return acc;
+      }
+    }, []);
+
+    // Sort by popularity to show best known work first
+    const sorted = all.sort((a: any, b: any) => b.popularity - a.popularity);
+
+    return sorted.map(transformMovie);
+  } catch (error) {
+    console.error("TMDB person credits error:", error);
+    throw new Error("Failed to fetch person credits");
+  }
 }

@@ -1,6 +1,5 @@
 import {
     collection,
-    collectionGroup,
     addDoc,
     query,
     where,
@@ -427,61 +426,6 @@ export const rejectConnectionRequest = async (requestId: string) => {
     } catch (error) {
         console.error("Error rejecting connection request:", error);
         throw error;
-    }
-};
-
-export const getConnectionUids = async (userId: string) => {
-    try {
-        const connectionsRef = collection(db, "connections");
-        const q = query(connectionsRef, where("uids", "array-contains", userId), where("status", "==", "accepted"));
-        const snapshot = await getDocs(q);
-
-        return snapshot.docs.map(doc => {
-            const uids = doc.data().uids as string[];
-            return uids.find(id => id !== userId);
-        }).filter(Boolean) as string[];
-    } catch (error) {
-        console.error("Error getting connection UIDs:", error);
-        return [];
-    }
-};
-
-export const getConnectionActivity = async (connectionUids: string[], limitCount: number = 20) => {
-    if (connectionUids.length === 0) return [];
-
-    try {
-        // collectionGroup allows querying all "logs" subcollections across all users
-        const logsRef = collectionGroup(db, "logs");
-
-        // Firestore 'in' query limit is 30. If user has more friends, we'd need to batch.
-        // For current scope, we take the first 30 connections.
-        const targetUids = connectionUids.slice(0, 30);
-
-        const q = query(
-            logsRef,
-            where("userId", "in", targetUids),
-            orderBy("watchedDate", "desc"),
-            limit(limitCount)
-        );
-
-        const snapshot = await getDocs(q);
-
-        // Enrich logs with user profile data
-        const enrichedLogs = await Promise.all(snapshot.docs.map(async (doc) => {
-            const data = doc.data();
-            const userData = await getUserData(data.userId);
-            return {
-                id: doc.id,
-                ...data,
-                user: userData,
-                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString()
-            };
-        }));
-
-        return enrichedLogs;
-    } catch (error) {
-        console.error("Error getting connection activity:", error);
-        return [];
     }
 };
 

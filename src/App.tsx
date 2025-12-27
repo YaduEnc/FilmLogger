@@ -16,6 +16,7 @@ import Stats from "./pages/Stats";
 import Community from "./pages/Community";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
+import PersonDetail from "./pages/PersonDetail";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/home" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/movie/:id" element={<MovieDetail />} />
+            <Route path="/person/:id" element={<PersonDetail />} />
             <Route path="/log" element={<Log />} />
             <Route path="/diary" element={<Diary />} />
             <Route path="/lists" element={<Lists />} />

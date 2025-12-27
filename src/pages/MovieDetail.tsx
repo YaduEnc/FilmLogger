@@ -213,14 +213,31 @@ export default function MovieDetail() {
               {movie.director && (
                 <p className="text-base">
                   <span className="text-muted-foreground">Directed by</span>{" "}
-                  <span className="font-medium hover:text-primary transition-colors cursor-default underline decoration-border underline-offset-4 decoration-1">{movie.director}</span>
+                  {movie.directorId ? (
+                    <Link to={`/person/${movie.directorId}`} className="font-medium hover:text-primary transition-colors underline decoration-border underline-offset-4 decoration-1">
+                      {movie.director}
+                    </Link>
+                  ) : (
+                    <span className="font-medium hover:text-primary transition-colors cursor-default underline decoration-border underline-offset-4 decoration-1">{movie.director}</span>
+                  )}
                 </p>
               )}
-              {movie.cast && movie.cast.length > 0 && (
-                <p className="text-sm md:text-base leading-relaxed text-muted-foreground">
-                  {movie.cast.slice(0, 6).join(", ")}
+              {(movie.castMembers && movie.castMembers.length > 0) || (movie.cast && movie.cast.length > 0) ? (
+                <p className="text-sm md:text-base leading-relaxed text-muted-foreground flow-root">
+                  {movie.castMembers ? (
+                    movie.castMembers.slice(0, 6).map((member, index) => (
+                      <span key={member.id}>
+                        <Link to={`/person/${member.id}`} className="hover:text-foreground transition-colors">
+                          {member.name}
+                        </Link>
+                        {index < Math.min(movie.castMembers!.length, 6) - 1 && ", "}
+                      </span>
+                    ))
+                  ) : (
+                    movie.cast?.slice(0, 6).join(", ")
+                  )}
                 </p>
-              )}
+              ) : null}
             </div>
 
             {/* Genre Tags */}

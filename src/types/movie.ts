@@ -6,7 +6,9 @@ export interface Movie {
   runtime?: number;
   genres?: string[];
   director?: string;
+  directorId?: number;
   cast?: string[];
+  castMembers?: { id: number; name: string; character?: string; profileUrl?: string }[];
   synopsis?: string;
   language?: string;
   countries?: string[];
