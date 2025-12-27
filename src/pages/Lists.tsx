@@ -4,33 +4,37 @@ import { Layout } from "@/components/layout/Layout";
 import { H1, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { MovieCard } from "@/components/movies/MovieCard";
-import { Plus, Clock, Loader2, Bookmark } from "lucide-react";
+import { Plus, Clock, Loader2, Bookmark, FolderHeart } from "lucide-react";
 import { MovieList, Movie } from "@/types/movie";
 import { useAuth } from "@/hooks/useAuth";
-import { getWatchlist } from "@/lib/db";
+import { getWatchlist, getUserLists } from "@/lib/db";
+import { CreateListModal } from "@/components/movies/CreateListModal";
 
 export default function Lists() {
   const { user } = useAuth();
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
+  const [customLists, setCustomLists] = useState<MovieList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Custom lists will be implemented as a full feature later, 
-  // currently we focus on the core Watchlist requirement.
-  const customLists: MovieList[] = [];
+  async function loadData() {
+    if (!user) return;
+    try {
+      const [watchlistData, listsData] = await Promise.all([
+        getWatchlist(user.uid),
+        getUserLists(user.uid)
+      ]);
+      setWatchlist(watchlistData);
+      setCustomLists(listsData);
+    } catch (error) {
+      console.error("Failed to load lists:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadWatchlist() {
-      if (!user) return;
-      try {
-        const data = await getWatchlist(user.uid);
-        setWatchlist(data);
-      } catch (error) {
-        console.error("Failed to load watchlist:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadWatchlist();
+    loadData();
   }, [user]);
 
   if (isLoading) {
@@ -48,7 +52,10 @@ export default function Lists() {
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-10">
           <H1 className="tracking-tight">Lists</H1>
-          <Button className="gap-2 rounded-full px-6">
+          <Button
+            className="gap-2 rounded-full px-6"
+            onClick={() => setIsModalOpen(true)}
+          >
             <Plus className="h-4 w-4" />
             New list
           </Button>
@@ -84,7 +91,11 @@ export default function Lists() {
         {/* Custom lists */}
         <section>
           <div className="flex items-center gap-2 mb-6 pb-2 border-b border-border/50">
+            <FolderHeart className="h-4 w-4 text-muted-foreground" />
             <H3 className="text-xl">Your collections</H3>
+            <span className="text-sm font-medium text-muted-foreground ml-1">
+              {customLists.length} {customLists.length === 1 ? "list" : "lists"}
+            </span>
           </div>
 
           {customLists.length > 0 ? (
@@ -95,21 +106,27 @@ export default function Lists() {
                   to={`/lists/${list.id}`}
                   className="group block p-5 border border-border rounded-xl hover:bg-muted/50 transition-all hover:shadow-lg hover:shadow-black/5"
                 >
-                  <div className="flex gap-1.5 mb-4">
-                    {list.movies.slice(0, 4).map((movie) => (
-                      <div
-                        key={movie.id}
-                        className="w-full aspect-[2/3] bg-muted rounded-md overflow-hidden border border-border/30 shadow-sm"
-                      >
-                        {movie.posterUrl && (
-                          <img
-                            src={movie.posterUrl}
-                            alt={movie.title}
-                            className="w-full h-full object-cover"
-                          />
-                        )}
+                  <div className="flex gap-1.5 mb-4 min-h-[100px] bg-muted/20 rounded-lg p-1">
+                    {list.movies && list.movies.length > 0 ? (
+                      list.movies.slice(0, 4).map((movie) => (
+                        <div
+                          key={movie.id}
+                          className="w-full aspect-[2/3] bg-muted rounded-md overflow-hidden border border-border/30 shadow-sm"
+                        >
+                          {movie.posterUrl && (
+                            <img
+                              src={movie.posterUrl}
+                              alt={movie.title}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="w-full h-24 flex items-center justify-center text-muted-foreground/30 italic text-xs">
+                        Empty collection
                       </div>
-                    ))}
+                    )}
                   </div>
                   <h4 className="font-serif text-lg group-hover:text-primary transition-colors">
                     {list.name}
@@ -120,7 +137,7 @@ export default function Lists() {
                     </p>
                   )}
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mt-4">
-                    {list.movies.length} films
+                    {list.movies ? list.movies.length : 0} films
                   </p>
                 </Link>
               ))}
@@ -129,13 +146,23 @@ export default function Lists() {
             <div className="py-20 text-center bg-muted/20 border-2 border-dashed border-border/40 rounded-xl">
               <Plus className="h-8 w-8 mx-auto mb-4 text-muted-foreground opacity-20" />
               <p className="text-muted-foreground">Curate your own thematic lists to organize the archive.</p>
-              <Button variant="ghost" className="mt-4 text-sm font-medium hover:bg-transparent hover:underline underline-offset-4">
+              <Button
+                variant="ghost"
+                className="mt-4 text-sm font-medium hover:bg-transparent hover:underline underline-offset-4"
+                onClick={() => setIsModalOpen(true)}
+              >
                 Create your first list
               </Button>
             </div>
           )}
         </section>
       </div>
+
+      <CreateListModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={loadData}
+      />
     </Layout>
   );
 }

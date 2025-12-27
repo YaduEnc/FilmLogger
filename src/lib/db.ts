@@ -11,10 +11,12 @@ import {
     doc,
     getDoc,
     setDoc,
-    deleteDoc
+    deleteDoc,
+    updateDoc,
+    arrayUnion
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { LogEntry, Movie } from "@/types/movie";
+import { LogEntry, Movie, MovieList } from "@/types/movie";
 
 export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" | "createdAt" | "updatedAt">) => {
     try {
@@ -238,5 +240,50 @@ export const getFavoriteMovies = async (userId: string) => {
     } catch (error) {
         console.error("Error getting favorites:", error);
         return [];
+    }
+};
+
+// Custom Lists
+export const createCustomList = async (userId: string, name: string, description: string = "") => {
+    try {
+        const listsRef = collection(db, "users", userId, "lists");
+        const docRef = await addDoc(listsRef, {
+            name,
+            description,
+            movies: [],
+            createdAt: serverTimestamp(),
+            visibility: "public"
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error creating custom list:", error);
+        throw error;
+    }
+};
+
+export const getUserLists = async (userId: string) => {
+    try {
+        const listsRef = collection(db, "users", userId, "lists");
+        const q = query(listsRef, orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as MovieList));
+    } catch (error) {
+        console.error("Error getting user lists:", error);
+        return [];
+    }
+};
+
+export const addMovieToList = async (userId: string, listId: string, movie: Movie) => {
+    try {
+        const listRef = doc(db, "users", userId, "lists", listId);
+        await updateDoc(listRef, {
+            movies: arrayUnion(movie)
+        });
+    } catch (error) {
+        console.error("Error adding movie to list:", error);
+        throw error;
     }
 };

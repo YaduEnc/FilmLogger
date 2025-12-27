@@ -10,6 +10,8 @@ import { getMovieDetails } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
 import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite } from "@/lib/db";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
+import { CreateListModal } from "@/components/movies/CreateListModal";
+import { AddToListModal } from "@/components/movies/AddToListModal";
 import { toast } from "sonner";
 
 export default function MovieDetail() {
@@ -23,6 +25,9 @@ export default function MovieDetail() {
   const [isWatchlistActionLoading, setIsWatchlistActionLoading] = useState(false);
   const [isFavoriteActionLoading, setIsFavoriteActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [isAddToListOpen, setIsAddToListOpen] = useState(false);
+  const [isCreateListOpen, setIsCreateListOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -270,24 +275,25 @@ export default function MovieDetail() {
                 )}
               </Button>
               <Button
-                variant={inFavorites ? "secondary" : "outline"}
+                variant="outline"
                 size="lg"
                 className="px-6 gap-2"
+                onClick={() => setIsAddToListOpen(true)}
+              >
+                <List className="h-4 w-4" />
+                Add to list
+              </Button>
+              <Button
+                variant={inFavorites ? "secondary" : "ghost"}
+                size="icon"
+                className="h-12 w-12"
                 onClick={handleToggleFavorite}
                 disabled={isFavoriteActionLoading}
               >
                 {isFavoriteActionLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
-                ) : inFavorites ? (
-                  <>
-                    <Heart className="h-4 w-4 fill-current" />
-                    Favorited
-                  </>
                 ) : (
-                  <>
-                    <List className="h-4 w-4" />
-                    Add to list
-                  </>
+                  <Heart className={cn("h-5 w-5 transition-colors", inFavorites && "fill-current text-destructive")} />
                 )}
               </Button>
             </div>
@@ -341,6 +347,25 @@ export default function MovieDetail() {
           </main>
         </div>
       </div>
+
+      <AddToListModal
+        movie={movie}
+        isOpen={isAddToListOpen}
+        onClose={() => setIsAddToListOpen(false)}
+        onCreateNew={() => setIsCreateListOpen(true)}
+      />
+
+      <CreateListModal
+        isOpen={isCreateListOpen}
+        onClose={() => setIsCreateListOpen(false)}
+        onSuccess={() => {
+          setIsAddToListOpen(true);
+        }}
+      />
     </Layout>
   );
+}
+
+function cn(...classes: any[]) {
+  return classes.filter(Boolean).join(" ");
 }

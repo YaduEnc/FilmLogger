@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { H1, Lead, H3 } from "@/components/ui/typography";
 import { Divider } from "@/components/ui/divider";
 import { Film, BookOpen, BarChart3, List, ArrowRight } from "lucide-react";
+import { Logo } from "@/components/layout/Logo";
 
 const features = [
   {
@@ -36,9 +37,9 @@ export default function Landing() {
       {/* Hero */}
       <section className="container mx-auto px-6 py-24 md:py-32">
         <div className="max-w-2xl">
-          <div className="flex items-center gap-2 text-muted-foreground mb-6">
-            <Film className="h-4 w-4" />
-            <span className="text-sm uppercase tracking-wider">For cinephiles</span>
+          <div className="flex items-center gap-3 text-muted-foreground mb-6">
+            <Logo className="h-6 w-6 text-foreground/80" />
+            <span className="text-sm uppercase tracking-wider">CineLunatic / The Archive</span>
           </div>
           <H1 className="mb-6">
             A quiet place to keep your films.
@@ -132,9 +133,9 @@ export default function Landing() {
       {/* Footer */}
       <footer className="border-t border-border">
         <div className="container mx-auto px-6 py-8 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Film className="h-4 w-4" />
-            <span className="font-serif text-sm">Cinephile</span>
+          <div className="flex items-center gap-3">
+            <Logo className="h-6 w-6" />
+            <span className="font-serif text-sm">CineLunatic</span>
           </div>
           <p className="text-sm text-muted-foreground">
             A quiet corner for film lovers.

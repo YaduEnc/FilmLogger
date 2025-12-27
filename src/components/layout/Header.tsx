@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Search, Plus, User, Film, LogOut } from "lucide-react";
+import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,9 +30,9 @@ export function Header() {
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
           <Link to={user ? "/home" : "/"} className="flex items-center gap-2 group">
-            <Film className="h-5 w-5 text-foreground transition-opacity group-hover:opacity-70" />
+            <Logo className="h-7 w-7 text-foreground transition-opacity group-hover:opacity-70" />
             <span className="font-serif text-lg font-medium tracking-tight">
-              Cinephile
+              CineLunatic
             </span>
           </Link>
 
