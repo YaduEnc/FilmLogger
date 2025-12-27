@@ -420,6 +420,41 @@ export const acceptConnectionRequest = async (requestId: string, fromUid: string
     }
 };
 
+export const rejectConnectionRequest = async (requestId: string) => {
+    try {
+        await deleteDoc(doc(db, "connection_requests", requestId));
+    } catch (error) {
+        console.error("Error rejecting connection request:", error);
+        throw error;
+    }
+};
+
+export const getIncomingRequests = async (userId: string) => {
+    try {
+        const requestsRef = collection(db, "connection_requests");
+        const q = query(requestsRef, where("to", "==", userId), where("status", "==", "pending"));
+        const snapshot = await getDocs(q);
+
+        // We'll need user details for each request
+        const requests = await Promise.all(snapshot.docs.map(async (doc) => {
+            const data = doc.data();
+            const fromUser = await getUserData(data.from);
+            return {
+                id: doc.id,
+                ...data,
+                fromUser,
+                createdAt: (data.createdAt as Timestamp)?.toDate().toISOString()
+            };
+        }));
+
+        return requests;
+    } catch (error) {
+        console.error("Error getting incoming requests:", error);
+        return [];
+    }
+};
+
+
 // Reviews & Comments
 export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "likeCount" | "commentCount">) => {
     try {

@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Plus, User, Film, LogOut } from "lucide-react";
+import { Search, Plus, User, Film, LogOut, Bell } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { getIncomingRequests } from "@/lib/db";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +14,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+
 export function Header() {
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const [requestCount, setRequestCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchRequests() {
+      if (!user) return;
+      try {
+        const requests = await getIncomingRequests(user.uid);
+        setRequestCount(requests.length);
+      } catch (error) {
+        console.error("Error fetching request count:", error);
+      }
+    }
+    fetchRequests();
+
+    // Check periodically for new requests
+    const interval = setInterval(fetchRequests, 30000); // 30 seconds
+    return () => clearInterval(interval);
+  }, [user]);
 
   const navLinks = [
     { href: "/home", label: "Home" },
@@ -64,6 +85,16 @@ export function Header() {
                 <Link to="/search">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Search className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/notifications" className="relative">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Bell className="h-4 w-4" />
+                    {requestCount > 0 && (
+                      <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                        {requestCount}
+                      </span>
+                    )}
                   </Button>
                 </Link>
                 <Link to="/log">
