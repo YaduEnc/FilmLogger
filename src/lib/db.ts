@@ -197,11 +197,22 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
     try {
         const logsRef = collection(db, "users", userId, "logs");
         
+        // Check if this is a rewatch
+        const existingLogsQuery = query(
+            logsRef,
+            where('movieId', '==', entry.movieId)
+        );
+        const existingLogs = await getDocs(existingLogsQuery);
+        const isRewatch = existingLogs.size > 0;
+        const rewatchCount = existingLogs.size;
+        
         // Clean undefined fields from the movie object and the entire entry
         const cleanedEntry = cleanUndefinedFields({
             ...entry,
-            movie: cleanUndefinedFields(entry.movie), // Clean the nested movie object
-            userId, // Keeping it for potential Collection Group queries
+            movie: cleanUndefinedFields(entry.movie), 
+            userId, 
+            isRewatch,
+            rewatchCount,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             watchedDate: Timestamp.fromDate(new Date(entry.watchedDate))
@@ -818,6 +829,400 @@ export const getUserData = async (userId: string) => {
     } catch (error) {
         console.error("Error getting user data:", error);
         return null;
+    }
+};
+
+// ==================== COMMUNITY FEATURES ====================
+
+// POLLS
+export const createPoll = async (poll: any) => {
+    try {
+        const pollsRef = collection(db, "polls");
+        const docRef = await addDoc(pollsRef, {
+            ...poll,
+            totalVotes: 0,
+            createdAt: serverTimestamp()
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error creating poll:", error);
+        throw error;
+    }
+};
+
+export const getPolls = async (limitCount: number = 20) => {
+    try {
+        const pollsRef = collection(db, "polls");
+        const q = query(pollsRef, orderBy("createdAt", "desc"), limit(limitCount));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting polls:", error);
+        return [];
+    }
+};
+
+export const votePoll = async (pollId: string, optionId: string, userId: string) => {
+    try {
+        const voteRef = doc(db, "poll_votes", `${pollId}_${userId}`);
+        const voteDoc = await getDoc(voteRef);
+        
+        if (voteDoc.exists()) {
+            throw new Error("You have already voted on this poll");
+        }
+
+        await runTransaction(db, async (transaction) => {
+            const pollRef = doc(db, "polls", pollId);
+            const pollDoc = await transaction.get(pollRef);
+            
+            if (!pollDoc.exists()) throw new Error("Poll not found");
+            
+            const pollData = pollDoc.data();
+            const options = pollData.options.map((opt: any) => 
+                opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
+            );
+            
+            transaction.update(pollRef, {
+                options,
+                totalVotes: pollData.totalVotes + 1
+            });
+            
+            transaction.set(voteRef, {
+                pollId,
+                optionId,
+                userId,
+                createdAt: serverTimestamp()
+            });
+        });
+    } catch (error) {
+        console.error("Error voting on poll:", error);
+        throw error;
+    }
+};
+
+export const getUserPollVote = async (pollId: string, userId: string) => {
+    try {
+        const voteRef = doc(db, "poll_votes", `${pollId}_${userId}`);
+        const voteDoc = await getDoc(voteRef);
+        return voteDoc.exists() ? voteDoc.data().optionId : null;
+    } catch (error) {
+        console.error("Error getting poll vote:", error);
+        return null;
+    }
+};
+
+// DEBATES
+export const createDebate = async (debate: any) => {
+    try {
+        const debatesRef = collection(db, "debates");
+        const docRef = await addDoc(debatesRef, {
+            ...debate,
+            side1Votes: 0,
+            side2Votes: 0,
+            commentCount: 0,
+            createdAt: serverTimestamp()
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error creating debate:", error);
+        throw error;
+    }
+};
+
+export const getDebates = async (limitCount: number = 20) => {
+    try {
+        const debatesRef = collection(db, "debates");
+        const q = query(debatesRef, orderBy("createdAt", "desc"), limit(limitCount));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting debates:", error);
+        return [];
+    }
+};
+
+export const voteDebate = async (debateId: string, side: 1 | 2, userId: string) => {
+    try {
+        const voteRef = doc(db, "debate_votes", `${debateId}_${userId}`);
+        const voteDoc = await getDoc(voteRef);
+        
+        await runTransaction(db, async (transaction) => {
+            const debateRef = doc(db, "debates", debateId);
+            const debateDoc = await transaction.get(debateRef);
+            
+            if (!debateDoc.exists()) throw new Error("Debate not found");
+            
+            const debateData = debateDoc.data();
+            let side1Votes = debateData.side1Votes;
+            let side2Votes = debateData.side2Votes;
+            
+            if (voteDoc.exists()) {
+                // Change vote
+                const oldSide = voteDoc.data().side;
+                if (oldSide === 1) side1Votes--;
+                else side2Votes--;
+            }
+            
+            if (side === 1) side1Votes++;
+            else side2Votes++;
+            
+            transaction.update(debateRef, { side1Votes, side2Votes });
+            transaction.set(voteRef, {
+                debateId,
+                side,
+                userId,
+                createdAt: serverTimestamp()
+            });
+        });
+    } catch (error) {
+        console.error("Error voting on debate:", error);
+        throw error;
+    }
+};
+
+export const getUserDebateVote = async (debateId: string, userId: string) => {
+    try {
+        const voteRef = doc(db, "debate_votes", `${debateId}_${userId}`);
+        const voteDoc = await getDoc(voteRef);
+        return voteDoc.exists() ? voteDoc.data().side : null;
+    } catch (error) {
+        console.error("Error getting debate vote:", error);
+        return null;
+    }
+};
+
+export const addDebateComment = async (comment: any) => {
+    try {
+        const commentsRef = collection(db, "debate_comments");
+        const docRef = await addDoc(commentsRef, {
+            ...comment,
+            likeCount: 0,
+            createdAt: serverTimestamp()
+        });
+        
+        // Increment comment count
+        const debateRef = doc(db, "debates", comment.debateId);
+        const debateDoc = await getDoc(debateRef);
+        await updateDoc(debateRef, {
+            commentCount: (debateDoc.data()?.commentCount || 0) + 1
+        });
+        
+        return docRef.id;
+    } catch (error) {
+        console.error("Error adding debate comment:", error);
+        throw error;
+    }
+};
+
+export const getDebateComments = async (debateId: string) => {
+    try {
+        const commentsRef = collection(db, "debate_comments");
+        const q = query(commentsRef, where("debateId", "==", debateId), orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting debate comments:", error);
+        return [];
+    }
+};
+
+// PUBLIC LISTS
+export const getPublicLists = async (limitCount: number = 20) => {
+    try {
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        
+        const allLists: any[] = [];
+        
+        for (const userDoc of usersSnapshot.docs) {
+            const listsRef = collection(db, "users", userDoc.id, "lists");
+            const q = query(listsRef, where("visibility", "==", "public"));
+            const listsSnapshot = await getDocs(q);
+            
+            listsSnapshot.docs.forEach(listDoc => {
+                allLists.push({
+                    id: listDoc.id,
+                    userId: userDoc.id,
+                    userName: userDoc.data().displayName,
+                    userPhoto: userDoc.data().photoURL,
+                    ...listDoc.data(),
+                    createdAt: safeTimestampToISO(listDoc.data().createdAt)
+                });
+            });
+        }
+        
+        // Sort by creation date
+        allLists.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        return allLists.slice(0, limitCount);
+    } catch (error) {
+        console.error("Error getting public lists:", error);
+        return [];
+    }
+};
+
+export const addListComment = async (comment: any) => {
+    try {
+        const commentsRef = collection(db, "list_comments");
+        const docRef = await addDoc(commentsRef, {
+            ...comment,
+            likeCount: 0,
+            createdAt: serverTimestamp()
+        });
+        return docRef.id;
+    } catch (error) {
+        console.error("Error adding list comment:", error);
+        throw error;
+    }
+};
+
+export const getListComments = async (listId: string, listOwnerId: string) => {
+    try {
+        const commentsRef = collection(db, "list_comments");
+        const q = query(
+            commentsRef, 
+            where("listId", "==", listId),
+            where("listOwnerId", "==", listOwnerId),
+            orderBy("createdAt", "desc")
+        );
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting list comments:", error);
+        return [];
+    }
+};
+
+// ==================== DIRECTOR & ACTOR TRACKING ====================
+
+// Get director filmography from user's logs
+export const getDirectorFilmography = async (userId: string, directorName: string) => {
+    try {
+        const logsRef = collection(db, 'users', userId, 'logs');
+        const snapshot = await getDocs(logsRef);
+        
+        const films = snapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                watchedDate: safeTimestampToISO(doc.data().watchedDate),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }))
+            .filter((log: any) => log.movie.director?.toLowerCase().includes(directorName.toLowerCase()));
+        
+        return films;
+    } catch (error) {
+        console.error("Error getting director filmography:", error);
+        return [];
+    }
+};
+
+// Get actor filmography from user's logs
+export const getActorFilmography = async (userId: string, actorName: string) => {
+    try {
+        const logsRef = collection(db, 'users', userId, 'logs');
+        const snapshot = await getDocs(logsRef);
+        
+        const films = snapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                watchedDate: safeTimestampToISO(doc.data().watchedDate),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }))
+            .filter((log: any) => {
+                const cast = log.movie.cast || [];
+                return cast.some((actor: string) => actor.toLowerCase().includes(actorName.toLowerCase()));
+            });
+        
+        return films;
+    } catch (error) {
+        console.error("Error getting actor filmography:", error);
+        return [];
+    }
+};
+
+// Get all directors from user's logs
+export const getAllDirectors = async (userId: string) => {
+    try {
+        const logsRef = collection(db, 'users', userId, 'logs');
+        const snapshot = await getDocs(logsRef);
+        
+        const directorMap = new Map<string, { name: string; count: number; films: any[] }>();
+        
+        snapshot.docs.forEach(doc => {
+            const log = doc.data();
+            const director = log.movie.director;
+            
+            if (director) {
+                if (directorMap.has(director)) {
+                    const entry = directorMap.get(director)!;
+                    entry.count++;
+                    entry.films.push(log.movie);
+                } else {
+                    directorMap.set(director, {
+                        name: director,
+                        count: 1,
+                        films: [log.movie]
+                    });
+                }
+            }
+        });
+        
+        return Array.from(directorMap.values()).sort((a, b) => b.count - a.count);
+    } catch (error) {
+        console.error("Error getting all directors:", error);
+        return [];
+    }
+};
+
+// Get all actors from user's logs
+export const getAllActors = async (userId: string) => {
+    try {
+        const logsRef = collection(db, 'users', userId, 'logs');
+        const snapshot = await getDocs(logsRef);
+        
+        const actorMap = new Map<string, { name: string; count: number; films: any[] }>();
+        
+        snapshot.docs.forEach(doc => {
+            const log = doc.data();
+            const cast = log.movie.cast || [];
+            
+            cast.forEach((actor: string) => {
+                if (actorMap.has(actor)) {
+                    const entry = actorMap.get(actor)!;
+                    entry.count++;
+                    entry.films.push(log.movie);
+                } else {
+                    actorMap.set(actor, {
+                        name: actor,
+                        count: 1,
+                        films: [log.movie]
+                    });
+                }
+            });
+        });
+        
+        return Array.from(actorMap.values()).sort((a, b) => b.count - a.count);
+    } catch (error) {
+        console.error("Error getting all actors:", error);
+        return [];
     }
 };
 

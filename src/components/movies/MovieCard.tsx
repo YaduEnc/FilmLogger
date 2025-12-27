@@ -11,9 +11,9 @@ interface MovieCardProps {
 
 export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardProps) {
   const sizeClasses = {
-    sm: "w-14",
-    md: "w-20",
-    lg: "w-28",
+    sm: "w-16",
+    md: "w-24",
+    lg: "w-32",
   };
 
   return (

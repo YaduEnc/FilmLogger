@@ -52,8 +52,8 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
   }, [children]);
 
   return (
-    <div className="mb-12">
-      <div className="flex items-center justify-between mb-4">
+    <div className="mb-8">
+      <div className="flex items-center justify-between mb-3">
         <H3 className="text-xl">{title}</H3>
         {link && (
           <Link to={link} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -80,7 +80,7 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
         )}
         <div
           ref={scrollRef}
-          className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth"
+          className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {children}
@@ -150,9 +150,9 @@ export default function Home() {
           topRatedTVData,
           onTheAirTVData
         ] = await Promise.all([
-          getTrendingMovies(),
+            getTrendingMovies(),
           getPopularMovies(),
-          getTrendingTV(),
+            getTrendingTV(),
           getPopularTV(),
           getTopRatedTV(),
           getOnTheAirTV()
@@ -216,7 +216,7 @@ export default function Home() {
     <Layout>
       {/* Hero Section with Carousel */}
       {currentFeatured && !isLoading && (
-        <div className="relative w-full h-[500px] mb-8 overflow-hidden group">
+        <div className="hero-section relative w-full h-[500px] mb-8 overflow-hidden group">
           {/* Backdrop Image */}
           <div 
             className="absolute inset-0 bg-cover bg-center transition-all duration-700"
@@ -231,15 +231,15 @@ export default function Home() {
           {/* Navigation Arrows */}
           <button
             onClick={prevFeatured}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-background/80 backdrop-blur-sm border border-border rounded-full p-3 opacity-0 group-hover:opacity-100 transition-all hover:bg-background hover:scale-110"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md rounded-full p-2.5 opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 hover:scale-105"
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5 text-white" />
           </button>
           <button
             onClick={nextFeatured}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-background/80 backdrop-blur-sm border border-border rounded-full p-3 opacity-0 group-hover:opacity-100 transition-all hover:bg-background hover:scale-110"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 bg-black/40 backdrop-blur-md rounded-full p-2.5 opacity-0 group-hover:opacity-100 transition-all hover:bg-black/60 hover:scale-105"
           >
-            <ChevronRight className="h-6 w-6" />
+            <ChevronRight className="h-5 w-5 text-white" />
           </button>
 
           {/* Indicators */}
@@ -248,16 +248,16 @@ export default function Home() {
               <button
                 key={index}
                 onClick={() => setCurrentFeaturedIndex(index)}
-                className={cn(
+              className={cn(
                   "h-1 rounded-full transition-all",
                   index === currentFeaturedIndex 
                     ? "w-8 bg-foreground" 
                     : "w-1 bg-foreground/30 hover:bg-foreground/50"
-                )}
+              )}
               />
             ))}
           </div>
-          
+
           {/* Content */}
           <div className="relative container mx-auto px-6 h-full flex items-center">
             <div className="max-w-2xl">
@@ -318,49 +318,49 @@ export default function Home() {
 
         {/* Quick Stats Bar */}
         {user && stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            <div className="p-4 bg-muted/30 rounded-xl border border-border/50 text-center">
-              <div className="flex items-center justify-center gap-2 mb-1">
-                <Flame className="h-4 w-4 text-orange-500" />
-                <p className="text-2xl font-serif font-bold">{weekStreak}</p>
+          <div className="stats-bar grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
+            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                <Flame className="h-3.5 w-3.5 text-orange-500" />
+                <p className="text-xl font-serif font-bold">{weekStreak}</p>
               </div>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">Day Streak</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Day Streak</p>
             </div>
-            <div className="p-4 bg-muted/30 rounded-xl border border-border/50 text-center">
-              <p className="text-2xl font-serif font-bold mb-1">{stats.thisYearWatched}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">This Year</p>
+            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+              <p className="text-xl font-serif font-bold mb-0.5">{stats.thisYearWatched}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">This Year</p>
             </div>
-            <div className="p-4 bg-muted/30 rounded-xl border border-border/50 text-center">
-              <p className="text-2xl font-serif font-bold mb-1">{stats.avgRating}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">Avg Rating</p>
+            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+              <p className="text-xl font-serif font-bold mb-0.5">{stats.avgRating}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Avg Rating</p>
             </div>
-            <div className="p-4 bg-muted/30 rounded-xl border border-border/50 text-center">
-              <p className="text-2xl font-serif font-bold mb-1">{stats.totalWatched}</p>
-              <p className="text-xs text-muted-foreground uppercase tracking-widest">Total Films</p>
+            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
+              <p className="text-xl font-serif font-bold mb-0.5">{stats.totalWatched}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Films</p>
             </div>
           </div>
         )}
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3 mb-12">
-          <Link to="/log">
-            <Button className="gap-2 h-10 px-5 rounded-full shadow-lg shadow-primary/5">
-              <Plus className="h-4 w-4" />
+            <Link to="/log">
+              <Button className="gap-2 h-10 px-5 rounded-full shadow-lg shadow-primary/5">
+                <Plus className="h-4 w-4" />
               Log Entry
-            </Button>
-          </Link>
-          <Link to="/search">
-            <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
-              <Search className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Link to="/search">
+              <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
+                <Search className="h-4 w-4" />
               Explore
-            </Button>
-          </Link>
-          <Link to="/diary">
-            <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
-              <Clock className="h-4 w-4" />
-              Diary
-            </Button>
-          </Link>
+              </Button>
+            </Link>
+            <Link to="/diary">
+              <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
+                <Clock className="h-4 w-4" />
+                Diary
+              </Button>
+            </Link>
           <Link to="/lists">
             <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
               <Film className="h-4 w-4" />
@@ -380,28 +380,30 @@ export default function Home() {
         {!isLoading && (
           <>
             {/* Trending Films */}
-            <HorizontalScroll title="Trending Films" link="/search">
-              {trendingMovies.map((item) => (
-                <div key={item.id} className="flex-none w-[160px]">
-                  <MovieCard movie={item} size="md" />
-                </div>
-              ))}
-            </HorizontalScroll>
+            <div className="discovery-section">
+              <HorizontalScroll title="Trending Films" link="/search">
+                {trendingMovies.map((item) => (
+                  <div key={item.id} className="flex-none w-[160px]">
+                    <MovieCard movie={item} size="md" />
+                  </div>
+                ))}
+              </HorizontalScroll>
+            </div>
 
             {/* Recent Activity */}
             {recentLogs.length > 0 && (
               <div className="mb-12">
-                <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6">
                   <H2>Recent Activity</H2>
                   <Link to="/diary" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     View all →
-                  </Link>
-                </div>
+              </Link>
+            </div>
                 <div className="space-y-4">
-                  {recentLogs.map((entry) => (
-                    <LogEntryCard key={entry.id} entry={entry} />
-                  ))}
-                </div>
+              {recentLogs.map((entry) => (
+                <LogEntryCard key={entry.id} entry={entry} />
+              ))}
+            </div>
               </div>
             )}
 

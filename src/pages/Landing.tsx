@@ -132,14 +132,76 @@ export default function Landing() {
 
       {/* Footer */}
       <footer className="border-t border-border">
-        <div className="container mx-auto px-6 py-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Logo className="h-6 w-6" />
-            <span className="font-serif text-sm">CineLunatic</span>
+        <div className="container mx-auto px-6 py-12">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
+            {/* Brand */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <Logo className="h-6 w-6" />
+                <span className="font-serif text-sm">CineLunatic</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                A quiet corner for film lovers.
+              </p>
+            </div>
+
+            {/* Links */}
+            <div>
+              <h4 className="text-sm font-medium mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li>
+                  <Link to="/about" className="hover:text-foreground transition-colors">
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/blog" className="hover:text-foreground transition-colors">
+                    Blog/Updates
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/privacy" className="hover:text-foreground transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/terms" className="hover:text-foreground transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="hover:text-foreground transition-colors">
+                    Contact
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Credits */}
+            <div>
+              <h4 className="text-sm font-medium mb-4">Credits</h4>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Developed by{' '}
+                  <span className="text-foreground font-medium">Yaduraj Singh</span>
+                </p>
+                <p>
+                  Inspired by{' '}
+                  <span className="text-foreground font-medium">Hakla Shahrukh</span>
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            A quiet corner for film lovers.
-          </p>
+
+          {/* Bottom Bar */}
+          <div className="pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} CineLunatic. All rights reserved.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Made with ❤️ for cinema lovers
+            </p>
+          </div>
         </div>
       </footer>
     </Layout>

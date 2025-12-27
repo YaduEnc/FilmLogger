@@ -1,11 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Plus, User, Film, LogOut, Bell } from "lucide-react";
+import { Search, Plus, User, Film, LogOut, Bell, MessageCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { getIncomingRequests } from "@/lib/db";
+import { OnboardingButton } from "@/components/onboarding/OnboardingButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,9 +82,15 @@ export function Header() {
           <div className="flex items-center gap-2">
             {user ? (
               <>
-                <Link to="/search">
+                <OnboardingButton />
+                <Link to="/search" data-onboarding="search-button">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Search className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/messages">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MessageCircle className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link to="/notifications" className="relative">
@@ -96,14 +103,14 @@ export function Header() {
                     )}
                   </Button>
                 </Link>
-                <Link to="/log">
+                <Link to="/log" data-onboarding="log-button">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" data-onboarding="profile-button">
                       {user.photoURL ? (
                         <img
                           src={user.photoURL}
@@ -122,6 +129,16 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link to="/profile" className="cursor-pointer">
                         Profile
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/directors" className="cursor-pointer">
+                        Directors
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link to="/actors" className="cursor-pointer">
+                        Actors
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

@@ -122,3 +122,110 @@ export interface ReviewComment {
   likeCount: number;
   createdAt: string;
 }
+
+// Community Features
+export interface Poll {
+  id: string;
+  authorUid: string;
+  authorName: string;
+  authorPhoto?: string;
+  question: string;
+  pollType: 'best_movie' | 'best_actor' | 'best_director' | 'best_genre' | 'custom';
+  options: PollOption[];
+  totalVotes: number;
+  endsAt?: string;
+  createdAt: string;
+  tags?: string[]; // For tagging movies, actors, directors
+}
+
+export interface PollOption {
+  id: string;
+  text: string;
+  votes: number;
+  movieId?: number; // If option is a movie
+  personId?: number; // If option is an actor/director
+  posterUrl?: string; // Movie poster URL
+}
+
+export interface PollVote {
+  pollId: string;
+  optionId: string;
+  userId: string;
+  createdAt: string;
+}
+
+export interface Debate {
+  id: string;
+  authorUid: string;
+  authorName: string;
+  authorPhoto?: string;
+  title: string;
+  description: string;
+  side1: string; // e.g., "Marvel is better"
+  side2: string; // e.g., "DC is better"
+  side1Votes: number;
+  side2Votes: number;
+  commentCount: number;
+  tags?: string[];
+  createdAt: string;
+}
+
+export interface DebateVote {
+  debateId: string;
+  side: 1 | 2;
+  userId: string;
+  createdAt: string;
+}
+
+export interface DebateComment {
+  id: string;
+  debateId: string;
+  authorUid: string;
+  authorName: string;
+  authorPhoto?: string;
+  text: string;
+  side: 1 | 2 | null; // Which side they support, or neutral
+  likeCount: number;
+  createdAt: string;
+}
+
+export interface ListComment {
+  id: string;
+  listId: string;
+  listOwnerId: string;
+  authorUid: string;
+  authorName: string;
+  authorPhoto?: string;
+  text: string;
+  likeCount: number;
+  createdAt: string;
+}
+
+// ==================== MESSAGING ====================
+export interface Conversation {
+  id: string;
+  participants: string[]; // Array of user IDs
+  participantNames: { [userId: string]: string };
+  participantPhotos: { [userId: string]: string };
+  lastMessage: string;
+  lastMessageTime: string;
+  lastMessageSenderId: string;
+  unreadCount: { [userId: string]: number };
+  createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto?: string;
+  text: string;
+  movieId?: number; // If sharing a movie
+  movieTitle?: string;
+  moviePoster?: string;
+  mediaType?: 'movie' | 'tv';
+  read: boolean;
+  createdAt: string;
+}
+
