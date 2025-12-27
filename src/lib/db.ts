@@ -475,13 +475,13 @@ export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "li
 export const getMovieReviews = async (movieId: number) => {
     try {
         const reviewsRef = collection(db, "reviews");
-        const q = query(reviewsRef, where("movieId", "==", movieId), orderBy("createdAt", "desc"));
+        const q = query(reviewsRef, where("movieId", "==", movieId));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString()
-        } as Review));
+        } as Review)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error getting reviews:", error);
         return [];
@@ -514,13 +514,13 @@ export const submitComment = async (comment: Omit<ReviewComment, "id" | "created
 export const getReviewComments = async (reviewId: string) => {
     try {
         const commentsRef = collection(db, "comments");
-        const q = query(commentsRef, where("reviewId", "==", reviewId), orderBy("createdAt", "asc"));
+        const q = query(commentsRef, where("reviewId", "==", reviewId));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: (doc.data().createdAt as Timestamp)?.toDate().toISOString()
-        } as unknown as ReviewComment));
+        } as unknown as ReviewComment)).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } catch (error) {
         console.error("Error getting comments:", error);
         return [];

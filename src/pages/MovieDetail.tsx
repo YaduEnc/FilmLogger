@@ -311,6 +311,11 @@ export default function MovieDetail() {
 
             <Divider className="my-12 opacity-50" />
 
+            {/* Community Reviews Section */}
+            <ReviewSection movie={movie} />
+
+            <Divider className="my-16 opacity-50" />
+
             {/* Personal History Section */}
             <section className="space-y-8">
               <div className="flex items-center justify-between">
@@ -329,16 +334,18 @@ export default function MovieDetail() {
                   ))}
                 </div>
               ) : (
-                <div className="py-20 text-center bg-muted/10 border-2 border-dashed border-border/40 rounded-xl px-4">
-                  <div className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted/20">
-                    <Clock className="h-6 w-6 text-muted-foreground" />
+                <div className="flex items-center justify-between p-6 bg-muted/5 border-2 border-dashed border-border/40 rounded-2xl group hover:bg-muted/10 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                      <Clock className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-medium leading-none mb-1">Unarchived</h4>
+                      <p className="text-xs text-muted-foreground">You haven't logged any viewings of this film yet.</p>
+                    </div>
                   </div>
-                  <h4 className="text-lg font-medium mb-1">Begin your archive</h4>
-                  <p className="text-muted-foreground max-w-xs mx-auto mb-6">
-                    You haven't logged any viewings of this film yet.
-                  </p>
                   <Link to={`/log?movie=${movie.id}`}>
-                    <Button variant="secondary" className="gap-2">
+                    <Button variant="outline" size="sm" className="gap-2 rounded-full border-border/60 hover:bg-background">
                       Log it now
                       <ChevronRight className="h-4 w-4" />
                     </Button>
@@ -346,11 +353,6 @@ export default function MovieDetail() {
                 </div>
               )}
             </section>
-
-            <Divider className="my-16 opacity-50" />
-
-            {/* Community Reviews Section */}
-            <ReviewSection movie={movie} />
           </main>
         </div>
       </div>
