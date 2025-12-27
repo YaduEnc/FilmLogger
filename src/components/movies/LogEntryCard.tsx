@@ -15,7 +15,7 @@ export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
       <div className="flex gap-4">
         {/* Poster */}
         {showMovie && (
-          <Link to={`/movie/${entry.movieId}`} className="shrink-0">
+          <Link to={`/${entry.mediaType || 'movie'}/${entry.movieId}`} className="shrink-0">
             <div className="w-16 aspect-[2/3] bg-muted rounded-sm overflow-hidden border border-border">
               {entry.movie.posterUrl ? (
                 <img
@@ -41,7 +41,7 @@ export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
             <div>
               {showMovie && (
                 <Link
-                  to={`/movie/${entry.movieId}`}
+                  to={`/${entry.mediaType || 'movie'}/${entry.movieId}`}
                   className="font-medium hover:underline underline-offset-2"
                 >
                   {entry.movie.title}

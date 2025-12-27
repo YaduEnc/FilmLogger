@@ -5,9 +5,16 @@ import { H1 } from "@/components/ui/typography";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { MovieCard } from "@/components/movies/MovieCard";
-import { Search as SearchIcon, SlidersHorizontal, Loader2, X } from "lucide-react";
+import { Search as SearchIcon, SlidersHorizontal, Loader2, X, Clapperboard, Tv } from "lucide-react";
 import { Movie } from "@/types/movie";
-import { searchMovies, getTrendingMovies, getPopularMovies } from "@/lib/tmdb";
+import {
+  searchMovies,
+  getTrendingMovies,
+  getPopularMovies,
+  searchTV,
+  getTrendingTV,
+  getPopularTV
+} from "@/lib/tmdb";
 import {
   Select,
   SelectContent,
@@ -15,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
 const genres = ["All", "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"];
 const decades = ["All", "2020s", "2010s", "2000s", "1990s", "1980s", "1970s", "1960s", "Earlier"];
@@ -22,7 +30,9 @@ const decades = ["All", "2020s", "2010s", "2000s", "1990s", "1980s", "1970s", "1
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get("q") || "";
+  const initialType = (searchParams.get("type") as 'movie' | 'tv') || 'movie';
 
+  const [mediaType, setMediaType] = useState<'movie' | 'tv'>(initialType);
   const [query, setQuery] = useState(initialQuery);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
@@ -33,13 +43,30 @@ export default function Search() {
   const [totalResults, setTotalResults] = useState(0);
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Update URL when type changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    params.set('type', mediaType);
+    setSearchParams(params, { replace: true });
+  }, [mediaType, setSearchParams]);
+
   const loadInitialContent = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [trendingData, popularData] = await Promise.all([
-        getTrendingMovies(),
-        getPopularMovies()
-      ]);
+      let trendingData, popularData;
+
+      if (mediaType === 'movie') {
+        [trendingData, popularData] = await Promise.all([
+          getTrendingMovies(),
+          getPopularMovies()
+        ]);
+      } else {
+        [trendingData, popularData] = await Promise.all([
+          getTrendingTV(),
+          getPopularTV()
+        ]);
+      }
+
       setMovies(trendingData.movies);
       setPopularMovies(popularData.movies);
     } catch (error) {
@@ -47,7 +74,7 @@ export default function Search() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [mediaType]);
 
   const handleSearch = useCallback(async (searchQuery: string) => {
     if (!searchQuery.trim()) {
@@ -59,17 +86,28 @@ export default function Search() {
     setIsLoading(true);
     setHasSearched(true);
     try {
-      const { movies: searchResults, totalResults: total } = await searchMovies(searchQuery);
+      const searchFn = mediaType === 'movie' ? searchMovies : searchTV;
+      const { movies: searchResults, totalResults: total } = await searchFn(searchQuery);
       setMovies(searchResults);
       setTotalResults(total);
-      setSearchParams({ q: searchQuery });
+      setSearchParams({ q: searchQuery, type: mediaType });
     } catch (error) {
       console.error("Search failed:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [loadInitialContent, setSearchParams]);
+  }, [loadInitialContent, setSearchParams, mediaType]);
 
+  // Reload when mediaType changes
+  useEffect(() => {
+    if (query) {
+      handleSearch(query);
+    } else {
+      loadInitialContent();
+    }
+  }, [mediaType]); // Adding mediaType here triggers reload
+
+  // Initial load
   useEffect(() => {
     if (initialQuery) {
       handleSearch(initialQuery);
@@ -105,9 +143,38 @@ export default function Search() {
       <div className="container mx-auto px-6 py-8">
         {/* Header */}
         <div className="max-w-2xl mb-8">
-          <H1 className="mb-4">Explore films</H1>
+          <H1 className="mb-4">Explore {mediaType === 'movie' ? 'films' : 'series'}</H1>
+          <div className="flex items-center gap-6 mb-4">
+            {/* Custom Toggle */}
+            <div className="bg-muted/10 p-1 rounded-full inline-flex border border-border/50">
+              <button
+                onClick={() => setMediaType('movie')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-300",
+                  mediaType === 'movie'
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                )}
+              >
+                <Clapperboard className="h-3.5 w-3.5" />
+                Films
+              </button>
+              <button
+                onClick={() => setMediaType('tv')}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-300",
+                  mediaType === 'tv'
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/20"
+                )}
+              >
+                <Tv className="h-3.5 w-3.5" />
+                Series
+              </button>
+            </div>
+          </div>
           <p className="text-muted-foreground">
-            Browse the archive to log, rate, or add films to your library.
+            Browse the archive to log, rate, or add {mediaType === 'movie' ? 'films' : 'shows'} to your library.
           </p>
         </div>
 

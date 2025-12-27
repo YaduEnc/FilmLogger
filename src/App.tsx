@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Home from "./pages/Home";
 import Search from "./pages/Search";
 import MovieDetail from "./pages/MovieDetail";
+import TVDetail from "./pages/TVDetail";
 import Log from "./pages/Log";
 import Diary from "./pages/Diary";
 import Lists from "./pages/Lists";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/home" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/movie/:id" element={<MovieDetail />} />
+            <Route path="/tv/:id" element={<TVDetail />} />
             <Route path="/person/:id" element={<PersonDetail />} />
             <Route path="/log" element={<Log />} />
             <Route path="/diary" element={<Diary />} />

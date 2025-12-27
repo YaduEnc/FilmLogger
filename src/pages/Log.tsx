@@ -19,7 +19,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { createLogEntry } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { Movie } from "@/types/movie";
-import { searchMovies, getMovieDetails } from "@/lib/tmdb";
+import { searchMovies, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 
 const moods = ["", "Euphoric", "Thoughtful", "Melancholic", "Nostalgic", "Unsettled", "Inspired"];
 const locations = ["", "Cinema", "Home", "Plane", "Festival", "Other"];
@@ -29,6 +29,7 @@ export default function Log() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const movieIdParam = searchParams.get("movie");
+  const typeParam = searchParams.get("type"); // 'movie' | 'tv'
 
   const [movie, setMovie] = useState<Movie | null>(null);
   const [movieSearch, setMovieSearch] = useState("");
@@ -54,7 +55,12 @@ export default function Log() {
 
       setIsLoadingMovie(true);
       try {
-        const movieData = await getMovieDetails(parseInt(movieIdParam));
+        let movieData: Movie;
+        if (typeParam === 'tv') {
+          movieData = await getTVDetails(parseInt(movieIdParam));
+        } else {
+          movieData = await getMovieDetails(parseInt(movieIdParam));
+        }
         setMovie(movieData);
       } catch (error) {
         console.error("Failed to load movie:", error);
@@ -69,7 +75,7 @@ export default function Log() {
     }
 
     loadMovie();
-  }, [movieIdParam]);
+  }, [movieIdParam, typeParam]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,6 +103,7 @@ export default function Log() {
       await createLogEntry(user.uid, {
         movieId: movie.id,
         movie,
+        mediaType: movie.mediaType || 'movie',
         watchedDate: date.toISOString(),
         rating,
         reviewShort,
@@ -226,7 +233,10 @@ export default function Log() {
               <div className="flex-1 min-w-0">
                 <p className="font-medium">{movie.title}</p>
                 <p className="text-sm text-muted-foreground">{movie.year}</p>
-                {movie.director && (
+                {movie.mediaType === 'tv' && movie.createdBy && movie.createdBy.length > 0 && (
+                  <p className="text-sm text-muted-foreground mt-1">Created by {movie.createdBy.map(c => c.name).join(", ")}</p>
+                )}
+                {movie.mediaType !== 'tv' && movie.director && (
                   <p className="text-sm text-muted-foreground mt-1">Directed by {movie.director}</p>
                 )}
               </div>

@@ -18,7 +18,7 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
 
   return (
     <Link
-      to={`/movie/${movie.id}`}
+      to={`/${movie.mediaType === 'tv' ? 'tv' : 'movie'}/${movie.id}`}
       className="group block"
     >
       <div className={cn("relative", sizeClasses[size])}>

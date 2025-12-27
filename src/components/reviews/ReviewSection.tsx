@@ -51,6 +51,7 @@ export function ReviewSection({ movie }: ReviewSectionProps) {
         try {
             const reviewId = await submitReview({
                 movieId: movie.id,
+                mediaType: movie.mediaType || 'movie',
                 authorUid: user.uid,
                 authorName: user.displayName || "Anonymous",
                 authorPhoto: user.photoURL || undefined,
@@ -63,6 +64,7 @@ export function ReviewSection({ movie }: ReviewSectionProps) {
             const newReview: Review = {
                 id: reviewId,
                 movieId: movie.id,
+                mediaType: movie.mediaType || 'movie',
                 authorUid: user.uid,
                 authorName: user.displayName || "Anonymous",
                 authorPhoto: user.photoURL || undefined,

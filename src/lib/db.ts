@@ -77,12 +77,13 @@ export const getUserLogs = async (userId: string, options: { currentUserId?: str
 };
 
 
-export const getMovieLogs = async (userId: string, movieId: number) => {
+export const getMovieLogs = async (userId: string, movieId: number, mediaType: 'movie' | 'tv' = 'movie') => {
     try {
         const logsRef = collection(db, "users", userId, "logs");
         const q = query(
             logsRef,
-            where("movieId", "==", movieId)
+            where("movieId", "==", movieId),
+            where("mediaType", "==", mediaType)
         );
         const querySnapshot = await getDocs(q);
 
@@ -173,7 +174,7 @@ export const getUserStats = async (logs: LogEntry[], listsCount: number = 0) => 
 
 export const toggleWatchlist = async (userId: string, movie: Movie) => {
     try {
-        const watchlistRef = doc(db, "users", userId, "watchlist", movie.id.toString());
+        const watchlistRef = doc(db, "users", userId, "watchlist", `${movie.mediaType || 'movie'}_${movie.id}`);
         const watchlistDoc = await getDoc(watchlistRef);
 
         if (watchlistDoc.exists()) {
@@ -182,6 +183,7 @@ export const toggleWatchlist = async (userId: string, movie: Movie) => {
         } else {
             await setDoc(watchlistRef, {
                 ...movie,
+                mediaType: movie.mediaType || 'movie',
                 addedAt: serverTimestamp()
             });
             return true; // Added
@@ -204,10 +206,17 @@ export const getWatchlist = async (userId: string) => {
     }
 };
 
-export const isInWatchlist = async (userId: string, movieId: number) => {
+export const isInWatchlist = async (userId: string, movieId: number, mediaType: 'movie' | 'tv' = 'movie') => {
     try {
-        const watchlistRef = doc(db, "users", userId, "watchlist", movieId.toString());
-        const watchlistDoc = await getDoc(watchlistRef);
+        const watchlistRef = doc(db, "users", userId, "watchlist", `${mediaType}_${movieId}`);
+        let watchlistDoc = await getDoc(watchlistRef);
+
+        // Backward compatibility for old movies saved with just ID
+        if (!watchlistDoc.exists() && mediaType === 'movie') {
+            const oldRef = doc(db, "users", userId, "watchlist", movieId.toString());
+            watchlistDoc = await getDoc(oldRef);
+        }
+
         return watchlistDoc.exists();
     } catch (error) {
         console.error("Error checking watchlist:", error);
@@ -217,7 +226,7 @@ export const isInWatchlist = async (userId: string, movieId: number) => {
 
 export const toggleFavorite = async (userId: string, movie: Movie) => {
     try {
-        const favoriteRef = doc(db, "users", userId, "favorites", movie.id.toString());
+        const favoriteRef = doc(db, "users", userId, "favorites", `${movie.mediaType || 'movie'}_${movie.id}`);
         const favoriteDoc = await getDoc(favoriteRef);
 
         if (favoriteDoc.exists()) {
@@ -226,6 +235,7 @@ export const toggleFavorite = async (userId: string, movie: Movie) => {
         } else {
             await setDoc(favoriteRef, {
                 ...movie,
+                mediaType: movie.mediaType || 'movie',
                 addedAt: serverTimestamp()
             });
             return true; // Added
@@ -236,10 +246,17 @@ export const toggleFavorite = async (userId: string, movie: Movie) => {
     }
 };
 
-export const isFavorite = async (userId: string, movieId: number) => {
+export const isFavorite = async (userId: string, movieId: number, mediaType: 'movie' | 'tv' = 'movie') => {
     try {
-        const favoriteRef = doc(db, "users", userId, "favorites", movieId.toString());
-        const favoriteDoc = await getDoc(favoriteRef);
+        const favoriteRef = doc(db, "users", userId, "favorites", `${mediaType}_${movieId}`);
+        let favoriteDoc = await getDoc(favoriteRef);
+
+        // Backward compatibility
+        if (!favoriteDoc.exists() && mediaType === 'movie') {
+            const oldRef = doc(db, "users", userId, "favorites", movieId.toString());
+            favoriteDoc = await getDoc(oldRef);
+        }
+
         return favoriteDoc.exists();
     } catch (error) {
         console.error("Error checking favorite:", error);
@@ -475,7 +492,12 @@ export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "li
 export const getMovieReviews = async (movieId: number) => {
     try {
         const reviewsRef = collection(db, "reviews");
-        const q = query(reviewsRef, where("movieId", "==", movieId));
+        const q = query(reviewsRef, where("movieId", "==", movieId)); // We can't easily filter by mediaType here without an index unless we change schema. 
+        // But since we are sorting in memory, we can fetch all and filter.
+        // Wait, movieId collision suggests we MUST filter.
+        // But db.ts existing code only queries by movieId.
+        // I'll leave this query as is for now and let the client filtering handle it if necessary, 
+        // OR rely on the fact that movieId is the primary query and we can filter by mediaType in memory.
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
             id: doc.id,

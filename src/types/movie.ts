@@ -16,12 +16,32 @@ export interface Movie {
   voteCount?: number;
   backdropUrl?: string;
   trailerUrl?: string;
+  // TV Specific
+  mediaType?: 'movie' | 'tv';
+  firstAirDate?: string;
+  numberOfSeasons?: number;
+  numberOfEpisodes?: number;
+  seasons?: {
+    id: number;
+    name: string;
+    overview: string;
+    poster_path: string;
+    season_number: number;
+    episode_count: number;
+    air_date: string;
+  }[];
+  createdBy?: { id: number; name: string; profileUrl?: string }[];
+  networks?: { id: number; name: string; logoUrl?: string }[];
+  status?: string;
+  type?: string;
+  lastAirDate?: string;
 }
 
 export interface LogEntry {
   id: string;
   movieId: number;
   movie: Movie;
+  mediaType: 'movie' | 'tv';
   watchedDate: string;
   rating: number;
   reviewShort?: string;
@@ -78,6 +98,7 @@ export interface ConnectionStatus {
 export interface Review {
   id: string;
   movieId: number;
+  mediaType: 'movie' | 'tv';
   authorUid: string;
   authorName: string;
   authorPhoto?: string;

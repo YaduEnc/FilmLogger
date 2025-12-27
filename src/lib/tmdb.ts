@@ -7,17 +7,31 @@ const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
 
 interface TMDBMovie {
   id: number;
-  title: string;
+  title?: string;
+  name?: string; // For TV
   release_date?: string;
+  first_air_date?: string; // For TV
   poster_path?: string;
   backdrop_path?: string;
   runtime?: number;
+  episode_run_time?: number[]; // For TV
   genres?: { id: number; name: string }[];
   production_countries?: { iso_3166_1: string; name: string }[];
   overview?: string;
   original_language?: string;
   vote_average?: number;
   vote_count?: number;
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  seasons?: {
+    id: number;
+    name: string;
+    overview: string;
+    poster_path: string;
+    season_number: number;
+    episode_count: number;
+    air_date: string;
+  }[];
   credits?: {
     crew?: { id: number; job: string; name: string; profile_path?: string }[];
     cast?: { id: number; name: string; character: string; order: number; profile_path?: string }[];
@@ -25,6 +39,11 @@ interface TMDBMovie {
   videos?: {
     results: { key: string; site: string; type: string }[];
   };
+  created_by?: { id: number; name: string; profile_path?: string }[];
+  networks?: { id: number; name: string; logo_path?: string }[];
+  status?: string;
+  type?: string;
+  last_air_date?: string;
 }
 
 interface TMDBSearchResponse {
@@ -51,17 +70,22 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     (v) => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser")
   );
 
+  const isTV = !!tmdbMovie.first_air_date;
+  const title = tmdbMovie.title || tmdbMovie.name || "Untitled";
+  const date = tmdbMovie.release_date || tmdbMovie.first_air_date;
+  const year = date ? parseInt(date.split("-")[0]) : 0;
+
   return {
     id: tmdbMovie.id,
-    title: tmdbMovie.title,
-    year: tmdbMovie.release_date ? parseInt(tmdbMovie.release_date.split("-")[0]) : 0,
+    title,
+    year,
     posterUrl: tmdbMovie.poster_path
       ? `${TMDB_IMAGE_BASE}/w500${tmdbMovie.poster_path}`
       : undefined,
     backdropUrl: tmdbMovie.backdrop_path
       ? `${TMDB_IMAGE_BASE}/original${tmdbMovie.backdrop_path}`
       : undefined,
-    runtime: tmdbMovie.runtime,
+    runtime: tmdbMovie.runtime || (tmdbMovie.episode_run_time?.[0]),
     genres: tmdbMovie.genres?.map((g) => g.name),
     countries: tmdbMovie.production_countries?.map((c) => c.name),
     director,
@@ -73,6 +97,26 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     rating: tmdbMovie.vote_average,
     voteCount: tmdbMovie.vote_count,
     trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : undefined,
+
+    // TV Specific
+    mediaType: isTV ? 'tv' : 'movie',
+    firstAirDate: tmdbMovie.first_air_date,
+    numberOfSeasons: tmdbMovie.number_of_seasons,
+    numberOfEpisodes: tmdbMovie.number_of_episodes,
+    seasons: tmdbMovie.seasons,
+    createdBy: tmdbMovie.created_by?.map(c => ({
+      id: c.id,
+      name: c.name,
+      profileUrl: c.profile_path ? `${TMDB_IMAGE_BASE}/w185${c.profile_path}` : undefined
+    })),
+    networks: tmdbMovie.networks?.map(n => ({
+      id: n.id,
+      name: n.name,
+      logoUrl: n.logo_path ? `${TMDB_IMAGE_BASE}/w92${n.logo_path}` : undefined
+    })),
+    status: tmdbMovie.status,
+    type: tmdbMovie.type,
+    lastAirDate: tmdbMovie.last_air_date
   };
 }
 
@@ -135,10 +179,9 @@ export async function getPopularMovies(page = 1): Promise<{ movies: Movie[]; tot
   }
 }
 
-export async function getTrendingMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+export async function getTrendingMovies(page = 1, timeWindow: 'day' | 'week' = 'week'): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/trending/movie/week?page=${page}`);
-
+    const data = await fetchTMDB(`/trending/movie/${timeWindow}?page=${page}`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -146,6 +189,84 @@ export async function getTrendingMovies(page = 1): Promise<{ movies: Movie[]; to
   } catch (error) {
     console.error("TMDB trending error:", error);
     throw new Error("Failed to fetch trending movies");
+  }
+}
+
+// TV API Methods
+
+export async function searchTV(query: string, page = 1): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
+  try {
+    const data = await fetchTMDB(`/search/tv?query=${encodeURIComponent(query)}&page=${page}&include_adult=false`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+      totalResults: data.total_results,
+    };
+  } catch (error) {
+    console.error("TMDB search tv error:", error);
+    throw new Error("Failed to search tv shows");
+  }
+}
+
+export async function getTVDetails(tvId: number): Promise<Movie> {
+  try {
+    const data = await fetchTMDB(`/tv/${tvId}?append_to_response=credits,videos`);
+    return transformMovie(data);
+  } catch (error) {
+    console.error("TMDB tv details error:", error);
+    throw new Error("Failed to fetch tv details");
+  }
+}
+
+export async function getPopularTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/tv/popular?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB popular tv error:", error);
+    throw new Error("Failed to fetch popular tv shows");
+  }
+}
+
+export async function getTrendingTV(page = 1, timeWindow: 'day' | 'week' = 'week'): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/trending/tv/${timeWindow}?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB trending tv error:", error);
+    throw new Error("Failed to fetch trending tv shows");
+  }
+}
+
+export async function getTopRatedTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/tv/top_rated?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB top rated tv error:", error);
+    throw new Error("Failed to fetch top rated tv shows");
+  }
+}
+
+export async function getOnTheAirTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/tv/on_the_air?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB on the air tv error:", error);
+    throw new Error("Failed to fetch on the air tv shows");
   }
 }
 
