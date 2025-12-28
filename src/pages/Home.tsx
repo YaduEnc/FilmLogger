@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { MovieCard } from "@/components/movies/MovieCard";
 import { PopularSection } from "@/components/movies/PopularSection";
+import { UpcomingReleases } from "@/components/movies/UpcomingReleases";
 import { Divider } from "@/components/ui/divider";
 import { Plus, Search, Clock, Film, Loader2, Tv, Clapperboard, TrendingUp, Star, Calendar, Flame, ChevronLeft, ChevronRight, Play, Info } from "lucide-react";
 import { LogEntry, Movie, UserStats } from "@/types/movie";
@@ -15,7 +16,8 @@ import {
   getTrendingTV,
   getPopularTV,
   getTopRatedTV,
-  getOnTheAirTV
+  getOnTheAirTV,
+  getUpcomingMovies
 } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
 import { getUserLogs, getUserStats, getUserLists } from "@/lib/db";
@@ -102,6 +104,7 @@ export default function Home() {
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
   const [onTheAirTV, setOnTheAirTV] = useState<Movie[]>([]);
+  const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>([]);
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [weekStreak, setWeekStreak] = useState(0);
@@ -149,14 +152,16 @@ export default function Home() {
           trendingTVData,
           popularTVData,
           topRatedTVData,
-          onTheAirTVData
+          onTheAirTVData,
+          upcomingMoviesData
         ] = await Promise.all([
             getTrendingMovies(),
           getPopularMovies(),
             getTrendingTV(),
           getPopularTV(),
           getTopRatedTV(),
-          getOnTheAirTV()
+          getOnTheAirTV(),
+          getUpcomingMovies()
         ]);
 
         // Set featured movies (top 5 trending movies with backdrops)
@@ -461,6 +466,15 @@ export default function Home() {
             {/* Currently Airing */}
             <HorizontalScroll title="Currently Airing" link="/search?type=tv">
               {onTheAirTV.map((item) => (
+                <div key={item.id} className="flex-none w-[160px]">
+                  <MovieCard movie={item} size="md" />
+                </div>
+              ))}
+            </HorizontalScroll>
+
+            {/* Upcoming Releases */}
+            <HorizontalScroll title="Upcoming Releases" link="/search">
+              {upcomingMovies.map((item) => (
                 <div key={item.id} className="flex-none w-[160px]">
                   <MovieCard movie={item} size="md" />
                 </div>

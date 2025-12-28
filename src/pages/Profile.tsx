@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { MovieCard } from "@/components/movies/MovieCard";
 import { Divider } from "@/components/ui/divider";
-import { Settings, Loader2, Bookmark, History, UserPlus, Check, Clock, Globe, Lock, ShieldAlert } from "lucide-react";
+import { Settings, Loader2, Bookmark, History, UserPlus, Check, Clock, Globe, Lock, ShieldAlert, Edit2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LogEntry, Movie, UserStats, UserProfile, ConnectionStatus } from "@/types/movie";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,9 +21,11 @@ import {
   sendConnectionRequest,
   acceptConnectionRequest,
   getUserData,
-  getUserLists
+  getUserLists,
+  updateUserData
 } from "@/lib/db";
 import { toast } from "sonner";
+import { Top5MoviesModal } from "@/components/movies/Top5MoviesModal";
 
 export default function Profile() {
   const { username } = useParams();
@@ -37,6 +39,7 @@ export default function Profile() {
   const [connection, setConnection] = useState<ConnectionStatus>({ status: 'none' });
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isTop5ModalOpen, setIsTop5ModalOpen] = useState(false);
 
   const isOwnProfile = !username || (targetUser && targetUser.uid === currentUser?.uid);
 
@@ -128,6 +131,49 @@ export default function Profile() {
     } finally {
       setIsActionLoading(false);
     }
+  };
+
+  const handleSaveTop5 = async (movies: Movie[]) => {
+    if (!currentUser) return;
+    try {
+      // Clean undefined fields from movies
+      const cleanedMovies = movies.map(movie => {
+        const cleaned = cleanUndefinedFields(movie);
+        return cleaned;
+      });
+
+      await updateUserData(currentUser.uid, {
+        top5Movies: cleanedMovies
+      });
+
+      // Update local state
+      if (targetUser) {
+        setTargetUser({ ...targetUser, top5Movies: cleanedMovies });
+      }
+
+      toast.success("Top 5 movies updated!");
+    } catch (error) {
+      console.error("Error saving top 5 movies:", error);
+      toast.error("Failed to save top 5 movies");
+    }
+  };
+
+  // Helper function to clean undefined fields
+  const cleanUndefinedFields = (obj: any): any => {
+    if (obj === null || obj === undefined) return obj;
+    if (Array.isArray(obj)) {
+      return obj.map(cleanUndefinedFields).filter(item => item !== undefined);
+    }
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      for (const key in obj) {
+        if (obj[key] !== undefined) {
+          cleaned[key] = cleanUndefinedFields(obj[key]);
+        }
+      }
+      return cleaned;
+    }
+    return obj;
   };
 
   if (isLoading) {
@@ -261,6 +307,59 @@ export default function Profile() {
               ))}
             </div>
 
+            {/* Top 5 Movies */}
+            <section className="mb-20">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <Star className="h-5 w-5 text-primary" />
+                  <H3 className="text-2xl tracking-tight">Top 5</H3>
+                </div>
+                {isOwnProfile && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsTop5ModalOpen(true)}
+                    className="gap-2"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    {targetUser.top5Movies && targetUser.top5Movies.length > 0 ? 'Edit' : 'Add'}
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-5 gap-4">
+                {targetUser.top5Movies && targetUser.top5Movies.length > 0 ? (
+                  targetUser.top5Movies.map((movie, index) => (
+                    <div key={movie.id} className="relative group">
+                      <div className="absolute -top-2 -left-2 z-10 bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg">
+                        #{index + 1}
+                      </div>
+                      <MovieCard movie={movie} size="md" />
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-full py-16 text-center border border-dashed border-border/50 rounded-2xl opacity-50">
+                    <Star className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-30" />
+                    <p className="text-sm italic font-serif">
+                      {isOwnProfile 
+                        ? "Share your top 5 movies with the community" 
+                        : "This archivist hasn't shared their top 5 yet."}
+                    </p>
+                    {isOwnProfile && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsTop5ModalOpen(true)}
+                        className="mt-4 gap-2"
+                      >
+                        <Edit2 className="h-4 w-4" />
+                        Add Your Top 5
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+
             {/* Favorites */}
             <section className="mb-20">
               <div className="flex items-center justify-between mb-8 pb-4 border-b border-border/30">
@@ -336,6 +435,16 @@ export default function Profile() {
           </>
         )}
       </div>
+
+      {/* Top 5 Movies Modal */}
+      {isOwnProfile && (
+        <Top5MoviesModal
+          isOpen={isTop5ModalOpen}
+          onClose={() => setIsTop5ModalOpen(false)}
+          onSave={handleSaveTop5}
+          currentTop5={targetUser?.top5Movies || []}
+        />
+      )}
     </Layout>
   );
 }

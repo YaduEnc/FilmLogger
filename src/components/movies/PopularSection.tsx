@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getPopularMovies } from '@/lib/db';
+import { getPopularMovies, getMostCommentedToday } from '@/lib/db';
 import { TrendingUp, Heart, MessageSquare, Star, Film, Loader2, Eye } from 'lucide-react';
 
 interface PopularMovie {
@@ -18,6 +18,7 @@ interface PopularMovie {
   avgRating: number;
   weeklyLogs: number;
   monthlyLogs: number;
+  commentCount?: number;
 }
 
 export function PopularSection() {
@@ -25,6 +26,7 @@ export function PopularSection() {
   const [mostLogged, setMostLogged] = useState<PopularMovie[]>([]);
   const [mostFavorited, setMostFavorited] = useState<PopularMovie[]>([]);
   const [topRated, setTopRated] = useState<PopularMovie[]>([]);
+  const [mostCommented, setMostCommented] = useState<PopularMovie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -34,17 +36,19 @@ export function PopularSection() {
   const loadPopularMovies = async () => {
     setIsLoading(true);
     try {
-      const [trending, logged, favorited, rated] = await Promise.all([
+      const [trending, logged, favorited, rated, commented] = await Promise.all([
         getPopularMovies('logs', 'week', 8),
         getPopularMovies('logs', 'all', 8),
         getPopularMovies('favorites', 'all', 8),
-        getPopularMovies('rating', 'all', 8)
+        getPopularMovies('rating', 'all', 8),
+        getMostCommentedToday(8)
       ]);
       
       setTrendingMovies(trending as any);
       setMostLogged(logged as any);
       setMostFavorited(favorited as any);
       setTopRated(rated as any);
+      setMostCommented(commented as any);
     } catch (error) {
       console.error('Error loading popular movies:', error);
     } finally {
@@ -52,7 +56,7 @@ export function PopularSection() {
     }
   };
 
-  const renderMovieGrid = (movies: PopularMovie[], showMetric: 'logs' | 'favorites' | 'rating' | 'weekly') => {
+  const renderMovieGrid = (movies: PopularMovie[], showMetric: 'logs' | 'favorites' | 'rating' | 'weekly' | 'comments') => {
     if (movies.length === 0) {
       return (
         <Card className="p-6 text-center text-muted-foreground">
@@ -121,6 +125,13 @@ export function PopularSection() {
                       <span>{movie.weeklyLogs} this week</span>
                     </div>
                   )}
+                  
+                  {showMetric === 'comments' && (
+                    <div className="flex items-center gap-1 text-white text-[10px]">
+                      <MessageSquare className="h-2.5 w-2.5" />
+                      <span>{movie.commentCount || 0} comments today</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -149,7 +160,7 @@ export function PopularSection() {
       </div>
 
       <Tabs defaultValue="trending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-4 h-9">
+        <TabsList className="grid w-full grid-cols-5 mb-4 h-9">
           <TabsTrigger value="trending" className="gap-1.5 text-xs">
             <TrendingUp className="h-3.5 w-3.5" />
             Trending
@@ -165,6 +176,10 @@ export function PopularSection() {
           <TabsTrigger value="rated" className="gap-1.5 text-xs">
             <Star className="h-3.5 w-3.5" />
             Top Rated
+          </TabsTrigger>
+          <TabsTrigger value="commented" className="gap-1.5 text-xs">
+            <MessageSquare className="h-3.5 w-3.5" />
+            Most Commented
           </TabsTrigger>
         </TabsList>
 
@@ -182,6 +197,10 @@ export function PopularSection() {
 
         <TabsContent value="rated">
           {renderMovieGrid(topRated, 'rating')}
+        </TabsContent>
+
+        <TabsContent value="commented">
+          {renderMovieGrid(mostCommented, 'comments')}
         </TabsContent>
       </Tabs>
     </div>

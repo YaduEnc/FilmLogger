@@ -3,6 +3,7 @@ import { Search, Plus, User, Film, LogOut, Bell, MessageCircle } from "lucide-re
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { getIncomingRequests } from "@/lib/db";
@@ -20,6 +21,31 @@ export function Header() {
   const location = useLocation();
   const { user, signOut } = useAuth();
   const [requestCount, setRequestCount] = useState(0);
+  const [isVisible, setIsVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
+  // Scroll detection for hide/show navbar
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Show navbar at top of page
+      if (currentScrollY < 10) {
+        setIsVisible(true);
+      } 
+      // Hide when scrolling down, show when scrolling up
+      else if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setIsVisible(false);
+      } else if (currentScrollY < lastScrollY) {
+        setIsVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   useEffect(() => {
     async function fetchRequests() {
@@ -47,7 +73,18 @@ export function Header() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
+    <header 
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
+        "border-b border-border/50 shadow-sm",
+        "bg-background/80 dark:bg-background/70 backdrop-blur-xl",
+        isVisible ? "translate-y-0" : "-translate-y-full"
+      )}
+      style={{
+        backdropFilter: 'blur(16px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+      }}
+    >
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-14">
           {/* Logo */}
@@ -82,6 +119,7 @@ export function Header() {
           <div className="flex items-center gap-2">
             {user ? (
               <>
+                <ThemeToggle />
                 <OnboardingButton />
                 <Link to="/search" data-onboarding="search-button">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -159,6 +197,7 @@ export function Header() {
               </>
             ) : (
               <div className="flex items-center gap-2">
+                <ThemeToggle />
                 <Link to="/auth">
                   <Button variant="ghost" size="sm">
                     Sign in

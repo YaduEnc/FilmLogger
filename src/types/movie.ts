@@ -53,6 +53,27 @@ export interface LogEntry {
   isRewatch: boolean;
   rewatchCount: number;
   favoriteScenes?: string[];
+  // TV Show Progress
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TVProgress {
+  id: string;
+  userId: string;
+  tvId: number;
+  tvTitle: string;
+  tvPosterUrl?: string;
+  currentSeason: number;
+  currentEpisode: number;
+  totalSeasons: number;
+  totalEpisodes: number;
+  lastWatchedDate: string;
+  isCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,6 +108,7 @@ export interface UserProfile {
   photoURL?: string;
   isPublic: boolean;
   stats?: UserStats;
+  top5Movies?: Movie[];
   createdAt: string;
 }
 
@@ -264,6 +286,7 @@ export interface UserActivity {
   debateTitle?: string;
   connectedUserId?: string;
   connectedUserName?: string;
+  tvProgress?: string; // Format: "S1E5" for Season 1 Episode 5
 }
 
 // ==================== MOVIE STATISTICS ====================

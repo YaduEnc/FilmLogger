@@ -17,7 +17,7 @@ import {
     runTransaction
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { LogEntry, Movie, MovieList, Review, ReviewComment } from "@/types/movie";
+import { LogEntry, Movie, MovieList, Review, ReviewComment, TVProgress } from "@/types/movie";
 
 // Community Ratings & Genres
 export const updateCommunityRating = async (userId: string, mediaId: string, mediaType: 'movie' | 'tv', rating: number) => {
@@ -746,6 +746,7 @@ export const logActivity = async (activity: {
     debateTitle?: string;
     connectedUserId?: string;
     connectedUserName?: string;
+    tvProgress?: string;
 }) => {
     try {
         await addDoc(collection(db, "user_activities"), {
@@ -905,6 +906,118 @@ export const getPopularMovies = async (
         }));
     } catch (error) {
         console.error("Error getting popular movies:", error);
+        return [];
+    }
+};
+
+// Get movies/TV shows with most comments today, ordered by rating
+export const getMostCommentedToday = async (limitCount: number = 10): Promise<any[]> => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTimestamp = Timestamp.fromDate(today);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowTimestamp = Timestamp.fromDate(tomorrow);
+
+        // Get all comments from today
+        const commentsRef = collection(db, "comments");
+        const commentsQuery = query(
+            commentsRef,
+            where("createdAt", ">=", todayTimestamp),
+            where("createdAt", "<", tomorrowTimestamp)
+        );
+        const commentsSnapshot = await getDocs(commentsQuery);
+
+        // Group comments by reviewId
+        const reviewCommentMap = new Map<string, number>();
+        commentsSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const reviewId = data.reviewId;
+            reviewCommentMap.set(reviewId, (reviewCommentMap.get(reviewId) || 0) + 1);
+        });
+
+        if (reviewCommentMap.size === 0) {
+            return [];
+        }
+
+        // Get all reviews that have comments today
+        const reviewsRef = collection(db, "reviews");
+        const reviewIds = Array.from(reviewCommentMap.keys());
+        const reviewPromises = reviewIds.map(reviewId => getDoc(doc(db, "reviews", reviewId)));
+        const reviewDocs = await Promise.all(reviewPromises);
+
+        // Group by movieId and count comments
+        const movieCommentMap = new Map<number, { commentCount: number; mediaType: 'movie' | 'tv' }>();
+        reviewDocs.forEach((reviewDoc, index) => {
+            if (reviewDoc.exists()) {
+                const reviewData = reviewDoc.data() as Review;
+                const movieId = reviewData.movieId;
+                const commentCount = reviewCommentMap.get(reviewIds[index]) || 0;
+                
+                if (movieCommentMap.has(movieId)) {
+                    movieCommentMap.set(movieId, {
+                        commentCount: movieCommentMap.get(movieId)!.commentCount + commentCount,
+                        mediaType: reviewData.mediaType || 'movie'
+                    });
+                } else {
+                    movieCommentMap.set(movieId, {
+                        commentCount,
+                        mediaType: reviewData.mediaType || 'movie'
+                    });
+                }
+            }
+        });
+
+        // Get movie stats and community ratings for these movies
+        const movieIds = Array.from(movieCommentMap.keys());
+        const statsPromises = movieIds.map(movieId => {
+            const mediaType = movieCommentMap.get(movieId)!.mediaType;
+            const statsId = `${mediaType}_${movieId}`;
+            return getDoc(doc(db, "movie_stats", statsId));
+        });
+        const ratingPromises = movieIds.map(movieId => {
+            const mediaType = movieCommentMap.get(movieId)!.mediaType;
+            return getCommunityRating(movieId.toString(), mediaType);
+        });
+        
+        const [statsDocs, ratings] = await Promise.all([
+            Promise.all(statsPromises),
+            Promise.all(ratingPromises)
+        ]);
+
+        // Combine data and sort
+        const result = movieIds.map((movieId, index) => {
+            const commentData = movieCommentMap.get(movieId)!;
+            const statsData = statsDocs[index].exists() ? statsDocs[index].data() : null;
+            const ratingData = ratings[index];
+            
+            return {
+                id: `${commentData.mediaType}_${movieId}`,
+                movieId,
+                mediaType: commentData.mediaType,
+                commentCount: commentData.commentCount,
+                avgRating: ratingData?.averageRating || statsData?.avgRating || 0,
+                ratingCount: ratingData?.ratingCount || statsData?.ratingCount || 0,
+                title: statsData?.title || '',
+                posterUrl: statsData?.posterUrl || '',
+                logCount: statsData?.logCount || 0,
+                favoriteCount: statsData?.favoriteCount || 0,
+                reviewCount: statsData?.reviewCount || 0
+            };
+        });
+
+        // Sort by comment count (desc), then by rating (desc)
+        result.sort((a, b) => {
+            if (b.commentCount !== a.commentCount) {
+                return b.commentCount - a.commentCount;
+            }
+            return b.avgRating - a.avgRating;
+        });
+
+        return result.slice(0, limitCount);
+    } catch (error) {
+        console.error("Error getting most commented movies today:", error);
         return [];
     }
 };
@@ -2057,6 +2170,106 @@ export const setUserAsAdmin = async (userId: string): Promise<void> => {
         });
     } catch (error) {
         console.error("Error setting user as admin:", error);
+        throw error;
+    }
+};
+
+// ==================== TV SHOW PROGRESS TRACKING ====================
+
+// Save or update TV show progress
+export const saveTVProgress = async (
+    userId: string,
+    tvId: number,
+    tvTitle: string,
+    tvPosterUrl: string | undefined,
+    currentSeason: number,
+    currentEpisode: number,
+    totalSeasons: number,
+    totalEpisodes: number
+): Promise<void> => {
+    try {
+        const progressRef = doc(db, "users", userId, "tv_progress", `tv_${tvId}`);
+        const isCompleted = currentSeason >= totalSeasons && currentEpisode >= (totalEpisodes || 0);
+        
+        await setDoc(progressRef, {
+            userId,
+            tvId,
+            tvTitle,
+            tvPosterUrl: tvPosterUrl || null,
+            currentSeason,
+            currentEpisode,
+            totalSeasons,
+            totalEpisodes,
+            isCompleted,
+            lastWatchedDate: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            createdAt: serverTimestamp()
+        }, { merge: true });
+    } catch (error) {
+        console.error("Error saving TV progress:", error);
+        throw error;
+    }
+};
+
+// Get TV show progress for a user
+export const getTVProgress = async (userId: string, tvId: number): Promise<TVProgress | null> => {
+    try {
+        const progressRef = doc(db, "users", userId, "tv_progress", `tv_${tvId}`);
+        const progressSnap = await getDoc(progressRef);
+        
+        if (!progressSnap.exists()) {
+            return null;
+        }
+        
+        const data = progressSnap.data();
+        return {
+            id: progressSnap.id,
+            userId: data.userId,
+            tvId: data.tvId,
+            tvTitle: data.tvTitle,
+            tvPosterUrl: data.tvPosterUrl,
+            currentSeason: data.currentSeason,
+            currentEpisode: data.currentEpisode,
+            totalSeasons: data.totalSeasons,
+            totalEpisodes: data.totalEpisodes,
+            isCompleted: data.isCompleted || false,
+            lastWatchedDate: data.lastWatchedDate?.toDate?.()?.toISOString() || new Date().toISOString(),
+            createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+            updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
+        } as TVProgress;
+    } catch (error) {
+        console.error("Error getting TV progress:", error);
+        throw error;
+    }
+};
+
+// Get all TV shows in progress for a user
+export const getAllTVProgress = async (userId: string): Promise<TVProgress[]> => {
+    try {
+        const progressRef = collection(db, "users", userId, "tv_progress");
+        const progressSnap = await getDocs(progressRef);
+        
+        return progressSnap.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                userId: data.userId,
+                tvId: data.tvId,
+                tvTitle: data.tvTitle,
+                tvPosterUrl: data.tvPosterUrl,
+                currentSeason: data.currentSeason,
+                currentEpisode: data.currentEpisode,
+                totalSeasons: data.totalSeasons,
+                totalEpisodes: data.totalEpisodes,
+                isCompleted: data.isCompleted || false,
+                lastWatchedDate: data.lastWatchedDate?.toDate?.()?.toISOString() || new Date().toISOString(),
+                createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+                updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
+            } as TVProgress;
+        }).filter(progress => !progress.isCompleted)
+          .sort((a, b) => new Date(b.lastWatchedDate).getTime() - new Date(a.lastWatchedDate).getTime());
+    } catch (error) {
+        console.error("Error getting all TV progress:", error);
         throw error;
     }
 };

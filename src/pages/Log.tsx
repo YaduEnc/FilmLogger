@@ -11,15 +11,16 @@ import { Switch } from "@/components/ui/switch";
 import { Divider } from "@/components/ui/divider";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Search, Loader2 } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Search, Loader2, Tv } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { createLogEntry, logActivity, updateMovieStats } from "@/lib/db";
+import { createLogEntry, logActivity, updateMovieStats, saveTVProgress } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { Movie } from "@/types/movie";
-import { searchMovies, getMovieDetails, getTVDetails } from "@/lib/tmdb";
+import { searchMovies, searchTV, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 
 const moods = ["", "Euphoric", "Thoughtful", "Melancholic", "Nostalgic", "Unsettled", "Inspired"];
 const locations = ["", "Cinema", "Home", "Plane", "Festival", "Other"];
@@ -47,6 +48,8 @@ export default function Log() {
   const [location, setLocation] = useState("");
   const [visibility, setVisibility] = useState<"private" | "followers" | "public">("public");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // TV Progress - Completion Percentage
+  const [completionPercentage, setCompletionPercentage] = useState<number[]>([0]);
 
   // Load movie if ID is provided
   useEffect(() => {
@@ -114,10 +117,42 @@ export default function Log() {
         visibility,
         isRewatch,
         rewatchCount: isRewatch ? 1 : 0,
+        // TV Progress - Completion Percentage
+        ...(movie.mediaType === 'tv' && {
+          currentSeason: undefined,
+          currentEpisode: undefined,
+          totalSeasons: movie.numberOfSeasons,
+          totalEpisodes: movie.numberOfEpisodes,
+        }),
       });
 
+      // Save TV progress if it's a TV show
+      if (movie.mediaType === 'tv' && movie.numberOfSeasons) {
+        const completion = completionPercentage[0];
+        // Calculate approximate season/episode from percentage
+        const totalEpisodes = movie.numberOfEpisodes || (movie.numberOfSeasons * 10);
+        const completedEpisodes = Math.round((completion / 100) * totalEpisodes);
+        const avgEpisodesPerSeason = totalEpisodes / movie.numberOfSeasons;
+        const approximateSeason = Math.min(
+          Math.ceil(completedEpisodes / avgEpisodesPerSeason),
+          movie.numberOfSeasons
+        );
+        const approximateEpisode = completedEpisodes % Math.ceil(avgEpisodesPerSeason) || Math.ceil(avgEpisodesPerSeason);
+        
+        await saveTVProgress(
+          user.uid,
+          movie.id,
+          movie.title,
+          movie.posterUrl,
+          approximateSeason,
+          approximateEpisode,
+          movie.numberOfSeasons,
+          totalEpisodes
+        );
+      }
+
       // Log activity and update stats
-      await Promise.all([
+      const activityPromises = [
         logActivity({
           userId: user.uid,
           userName: user.displayName || 'Anonymous',
@@ -128,7 +163,11 @@ export default function Log() {
           moviePoster: movie.posterUrl,
           mediaType: movie.mediaType || 'movie',
           rating,
-          reviewText: reviewShort
+          reviewText: reviewShort,
+          // Include TV completion percentage in activity
+          ...(movie.mediaType === 'tv' && {
+            tvProgress: `${completionPercentage[0]}%`
+          })
         }),
         updateMovieStats(
           movie.id,
@@ -138,7 +177,9 @@ export default function Log() {
           'log',
           rating
         )
-      ]);
+      ];
+
+      await Promise.all(activityPromises);
 
       toast({
         title: "Entry saved",
@@ -163,8 +204,19 @@ export default function Log() {
 
     setIsSearching(true);
     try {
-      const { movies } = await searchMovies(movieSearch);
-      setSearchResults(movies.slice(0, 5));
+      // Search both movies and TV shows
+      const [moviesResult, tvResult] = await Promise.all([
+        searchMovies(movieSearch),
+        searchTV(movieSearch)
+      ]);
+      
+      // Combine results, prioritizing movies first
+      const combinedResults = [
+        ...moviesResult.movies.slice(0, 5),
+        ...tvResult.movies.slice(0, 5)
+      ];
+      
+      setSearchResults(combinedResults);
     } catch (error) {
       console.error("Search failed:", error);
       toast({
@@ -181,6 +233,10 @@ export default function Log() {
     setMovie(selectedMovie);
     setSearchResults([]);
     setMovieSearch("");
+    // Reset TV progress when selecting a new TV show
+    if (selectedMovie.mediaType === 'tv') {
+      setCompletionPercentage([0]);
+    }
   };
 
   return (
@@ -195,7 +251,7 @@ export default function Log() {
             <ArrowLeft className="h-3.5 w-3.5" />
             Back
           </Link>
-          <H2>Log a film</H2>
+          <H2>Add your log</H2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -206,12 +262,12 @@ export default function Log() {
             </div>
           ) : !movie ? (
             <div className="space-y-3">
-              <Label>Film</Label>
+              <Label>Movie or TV Show</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search for a film..."
+                    placeholder="Search for a movie or TV show..."
                     value={movieSearch}
                     onChange={(e) => setMovieSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleMovieSearch())}
@@ -238,9 +294,17 @@ export default function Log() {
                           <img src={result.posterUrl} alt="" className="w-full h-full object-cover" />
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{result.title}</p>
-                        <p className="text-sm text-muted-foreground">{result.year}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-muted-foreground">{result.year}</p>
+                          {result.mediaType === 'tv' && (
+                            <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">TV</span>
+                          )}
+                          {result.mediaType === 'movie' && (
+                            <span className="text-xs px-1.5 py-0.5 bg-muted text-muted-foreground rounded">Movie</span>
+                          )}
+                        </div>
                       </div>
                     </button>
                   ))}
@@ -272,6 +336,43 @@ export default function Log() {
               >
                 Change
               </Button>
+            </div>
+          )}
+
+          {/* TV Progress - Completion Percentage */}
+          {movie && movie.mediaType === 'tv' && (
+            <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Tv className="h-4 w-4 text-muted-foreground" />
+                <Label className="text-base font-medium">How much have you completed?</Label>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Completion: {completionPercentage[0]}%</Label>
+                    <span className="text-sm text-muted-foreground">
+                      {completionPercentage[0] === 0 && "Not started"}
+                      {completionPercentage[0] > 0 && completionPercentage[0] < 100 && "In progress"}
+                      {completionPercentage[0] === 100 && "Completed"}
+                    </span>
+                  </div>
+                  <Slider
+                    value={completionPercentage}
+                    onValueChange={setCompletionPercentage}
+                    min={0}
+                    max={100}
+                    step={10}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground px-1">
+                    <span>0%</span>
+                    <span>25%</span>
+                    <span>50%</span>
+                    <span>75%</span>
+                    <span>100%</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

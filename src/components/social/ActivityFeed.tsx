@@ -28,6 +28,7 @@ interface Activity {
   debateTitle?: string;
   connectedUserId?: string;
   connectedUserName?: string;
+  tvProgress?: string;
 }
 
 export function ActivityFeed() {
@@ -73,6 +74,11 @@ export function ActivityFeed() {
             <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-medium hover:underline">
               {activity.movieTitle}
             </Link>
+            {activity.mediaType === 'tv' && activity.tvProgress && (
+              <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded ml-2">
+                {activity.tvProgress}
+              </span>
+            )}
             {activity.rating && (
               <span className="ml-2 inline-flex items-center gap-1">
                 <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
@@ -88,6 +94,11 @@ export function ActivityFeed() {
             <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-medium hover:underline">
               {activity.movieTitle}
             </Link>
+            {activity.mediaType === 'tv' && activity.tvProgress && (
+              <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded ml-2">
+                {activity.tvProgress}
+              </span>
+            )}
             {activity.reviewText && (
               <div className="text-sm text-muted-foreground mt-1 line-clamp-2">"{activity.reviewText}"</div>
             )}

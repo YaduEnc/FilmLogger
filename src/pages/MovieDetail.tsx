@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { H1, H2 } from "@/components/ui/typography";
@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart } from "lucide-react";
 import { Movie, LogEntry } from "@/types/movie";
-import { getMovieDetails } from "@/lib/tmdb";
+import { getMovieDetails, getSimilarMovies, getSimilarTV } from "@/lib/tmdb";
+import { MovieCard } from "@/components/movies/MovieCard";
 import { useAuth } from "@/hooks/useAuth";
 import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite, logActivity, updateMovieStats } from "@/lib/db";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
@@ -28,6 +29,7 @@ export default function MovieDetail() {
   const [inFavorites, setInFavorites] = useState(false);
   const [communityData, setCommunityData] = useState<any>(null);
   const [userInteraction, setUserInteraction] = useState<{ rating: number | null, genres: string[] }>({ rating: null, genres: [] });
+  const [similarMovies, setSimilarMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isWatchlistActionLoading, setIsWatchlistActionLoading] = useState(false);
   const [isFavoriteActionLoading, setIsFavoriteActionLoading] = useState(false);
@@ -35,6 +37,21 @@ export default function MovieDetail() {
 
   const [isAddToListOpen, setIsAddToListOpen] = useState(false);
   const [isCreateListOpen, setIsCreateListOpen] = useState(false);
+  const backdropRef = useRef<HTMLDivElement>(null);
+
+  // Parallax scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (backdropRef.current) {
+        const scrolled = window.pageYOffset;
+        const parallaxSpeed = 0.5;
+        backdropRef.current.style.transform = `translateY(${scrolled * parallaxSpeed}px)`;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -47,6 +64,16 @@ export default function MovieDetail() {
         const movieData = await getMovieDetails(parseInt(id));
         setMovie(movieData);
 
+        // Load similar movies
+        try {
+          const similar = movieData.mediaType === 'tv' 
+            ? await getSimilarTV(parseInt(id))
+            : await getSimilarMovies(parseInt(id));
+          setSimilarMovies(similar.movies.slice(0, 12));
+        } catch (error) {
+          console.error("Failed to load similar movies:", error);
+        }
+
         if (user) {
           const [logs, watchlistStatus, favoriteStatus] = await Promise.all([
             getMovieLogs(user.uid, parseInt(id)),
@@ -57,11 +84,11 @@ export default function MovieDetail() {
           setInWatchlist(watchlistStatus);
           setInFavorites(favoriteStatus);
 
-          const interaction = await getUserCommunityInteraction(user.uid, id, 'movie');
+          const interaction = await getUserCommunityInteraction(user.uid, id, movieData.mediaType || 'movie');
           setUserInteraction(interaction);
         }
 
-        const commData = await getCommunityRating(id, 'movie');
+        const commData = await getCommunityRating(id, movieData.mediaType || 'movie');
         setCommunityData(commData);
       } catch (err) {
         console.error("Failed to load movie data:", err);
@@ -175,29 +202,36 @@ export default function MovieDetail() {
 
   return (
     <Layout>
-      {/* Hero Backdrop Section */}
+      {/* Hero Backdrop Section with Parallax */}
       {movie.backdropUrl && (
         <div className="relative w-full h-[300px] lg:h-[450px] overflow-hidden">
-          <img
-            src={movie.backdropUrl}
-            alt=""
-            className="w-full h-full object-cover opacity-30 grayscale-[0.5]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <div 
+            ref={backdropRef}
+            className="absolute inset-0 w-full h-[120%] -top-[10%]"
+            style={{ willChange: 'transform' }}
+          >
+            <img
+              src={movie.backdropUrl}
+              alt=""
+              className="w-full h-full object-cover opacity-60 grayscale-[0.15]"
+              style={{ filter: 'blur(0.5px)' }}
+            />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10" />
         </div>
       )}
 
-      <div className={`container mx-auto px-6 ${movie.backdropUrl ? "-mt-40 lg:-mt-60" : "py-12"} relative z-10`}>
+      <div className={`container mx-auto px-6 ${movie.backdropUrl ? "-mt-40 lg:-mt-60" : "py-12"} relative z-20`}>
         <div className="grid lg:grid-cols-[300px_1fr] gap-8 lg:gap-16">
           {/* Left Column: Poster & Quick Info */}
           <aside className="space-y-8">
             <div className="relative group">
-              <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl">
+              <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl transition-transform duration-300 group-hover:scale-105 group-hover:shadow-3xl">
                 {movie.posterUrl ? (
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground p-8">
@@ -453,6 +487,18 @@ export default function MovieDetail() {
                 </div>
               )}
             </section>
+
+            {/* Similar Movies */}
+            {similarMovies.length > 0 && (
+              <section className="mt-12">
+                <H2 className="mb-6">Similar to {movie.title}</H2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+                  {similarMovies.map((item) => (
+                    <MovieCard key={item.id} movie={item} size="md" />
+                  ))}
+                </div>
+              </section>
+            )}
           </main>
         </div>
       </div>

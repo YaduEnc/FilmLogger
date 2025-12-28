@@ -9,7 +9,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main>{children}</main>
+      <main className="pt-14">{children}</main>
     </div>
   );
 }

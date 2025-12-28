@@ -192,6 +192,45 @@ export async function getTrendingMovies(page = 1, timeWindow: 'day' | 'week' = '
   }
 }
 
+export async function getUpcomingMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/movie/upcoming?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB upcoming error:", error);
+    throw new Error("Failed to fetch upcoming movies");
+  }
+}
+
+export async function getSimilarMovies(movieId: number, page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/movie/${movieId}/similar?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB similar movies error:", error);
+    throw new Error("Failed to fetch similar movies");
+  }
+}
+
+export async function getSimilarTV(tvId: number, page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/tv/${tvId}/similar?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB similar TV error:", error);
+    throw new Error("Failed to fetch similar TV shows");
+  }
+}
+
 // TV API Methods
 
 export async function searchTV(query: string, page = 1): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
@@ -267,6 +306,21 @@ export async function getOnTheAirTV(page = 1): Promise<{ movies: Movie[]; totalP
   } catch (error) {
     console.error("TMDB on the air tv error:", error);
     throw new Error("Failed to fetch on the air tv shows");
+  }
+}
+
+
+export async function getUpcomingTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    // Get TV shows that are premiering soon
+    const data = await fetchTMDB(`/tv/on_the_air?page=${page}`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB upcoming tv error:", error);
+    throw new Error("Failed to fetch upcoming tv shows");
   }
 }
 
