@@ -682,6 +682,39 @@ export const acceptConnectionRequest = async (requestId: string, fromUid: string
     }
 };
 
+// Get user's friends (accepted connections)
+export const getUserFriends = async (userId: string) => {
+    try {
+        const connectionsRef = collection(db, "connections");
+        const q = query(connectionsRef, where("uids", "array-contains", userId));
+        const snapshot = await getDocs(q);
+        
+        const friendIds = snapshot.docs.map(doc => {
+            const uids = doc.data().uids;
+            return uids.find((uid: string) => uid !== userId);
+        }).filter(Boolean);
+        
+        // Get user details for each friend
+        const friends = await Promise.all(
+            friendIds.map(async (friendId) => {
+                const userDoc = await getDoc(doc(db, "users", friendId));
+                if (userDoc.exists()) {
+                    return {
+                        uid: friendId,
+                        ...userDoc.data()
+                    };
+                }
+                return null;
+            })
+        );
+        
+        return friends.filter(Boolean);
+    } catch (error) {
+        console.error("Error getting user friends:", error);
+        return [];
+    }
+};
+
 export const rejectConnectionRequest = async (requestId: string) => {
     try {
         await deleteDoc(doc(db, "connection_requests", requestId));

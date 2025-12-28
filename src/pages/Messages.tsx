@@ -4,14 +4,17 @@ import { H2, H3 } from '@/components/ui/typography';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { 
   getUserConversations, 
   getConversationMessages, 
   sendMessage, 
-  markMessagesAsRead 
+  markMessagesAsRead,
+  getOrCreateConversation 
 } from '@/lib/messaging';
-import { Send, ArrowLeft, Film, Loader2 } from 'lucide-react';
+import { getUserFriends } from '@/lib/db';
+import { Send, ArrowLeft, Film, Loader2, Plus, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
@@ -23,6 +26,9 @@ export default function Messages() {
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
+  const [friends, setFriends] = useState<any[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,6 +60,54 @@ export default function Messages() {
       console.error('Error loading conversations:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadFriends = async () => {
+    if (!user) return;
+    setLoadingFriends(true);
+    try {
+      const data = await getUserFriends(user.uid);
+      setFriends(data);
+    } catch (error) {
+      console.error('Error loading friends:', error);
+    } finally {
+      setLoadingFriends(false);
+    }
+  };
+
+  const handleStartConversation = async (friend: any) => {
+    if (!user) return;
+    
+    try {
+      const conversationId = await getOrCreateConversation(
+        user.uid,
+        friend.uid,
+        {
+          displayName: user.displayName,
+          photoURL: user.photoURL
+        },
+        {
+          displayName: friend.displayName,
+          photoURL: friend.photoURL
+        }
+      );
+      
+      // Reload conversations
+      await loadConversations();
+      
+      // Find and select the conversation
+      const updatedConversations = await getUserConversations(user.uid);
+      const newConversation = updatedConversations.find(c => c.id === conversationId);
+      if (newConversation) {
+        setSelectedConversation(newConversation);
+      }
+      
+      setIsNewMessageOpen(false);
+      toast.success(`Started conversation with ${friend.displayName}`);
+    } catch (error) {
+      console.error('Error starting conversation:', error);
+      toast.error('Failed to start conversation');
     }
   };
 
@@ -119,8 +173,59 @@ export default function Messages() {
         <div className="grid md:grid-cols-[300px_1fr] gap-6 h-[calc(100vh-200px)]">
           {/* Conversations List */}
           <div className="border rounded-lg overflow-hidden flex flex-col">
-            <div className="p-4 border-b bg-muted/30">
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
               <H3 className="text-lg">Conversations</H3>
+              <Dialog open={isNewMessageOpen} onOpenChange={(open) => {
+                console.log('Dialog open state changed:', open);
+                setIsNewMessageOpen(open);
+                if (open) {
+                  console.log('Dialog opened, loading friends...');
+                  loadFriends();
+                }
+              }}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    New
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Start a Conversation</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {loadingFriends ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : friends.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                        <p className="text-sm">No friends yet</p>
+                        <p className="text-xs mt-1">Connect with people in the Community tab!</p>
+                      </div>
+                    ) : (
+                      friends.map((friend) => (
+                        <button
+                          key={friend.uid}
+                          onClick={() => handleStartConversation(friend)}
+                          className="w-full p-3 flex items-center gap-3 hover:bg-muted rounded-lg transition-colors"
+                        >
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={friend.photoURL} />
+                            <AvatarFallback>{friend.displayName?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 text-left">
+                            <p className="font-medium">{friend.displayName}</p>
+                            <p className="text-sm text-muted-foreground">@{friend.username}</p>
+                          </div>
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
             
             <div className="flex-1 overflow-y-auto">

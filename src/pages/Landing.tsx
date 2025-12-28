@@ -137,12 +137,12 @@ export default function Landing() {
             {/* Brand */}
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <Logo className="h-6 w-6" />
-                <span className="font-serif text-sm">CineLunatic</span>
-              </div>
+            <Logo className="h-6 w-6" />
+            <span className="font-serif text-sm">CineLunatic</span>
+          </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                A quiet corner for film lovers.
-              </p>
+            A quiet corner for film lovers.
+          </p>
             </div>
 
             {/* Links */}
