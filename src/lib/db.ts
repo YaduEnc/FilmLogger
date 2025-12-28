@@ -824,10 +824,6 @@ export const updateMovieStats = async (
         const statsRef = doc(db, "movie_stats", statsId);
         const statsDoc = await getDoc(statsRef);
         
-        const now = new Date();
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        
         if (!statsDoc.exists()) {
             // Create new stats document
             await setDoc(statsRef, {
@@ -880,144 +876,112 @@ export const updateMovieStats = async (
     }
 };
 
-// Get popular movies (most logged, favorited, etc.)
-export const getPopularMovies = async (
-    sortBy: 'logs' | 'favorites' | 'reviews' | 'rating' = 'logs',
-    timeframe: 'week' | 'month' | 'all' = 'all',
-    limitCount: number = 10
-) => {
+// Get unified trending movies combining all metrics (logs, favorites, ratings, comments)
+export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]> => {
     try {
+        // Get all movie stats (limit to top 200 by any metric to avoid loading too much)
         const statsRef = collection(db, "movie_stats");
-        let orderByField = 'logCount';
+        const statsQuery = query(statsRef, limit(200));
+        const statsSnapshot = await getDocs(statsQuery);
         
-        if (sortBy === 'favorites') orderByField = 'favoriteCount';
-        else if (sortBy === 'reviews') orderByField = 'reviewCount';
-        else if (sortBy === 'rating') orderByField = 'avgRating';
-        else if (timeframe === 'week') orderByField = 'weeklyLogs';
-        else if (timeframe === 'month') orderByField = 'monthlyLogs';
-        
-        const q = query(statsRef, orderBy(orderByField, 'desc'), limit(limitCount));
-        const snapshot = await getDocs(q);
-        
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            lastUpdated: safeTimestampToISO(doc.data().lastUpdated)
-        }));
-    } catch (error) {
-        console.error("Error getting popular movies:", error);
-        return [];
-    }
-};
-
-// Get movies/TV shows with most comments today, ordered by rating
-export const getMostCommentedToday = async (limitCount: number = 10): Promise<any[]> => {
-    try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const todayTimestamp = Timestamp.fromDate(today);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowTimestamp = Timestamp.fromDate(tomorrow);
-
-        // Get all comments from today
+        // Get all comments to count per movie
         const commentsRef = collection(db, "comments");
-        const commentsQuery = query(
-            commentsRef,
-            where("createdAt", ">=", todayTimestamp),
-            where("createdAt", "<", tomorrowTimestamp)
-        );
-        const commentsSnapshot = await getDocs(commentsQuery);
-
-        // Group comments by reviewId
+        const commentsSnapshot = await getDocs(query(commentsRef, limit(1000))); // Limit to avoid huge queries
+        
+        // Group comments by reviewId, then get reviews to map to movies
         const reviewCommentMap = new Map<string, number>();
         commentsSnapshot.docs.forEach(doc => {
             const data = doc.data();
             const reviewId = data.reviewId;
-            reviewCommentMap.set(reviewId, (reviewCommentMap.get(reviewId) || 0) + 1);
-        });
-
-        if (reviewCommentMap.size === 0) {
-            return [];
-        }
-
-        // Get all reviews that have comments today
-        const reviewsRef = collection(db, "reviews");
-        const reviewIds = Array.from(reviewCommentMap.keys());
-        const reviewPromises = reviewIds.map(reviewId => getDoc(doc(db, "reviews", reviewId)));
-        const reviewDocs = await Promise.all(reviewPromises);
-
-        // Group by movieId and count comments
-        const movieCommentMap = new Map<number, { commentCount: number; mediaType: 'movie' | 'tv' }>();
-        reviewDocs.forEach((reviewDoc, index) => {
-            if (reviewDoc.exists()) {
-                const reviewData = reviewDoc.data() as Review;
-                const movieId = reviewData.movieId;
-                const commentCount = reviewCommentMap.get(reviewIds[index]) || 0;
-                
-                if (movieCommentMap.has(movieId)) {
-                    movieCommentMap.set(movieId, {
-                        commentCount: movieCommentMap.get(movieId)!.commentCount + commentCount,
-                        mediaType: reviewData.mediaType || 'movie'
-                    });
-                } else {
-                    movieCommentMap.set(movieId, {
-                        commentCount,
-                        mediaType: reviewData.mediaType || 'movie'
-                    });
-                }
+            if (reviewId) {
+                reviewCommentMap.set(reviewId, (reviewCommentMap.get(reviewId) || 0) + 1);
             }
-        });
-
-        // Get movie stats and community ratings for these movies
-        const movieIds = Array.from(movieCommentMap.keys());
-        const statsPromises = movieIds.map(movieId => {
-            const mediaType = movieCommentMap.get(movieId)!.mediaType;
-            const statsId = `${mediaType}_${movieId}`;
-            return getDoc(doc(db, "movie_stats", statsId));
-        });
-        const ratingPromises = movieIds.map(movieId => {
-            const mediaType = movieCommentMap.get(movieId)!.mediaType;
-            return getCommunityRating(movieId.toString(), mediaType);
         });
         
-        const [statsDocs, ratings] = await Promise.all([
-            Promise.all(statsPromises),
-            Promise.all(ratingPromises)
-        ]);
-
-        // Combine data and sort
-        const result = movieIds.map((movieId, index) => {
-            const commentData = movieCommentMap.get(movieId)!;
-            const statsData = statsDocs[index].exists() ? statsDocs[index].data() : null;
-            const ratingData = ratings[index];
+        // Get reviews to map comments to movies
+        const reviewIds = Array.from(reviewCommentMap.keys());
+        const movieCommentMap = new Map<number, number>();
+        
+        if (reviewIds.length > 0) {
+            const reviewPromises = reviewIds.slice(0, 500).map(reviewId => getDoc(doc(db, "reviews", reviewId)));
+            const reviewDocs = await Promise.all(reviewPromises);
+            
+            reviewDocs.forEach((reviewDoc, index) => {
+                if (reviewDoc.exists()) {
+                    const reviewData = reviewDoc.data() as Review;
+                    const movieId = reviewData.movieId;
+                    const commentCount = reviewCommentMap.get(reviewIds[index]) || 0;
+                    movieCommentMap.set(movieId, (movieCommentMap.get(movieId) || 0) + commentCount);
+                }
+            });
+        }
+        
+        // Also get comment counts from review.commentCount field as fallback
+        const reviewsRef = collection(db, "reviews");
+        const reviewsQuery = query(reviewsRef, where("commentCount", ">", 0), limit(500));
+        try {
+            const reviewsSnapshot = await getDocs(reviewsQuery);
+            reviewsSnapshot.docs.forEach(doc => {
+                const reviewData = doc.data() as Review;
+                const movieId = reviewData.movieId;
+                const commentCount = reviewData.commentCount || 0;
+                movieCommentMap.set(movieId, (movieCommentMap.get(movieId) || 0) + commentCount);
+            });
+        } catch (e) {
+            // If index doesn't exist, continue without this data
+            console.log("Could not fetch reviews with comments, continuing...");
+        }
+        
+        // Calculate trending score for each movie
+        const moviesWithScore = statsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            const movieId = data.movieId;
+            const weeklyLogs = data.weeklyLogs || 0;
+            const logCount = data.logCount || 0;
+            const favoriteCount = data.favoriteCount || 0;
+            const avgRating = data.avgRating || 0;
+            const ratingCount = data.ratingCount || 0;
+            const commentCount = movieCommentMap.get(movieId) || 0;
+            
+            // Calculate weighted trending score
+            // Weekly logs: 3x (recent activity is most important)
+            // Favorites: 2x (shows strong engagement)
+            // Ratings: normalized (rating * count) - 1.5x
+            // Comments: 2x (shows discussion)
+            // Total logs: 1x (baseline engagement)
+            
+            const weeklyScore = weeklyLogs * 3;
+            const favoriteScore = favoriteCount * 2;
+            const ratingScore = (avgRating * ratingCount) * 1.5;
+            const commentScore = commentCount * 2;
+            const logScore = logCount * 1;
+            
+            const trendingScore = weeklyScore + favoriteScore + ratingScore + commentScore + logScore;
             
             return {
-                id: `${commentData.mediaType}_${movieId}`,
+                id: doc.id,
                 movieId,
-                mediaType: commentData.mediaType,
-                commentCount: commentData.commentCount,
-                avgRating: ratingData?.averageRating || statsData?.avgRating || 0,
-                ratingCount: ratingData?.ratingCount || statsData?.ratingCount || 0,
-                title: statsData?.title || '',
-                posterUrl: statsData?.posterUrl || '',
-                logCount: statsData?.logCount || 0,
-                favoriteCount: statsData?.favoriteCount || 0,
-                reviewCount: statsData?.reviewCount || 0
+                mediaType: data.mediaType || 'movie',
+                title: data.title || '',
+                posterUrl: data.posterUrl || '',
+                logCount,
+                favoriteCount,
+                reviewCount: data.reviewCount || 0,
+                avgRating,
+                ratingCount,
+                weeklyLogs,
+                monthlyLogs: data.monthlyLogs || 0,
+                commentCount,
+                trendingScore
             };
         });
-
-        // Sort by comment count (desc), then by rating (desc)
-        result.sort((a, b) => {
-            if (b.commentCount !== a.commentCount) {
-                return b.commentCount - a.commentCount;
-            }
-            return b.avgRating - a.avgRating;
-        });
-
-        return result.slice(0, limitCount);
+        
+        // Sort by trending score (descending)
+        moviesWithScore.sort((a, b) => b.trendingScore - a.trendingScore);
+        
+        return moviesWithScore.slice(0, limitCount);
     } catch (error) {
-        console.error("Error getting most commented movies today:", error);
+        console.error("Error getting unified trending movies:", error);
         return [];
     }
 };
@@ -1228,12 +1192,7 @@ export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "li
 export const getMovieReviews = async (movieId: number) => {
     try {
         const reviewsRef = collection(db, "reviews");
-        const q = query(reviewsRef, where("movieId", "==", movieId)); // We can't easily filter by mediaType here without an index unless we change schema. 
-        // But since we are sorting in memory, we can fetch all and filter.
-        // Wait, movieId collision suggests we MUST filter.
-        // But db.ts existing code only queries by movieId.
-        // I'll leave this query as is for now and let the client filtering handle it if necessary, 
-        // OR rely on the fact that movieId is the primary query and we can filter by mediaType in memory.
+        const q = query(reviewsRef, where("movieId", "==", movieId));
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
             id: doc.id,
@@ -1284,7 +1243,6 @@ export const getReviewComments = async (reviewId: string) => {
         return [];
     }
 };
-
 
 export const toggleEntityLike = async (userId: string, entityId: string, entityType: 'review' | 'comment' | 'list') => {
     try {
