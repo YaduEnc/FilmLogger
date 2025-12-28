@@ -16,7 +16,7 @@ import { format } from "date-fns";
 import { CalendarIcon, ArrowLeft, Search, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { createLogEntry } from "@/lib/db";
+import { createLogEntry, logActivity, updateMovieStats } from "@/lib/db";
 import { cn } from "@/lib/utils";
 import { Movie } from "@/types/movie";
 import { searchMovies, getMovieDetails, getTVDetails } from "@/lib/tmdb";
@@ -115,6 +115,30 @@ export default function Log() {
         isRewatch,
         rewatchCount: isRewatch ? 1 : 0,
       });
+
+      // Log activity and update stats
+      await Promise.all([
+        logActivity({
+          userId: user.uid,
+          userName: user.displayName || 'Anonymous',
+          userPhoto: user.photoURL,
+          type: reviewShort ? 'review' : 'log',
+          movieId: movie.id,
+          movieTitle: movie.title,
+          moviePoster: movie.posterUrl,
+          mediaType: movie.mediaType || 'movie',
+          rating,
+          reviewText: reviewShort
+        }),
+        updateMovieStats(
+          movie.id,
+          movie.mediaType || 'movie',
+          movie.title,
+          movie.posterUrl,
+          'log',
+          rating
+        )
+      ]);
 
       toast({
         title: "Entry saved",

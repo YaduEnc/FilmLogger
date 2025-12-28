@@ -724,6 +724,260 @@ export const rejectConnectionRequest = async (requestId: string) => {
     }
 };
 
+// ==================== ACTIVITY FEED ====================
+
+// Log user activity
+export const logActivity = async (activity: {
+    userId: string;
+    userName: string;
+    userPhoto?: string;
+    type: string;
+    movieId?: number;
+    movieTitle?: string;
+    moviePoster?: string;
+    mediaType?: 'movie' | 'tv';
+    rating?: number;
+    reviewText?: string;
+    listId?: string;
+    listName?: string;
+    pollId?: string;
+    pollQuestion?: string;
+    debateId?: string;
+    debateTitle?: string;
+    connectedUserId?: string;
+    connectedUserName?: string;
+}) => {
+    try {
+        await addDoc(collection(db, "user_activities"), {
+            ...activity,
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error logging activity:", error);
+    }
+};
+
+// Get recent activities (for activity feed)
+export const getRecentActivities = async (limitCount: number = 50) => {
+    try {
+        const activitiesRef = collection(db, "user_activities");
+        const q = query(activitiesRef, orderBy("createdAt", "desc"), limit(limitCount));
+        const snapshot = await getDocs(q);
+        
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting recent activities:", error);
+        return [];
+    }
+};
+
+// Get user's activities
+export const getUserActivities = async (userId: string, limitCount: number = 20) => {
+    try {
+        const activitiesRef = collection(db, "user_activities");
+        const q = query(
+            activitiesRef,
+            where("userId", "==", userId),
+            orderBy("createdAt", "desc"),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting user activities:", error);
+        return [];
+    }
+};
+
+// ==================== MOVIE STATISTICS ====================
+
+// Update movie statistics (call this when user logs, favorites, reviews a movie)
+export const updateMovieStats = async (
+    movieId: number,
+    mediaType: 'movie' | 'tv',
+    title: string,
+    posterUrl: string | undefined,
+    action: 'log' | 'favorite' | 'review' | 'watchlist',
+    rating?: number
+) => {
+    try {
+        const statsId = `${mediaType}_${movieId}`;
+        const statsRef = doc(db, "movie_stats", statsId);
+        const statsDoc = await getDoc(statsRef);
+        
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        if (!statsDoc.exists()) {
+            // Create new stats document
+            await setDoc(statsRef, {
+                movieId,
+                mediaType,
+                title,
+                posterUrl: posterUrl || '',
+                logCount: action === 'log' ? 1 : 0,
+                favoriteCount: action === 'favorite' ? 1 : 0,
+                reviewCount: action === 'review' ? 1 : 0,
+                watchlistCount: action === 'watchlist' ? 1 : 0,
+                avgRating: rating || 0,
+                ratingSum: rating || 0,
+                ratingCount: rating ? 1 : 0,
+                weeklyLogs: action === 'log' ? 1 : 0,
+                monthlyLogs: action === 'log' ? 1 : 0,
+                lastUpdated: serverTimestamp()
+            });
+        } else {
+            // Update existing stats
+            const currentData = statsDoc.data();
+            const updates: any = {
+                lastUpdated: serverTimestamp()
+            };
+            
+            if (action === 'log') {
+                updates.logCount = (currentData.logCount || 0) + 1;
+                updates.weeklyLogs = (currentData.weeklyLogs || 0) + 1;
+                updates.monthlyLogs = (currentData.monthlyLogs || 0) + 1;
+            } else if (action === 'favorite') {
+                updates.favoriteCount = (currentData.favoriteCount || 0) + 1;
+            } else if (action === 'review') {
+                updates.reviewCount = (currentData.reviewCount || 0) + 1;
+            } else if (action === 'watchlist') {
+                updates.watchlistCount = (currentData.watchlistCount || 0) + 1;
+            }
+            
+            if (rating) {
+                const newRatingSum = (currentData.ratingSum || 0) + rating;
+                const newRatingCount = (currentData.ratingCount || 0) + 1;
+                updates.ratingSum = newRatingSum;
+                updates.ratingCount = newRatingCount;
+                updates.avgRating = newRatingSum / newRatingCount;
+            }
+            
+            await updateDoc(statsRef, updates);
+        }
+    } catch (error) {
+        console.error("Error updating movie stats:", error);
+    }
+};
+
+// Get popular movies (most logged, favorited, etc.)
+export const getPopularMovies = async (
+    sortBy: 'logs' | 'favorites' | 'reviews' | 'rating' = 'logs',
+    timeframe: 'week' | 'month' | 'all' = 'all',
+    limitCount: number = 10
+) => {
+    try {
+        const statsRef = collection(db, "movie_stats");
+        let orderByField = 'logCount';
+        
+        if (sortBy === 'favorites') orderByField = 'favoriteCount';
+        else if (sortBy === 'reviews') orderByField = 'reviewCount';
+        else if (sortBy === 'rating') orderByField = 'avgRating';
+        else if (timeframe === 'week') orderByField = 'weeklyLogs';
+        else if (timeframe === 'month') orderByField = 'monthlyLogs';
+        
+        const q = query(statsRef, orderBy(orderByField, 'desc'), limit(limitCount));
+        const snapshot = await getDocs(q);
+        
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            lastUpdated: safeTimestampToISO(doc.data().lastUpdated)
+        }));
+    } catch (error) {
+        console.error("Error getting popular movies:", error);
+        return [];
+    }
+};
+
+// ==================== USER RECOMMENDATIONS ====================
+
+// Get recommended users for a given user
+export const getRecommendedUsers = async (currentUserId: string, limitCount: number = 10) => {
+    try {
+        // Get all users except current user
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        
+        // Get current user's data
+        const currentUserDoc = await getDoc(doc(db, "users", currentUserId));
+        if (!currentUserDoc.exists()) return [];
+        
+        // Get current user's logs to find common movies
+        const currentUserLogs = await getUserLogs(currentUserId);
+        const currentUserMovieIds = new Set(currentUserLogs.map(log => log.movieId));
+        
+        // Get current user's connections to exclude them
+        const connections = await getUserFriends(currentUserId);
+        const connectedUserIds = new Set(connections.map((f: any) => f.uid));
+        
+        const recommendations = [];
+        
+        for (const userDoc of usersSnapshot.docs) {
+            if (userDoc.id === currentUserId || connectedUserIds.has(userDoc.id)) continue;
+            
+            const userData = userDoc.data();
+            
+            // Get user's logs
+            const userLogs = await getUserLogs(userDoc.id);
+            const userMovieIds = new Set(userLogs.map(log => log.movieId));
+            
+            // Calculate common movies
+            const commonMovies = [...currentUserMovieIds].filter(id => userMovieIds.has(id)).length;
+            
+            // Calculate activity score (recent activity)
+            const recentActivities = await getUserActivities(userDoc.id, 10);
+            const activityScore = recentActivities.length;
+            
+            // Check if new user (joined in last 30 days)
+            const createdAt = new Date(userData.createdAt);
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+            const isNewUser = createdAt > thirtyDaysAgo;
+            
+            // Calculate recommendation score
+            const recommendationScore = 
+                (commonMovies * 10) + // Common movies weight heavily
+                (activityScore * 2) + // Active users
+                (isNewUser ? 5 : 0); // Boost for new users
+            
+            if (recommendationScore > 0) {
+                recommendations.push({
+                    uid: userDoc.id,
+                    username: userData.username,
+                    displayName: userData.displayName,
+                    photoURL: userData.photoURL,
+                    bio: userData.bio,
+                    commonMovies,
+                    commonGenres: [], // TODO: Calculate common genres
+                    activityScore,
+                    isNewUser,
+                    totalWatched: userLogs.length,
+                    reviewCount: recentActivities.filter((a: any) => a.type === 'review').length,
+                    recommendationScore
+                });
+            }
+        }
+        
+        // Sort by recommendation score and limit
+        return recommendations
+            .sort((a, b) => b.recommendationScore - a.recommendationScore)
+            .slice(0, limitCount);
+    } catch (error) {
+        console.error("Error getting recommended users:", error);
+        return [];
+    }
+};
+
 export const getIncomingRequests = async (userId: string) => {
     try {
         const requestsRef = collection(db, "connection_requests");
@@ -862,6 +1116,151 @@ export const getUserData = async (userId: string) => {
     } catch (error) {
         console.error("Error getting user data:", error);
         return null;
+    }
+};
+
+// ==================== ACCOUNT DELETION ====================
+
+// Helper function to delete all documents in a collection
+const deleteCollection = async (collectionPath: string) => {
+    try {
+        const collectionRef = collection(db, collectionPath);
+        const snapshot = await getDocs(collectionRef);
+        const batch = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(batch);
+    } catch (error) {
+        console.error(`Error deleting collection ${collectionPath}:`, error);
+    }
+};
+
+// Delete user account and all associated data
+export const deleteUserAccount = async (userId: string) => {
+    try {
+        // Get user data first to get username
+        const userData = await getUserData(userId);
+        const username = userData?.username;
+
+        // 1. Delete subcollections
+        await Promise.all([
+            deleteCollection(`users/${userId}/logs`),
+            deleteCollection(`users/${userId}/lists`),
+            deleteCollection(`users/${userId}/watchlist`),
+            deleteCollection(`users/${userId}/favorites`)
+        ]);
+
+        // 2. Delete username mapping
+        if (username) {
+            try {
+                await deleteDoc(doc(db, "usernames", username.toLowerCase()));
+            } catch (error) {
+                console.error("Error deleting username mapping:", error);
+            }
+        }
+
+        // 3. Delete connections
+        const connectionsRef = collection(db, "connections");
+        const connectionsQuery = query(connectionsRef, where("uids", "array-contains", userId));
+        const connectionsSnapshot = await getDocs(connectionsQuery);
+        await Promise.all(connectionsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 4. Delete connection requests
+        const requestsRef = collection(db, "connection_requests");
+        const requestsFromQuery = query(requestsRef, where("from", "==", userId));
+        const requestsToQuery = query(requestsRef, where("to", "==", userId));
+        const [fromSnapshot, toSnapshot] = await Promise.all([
+            getDocs(requestsFromQuery),
+            getDocs(requestsToQuery)
+        ]);
+        await Promise.all([
+            ...fromSnapshot.docs.map(doc => deleteDoc(doc.ref)),
+            ...toSnapshot.docs.map(doc => deleteDoc(doc.ref))
+        ]);
+
+        // 5. Delete reviews
+        const reviewsRef = collection(db, "reviews");
+        const reviewsQuery = query(reviewsRef, where("authorUid", "==", userId));
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        await Promise.all(reviewsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 6. Delete user activities
+        const activitiesRef = collection(db, "user_activities");
+        const activitiesQuery = query(activitiesRef, where("userId", "==", userId));
+        const activitiesSnapshot = await getDocs(activitiesQuery);
+        await Promise.all(activitiesSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 7. Delete conversations
+        const conversationsRef = collection(db, "conversations");
+        const conversationsQuery = query(conversationsRef, where("participants", "array-contains", userId));
+        const conversationsSnapshot = await getDocs(conversationsQuery);
+        await Promise.all(conversationsSnapshot.docs.map(async (convDoc) => {
+            // Delete messages subcollection
+            const messagesRef = collection(db, "conversations", convDoc.id, "messages");
+            const messagesSnapshot = await getDocs(messagesRef);
+            await Promise.all(messagesSnapshot.docs.map(msgDoc => deleteDoc(msgDoc.ref)));
+            // Delete conversation
+            await deleteDoc(convDoc.ref);
+        }));
+
+        // 8. Delete polls created by user
+        const pollsRef = collection(db, "polls");
+        const pollsQuery = query(pollsRef, where("authorUid", "==", userId));
+        const pollsSnapshot = await getDocs(pollsQuery);
+        await Promise.all(pollsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 9. Delete debates created by user
+        const debatesRef = collection(db, "debates");
+        const debatesQuery = query(debatesRef, where("authorUid", "==", userId));
+        const debatesSnapshot = await getDocs(debatesQuery);
+        await Promise.all(debatesSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 10. Delete user ratings from community_ratings
+        const communityRatingsRef = collection(db, "community_ratings");
+        const communityRatingsSnapshot = await getDocs(communityRatingsRef);
+        await Promise.all(communityRatingsSnapshot.docs.map(async (ratingDoc) => {
+            const userRatingRef = doc(db, "community_ratings", ratingDoc.id, "user_ratings", userId);
+            try {
+                await deleteDoc(userRatingRef);
+                // Update the rating document to recalculate averages
+                const ratingData = ratingDoc.data();
+                const newTotal = (ratingData.totalRatings || 1) - 1;
+                if (newTotal > 0) {
+                    const userRating = ratingData.userRatings?.[userId];
+                    if (userRating) {
+                        const newSum = (ratingData.sumRatings || 0) - userRating;
+                        await updateDoc(ratingDoc.ref, {
+                            totalRatings: newTotal,
+                            sumRatings: newSum,
+                            averageRating: newSum / newTotal
+                        });
+                    }
+                } else {
+                    // If no ratings left, delete the document
+                    await deleteDoc(ratingDoc.ref);
+                }
+            } catch (error) {
+                console.error("Error deleting user rating:", error);
+            }
+        }));
+
+        // 11. Delete list comments
+        const listCommentsRef = collection(db, "list_comments");
+        const listCommentsQuery = query(listCommentsRef, where("authorUid", "==", userId));
+        const listCommentsSnapshot = await getDocs(listCommentsQuery);
+        await Promise.all(listCommentsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 12. Delete debate comments
+        const debateCommentsRef = collection(db, "debate_comments");
+        const debateCommentsQuery = query(debateCommentsRef, where("authorUid", "==", userId));
+        const debateCommentsSnapshot = await getDocs(debateCommentsQuery);
+        await Promise.all(debateCommentsSnapshot.docs.map(doc => deleteDoc(doc.ref)));
+
+        // 13. Finally, delete the user document
+        await deleteDoc(doc(db, "users", userId));
+
+        return true;
+    } catch (error) {
+        console.error("Error deleting user account:", error);
+        throw error;
     }
 };
 

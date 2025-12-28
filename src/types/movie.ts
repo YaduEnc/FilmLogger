@@ -229,3 +229,81 @@ export interface Message {
   createdAt: string;
 }
 
+// ==================== ACTIVITY FEED ====================
+export type ActivityType = 
+  | 'log' 
+  | 'review' 
+  | 'list_created' 
+  | 'favorite' 
+  | 'connection' 
+  | 'poll_created' 
+  | 'debate_created'
+  | 'list_comment'
+  | 'debate_comment';
+
+export interface UserActivity {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  type: ActivityType;
+  createdAt: string;
+  
+  // Activity-specific data
+  movieId?: number;
+  movieTitle?: string;
+  moviePoster?: string;
+  mediaType?: 'movie' | 'tv';
+  rating?: number;
+  reviewText?: string;
+  listId?: string;
+  listName?: string;
+  pollId?: string;
+  pollQuestion?: string;
+  debateId?: string;
+  debateTitle?: string;
+  connectedUserId?: string;
+  connectedUserName?: string;
+}
+
+// ==================== MOVIE STATISTICS ====================
+export interface MovieStats {
+  movieId: number;
+  mediaType: 'movie' | 'tv';
+  title: string;
+  posterUrl?: string;
+  
+  // Engagement metrics
+  logCount: number; // How many times logged
+  favoriteCount: number; // How many favorites
+  reviewCount: number; // How many reviews
+  avgRating: number; // Average rating
+  watchlistCount: number; // How many in watchlists
+  
+  // Time-based metrics
+  weeklyLogs: number;
+  monthlyLogs: number;
+  
+  lastUpdated: string;
+}
+
+// ==================== USER RECOMMENDATIONS ====================
+export interface UserRecommendation {
+  uid: string;
+  username: string;
+  displayName: string;
+  photoURL?: string;
+  bio?: string;
+  
+  // Recommendation score factors
+  commonMovies: number; // Number of movies in common
+  commonGenres: string[]; // Shared favorite genres
+  activityScore: number; // How active they are
+  isNewUser: boolean; // Joined recently
+  
+  // Display stats
+  totalWatched: number;
+  reviewCount: number;
+  
+  recommendationScore: number; // Overall score
+}

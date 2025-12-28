@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { 
   Search, UserPlus, Check, Clock, Users, ArrowRight, Loader2, 
   Plus, BarChart3, MessageSquare, List, ThumbsUp, Send,
-  TrendingUp, Film, X
+  TrendingUp, Film, X, Activity
 } from "lucide-react";
 import { searchMovies, searchTV } from "@/lib/tmdb";
 import { Movie } from "@/types/movie";
@@ -22,14 +22,16 @@ import {
   searchUsers, getConnectionStatus, sendConnectionRequest, acceptConnectionRequest,
   getPolls, createPoll, votePoll, getUserPollVote,
   getDebates, createDebate, voteDebate, getUserDebateVote, getDebateComments, addDebateComment,
-  getPublicLists, getListComments, addListComment
+  getPublicLists, getListComments, addListComment, logActivity
 } from "@/lib/db";
+import { ActivityFeed } from "@/components/social/ActivityFeed";
+import { UserRecommendations } from "@/components/social/UserRecommendations";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function Community() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("polls");
+  const [activeTab, setActiveTab] = useState("activity");
 
   return (
     <Layout>
@@ -44,7 +46,11 @@ export default function Community() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-8 h-12 bg-muted/30">
+          <TabsList className="grid w-full grid-cols-5 mb-8 h-12 bg-muted/30">
+            <TabsTrigger value="activity" className="gap-2">
+              <Activity className="h-4 w-4" />
+              Activity
+            </TabsTrigger>
             <TabsTrigger value="polls" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Polls
@@ -62,6 +68,10 @@ export default function Community() {
               People
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="activity">
+            <ActivityFeed />
+          </TabsContent>
 
           <TabsContent value="polls">
             <PollsSection user={user} />
@@ -948,8 +958,17 @@ function PeopleSection({ user }: { user: any }) {
   }, [searchTerm, user]);
 
   return (
-    <div>
-      <H2 className="text-2xl mb-6">Find People</H2>
+    <div className="space-y-8">
+      {/* User Recommendations */}
+      {user && searchTerm.length < 2 && (
+        <div>
+          <UserRecommendations currentUserId={user.uid} />
+        </div>
+      )}
+
+      {/* Search Section */}
+      <div>
+        <H2 className="text-2xl mb-6">Find People</H2>
 
       <div className="relative mb-8">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
@@ -976,12 +995,13 @@ function PeopleSection({ user }: { user: any }) {
         <div className="text-center py-16 border border-dashed rounded-xl">
           <p className="text-muted-foreground">No users found matching "{searchTerm}"</p>
         </div>
-      ) : (
+      ) : searchTerm.length >= 2 ? (
         <div className="text-center py-16 border border-dashed rounded-xl">
           <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
           <p className="text-muted-foreground">Start typing to find cinephiles</p>
         </div>
-      )}
+      ) : null}
+      </div>
     </div>
   );
 }
@@ -1014,6 +1034,27 @@ function UserResultCard({ targetUser, currentUser }: { targetUser: any; currentU
       } else if (status.status === 'incoming') {
         await acceptConnectionRequest(status.requestId, targetUser.uid, currentUser.uid);
         setStatus({ status: 'accepted' });
+        
+        // Log connection activity for both users
+        await Promise.all([
+          logActivity({
+            userId: currentUser.uid,
+            userName: currentUser.displayName || 'Anonymous',
+            userPhoto: currentUser.photoURL,
+            type: 'connection',
+            connectedUserId: targetUser.uid,
+            connectedUserName: targetUser.displayName
+          }),
+          logActivity({
+            userId: targetUser.uid,
+            userName: targetUser.displayName || 'Anonymous',
+            userPhoto: targetUser.photoURL,
+            type: 'connection',
+            connectedUserId: currentUser.uid,
+            connectedUserName: currentUser.displayName
+          })
+        ]);
+        
         toast.success(`You are now connected with ${targetUser.displayName}`);
       }
     } catch (error) {

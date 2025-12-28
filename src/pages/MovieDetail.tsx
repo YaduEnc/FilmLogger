@@ -8,7 +8,7 @@ import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check,
 import { Movie, LogEntry } from "@/types/movie";
 import { getMovieDetails } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
-import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite } from "@/lib/db";
+import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite, logActivity, updateMovieStats } from "@/lib/db";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { CreateListModal } from "@/components/movies/CreateListModal";
 import { AddToListModal } from "@/components/movies/AddToListModal";
@@ -84,6 +84,18 @@ export default function MovieDetail() {
     try {
       const added = await toggleWatchlist(user.uid, movie);
       setInWatchlist(added);
+      
+      if (added) {
+        // Update stats when adding to watchlist
+        await updateMovieStats(
+          movie.id,
+          movie.mediaType || 'movie',
+          movie.title,
+          movie.posterUrl,
+          'watchlist'
+        );
+      }
+      
       toast.success(added ? `${movie.title} added to watchlist` : `${movie.title} removed from watchlist`);
     } catch (error) {
       console.error("Watchlist error:", error);
@@ -103,6 +115,30 @@ export default function MovieDetail() {
     try {
       const added = await toggleFavorite(user.uid, movie);
       setInFavorites(added);
+      
+      if (added) {
+        // Log activity and update stats when adding to favorites
+        await Promise.all([
+          logActivity({
+            userId: user.uid,
+            userName: user.displayName || 'Anonymous',
+            userPhoto: user.photoURL,
+            type: 'favorite',
+            movieId: movie.id,
+            movieTitle: movie.title,
+            moviePoster: movie.posterUrl,
+            mediaType: movie.mediaType || 'movie'
+          }),
+          updateMovieStats(
+            movie.id,
+            movie.mediaType || 'movie',
+            movie.title,
+            movie.posterUrl,
+            'favorite'
+          )
+        ]);
+      }
+      
       toast.success(added ? `${movie.title} added to favorites` : `${movie.title} removed from favorites`);
     } catch (error) {
       console.error("Favorite error:", error);

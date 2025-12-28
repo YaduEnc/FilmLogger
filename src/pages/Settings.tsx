@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { H1, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Divider } from "@/components/ui/divider";
 import { Switch } from "@/components/ui/switch";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Download, Trash2, Loader2, Save, AtSign, Globe, Lock, Check, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserData, updateUserData, checkUsernameAvailable } from "@/lib/db";
-import { updateProfile } from "firebase/auth";
+import { getUserData, updateUserData, checkUsernameAvailable, deleteUserAccount } from "@/lib/db";
+import { updateProfile, deleteUser } from "firebase/auth";
 import { toast } from "sonner";
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [currentUsername, setCurrentUsername] = useState("");
@@ -25,6 +27,8 @@ export default function Settings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
 
   useEffect(() => {
     async function loadSettings() {
@@ -106,8 +110,35 @@ export default function Settings() {
     toast.info(`Exporting as ${format.toUpperCase()}...`);
   };
 
-  const handleDeleteAccount = () => {
-    toast.error("Account deletion is disabled for this demo.");
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Delete all Firestore data
+      await deleteUserAccount(user.uid);
+
+      // 2. Delete Firebase Auth account
+      await deleteUser(user);
+
+      // 3. Sign out
+      await signOut();
+
+      // 4. Show success message and redirect
+      toast.success("Your account has been permanently deleted");
+      navigate("/");
+    } catch (error: any) {
+      console.error("Error deleting account:", error);
+      
+      // Handle specific Firebase Auth errors
+      if (error.code === "auth/requires-recent-login") {
+        toast.error("Please sign in again to confirm account deletion");
+      } else {
+        toast.error("Failed to delete account. Please try again.");
+      }
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (isLoading) {
@@ -254,16 +285,78 @@ export default function Settings() {
           <H3 className="text-xl text-destructive font-serif">Danger Zone</H3>
           <div className="bg-destructive/5 p-6 rounded-2xl border border-destructive/20 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Permanently delete your CineLunatic account. This will erase all logs, reviews, and connections.
+              Permanently delete your CineLunatic account. This will erase all logs, reviews, and connections. This action cannot be undone.
             </p>
-            <Button
-              variant="outline"
-              onClick={handleDeleteAccount}
-              className="gap-2 text-destructive border-destructive/30 hover:bg-destructive hover:text-white rounded-full transition-all"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete account
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  disabled={isDeleting}
+                  className="gap-2 text-destructive border-destructive/30 hover:bg-destructive hover:text-white rounded-full transition-all"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Delete account
+                    </>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-2">
+                    <p>
+                      This action cannot be undone. This will permanently delete your CineLunatic account and remove all of your data from our servers.
+                    </p>
+                    <p className="font-medium text-destructive">
+                      This includes:
+                    </p>
+                    <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
+                      <li>All your movie logs and diary entries</li>
+                      <li>All your reviews and ratings</li>
+                      <li>All your custom lists</li>
+                      <li>All your connections and conversations</li>
+                      <li>All your polls, debates, and comments</li>
+                    </ul>
+                    <p className="pt-2">
+                      Type <span className="font-mono font-bold">DELETE</span> to confirm:
+                    </p>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="py-4">
+                  <Input
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    placeholder="DELETE"
+                    className="font-mono"
+                    disabled={isDeleting}
+                  />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setDeleteConfirmation("")}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAccount}
+                    disabled={isDeleting || deleteConfirmation !== "DELETE"}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete Forever"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </section>
       </div>

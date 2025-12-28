@@ -51,6 +51,10 @@ export const getOrCreateConversation = async (user1Id: string, user2Id: string, 
                 [user1Id]: user1Data.displayName,
                 [user2Id]: user2Data.displayName
             },
+            participantUsernames: {
+                [user1Id]: user1Data.username || '',
+                [user2Id]: user2Data.username || ''
+            },
             participantPhotos: {
                 [user1Id]: user1Data.photoURL || '',
                 [user2Id]: user2Data.photoURL || ''

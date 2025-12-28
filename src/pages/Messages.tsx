@@ -80,16 +80,24 @@ export default function Messages() {
     if (!user) return;
     
     try {
+      // Get current user's data
+      const { getDoc, doc } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const currentUserData = userDoc.data();
+      
       const conversationId = await getOrCreateConversation(
         user.uid,
         friend.uid,
         {
           displayName: user.displayName,
-          photoURL: user.photoURL
+          photoURL: user.photoURL,
+          username: currentUserData?.username || ''
         },
         {
           displayName: friend.displayName,
-          photoURL: friend.photoURL
+          photoURL: friend.photoURL,
+          username: friend.username
         }
       );
       
@@ -151,6 +159,7 @@ export default function Messages() {
     return {
       id: otherUserId,
       name: conversation.participantNames[otherUserId],
+      username: conversation.participantUsernames?.[otherUserId] || conversation.participantNames[otherUserId],
       photo: conversation.participantPhotos[otherUserId]
     };
   };
@@ -297,12 +306,6 @@ export default function Messages() {
                   </Avatar>
                   <div>
                     <p className="font-medium">{getOtherUser(selectedConversation).name}</p>
-                    <Link
-                      to={`/profile/${getOtherUser(selectedConversation).name}`}
-                      className="text-xs text-muted-foreground hover:underline"
-                    >
-                      View Profile
-                    </Link>
                   </div>
                 </div>
 

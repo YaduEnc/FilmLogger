@@ -5,6 +5,7 @@ import { H2, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { MovieCard } from "@/components/movies/MovieCard";
+import { PopularSection } from "@/components/movies/PopularSection";
 import { Divider } from "@/components/ui/divider";
 import { Plus, Search, Clock, Film, Loader2, Tv, Clapperboard, TrendingUp, Star, Calendar, Flame, ChevronLeft, ChevronRight, Play, Info } from "lucide-react";
 import { LogEntry, Movie, UserStats } from "@/types/movie";
@@ -460,6 +461,11 @@ export default function Home() {
                 </div>
               ))}
             </HorizontalScroll>
+
+            {/* Popular on CineLunatic */}
+            <div className="mt-16 mb-12">
+              <PopularSection />
+            </div>
 
             {/* Empty State */}
             {recentLogs.length === 0 && (
