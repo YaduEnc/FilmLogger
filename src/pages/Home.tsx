@@ -315,6 +315,11 @@ export default function Home() {
         </div>
       )}
 
+      {/* Popular on CineLunatic */}
+      <div className="container mx-auto px-6 py-8">
+        <PopularSection />
+      </div>
+
       <div className="container mx-auto px-6 py-8">
 
         {/* Quick Stats Bar */}
@@ -461,11 +466,6 @@ export default function Home() {
                 </div>
               ))}
             </HorizontalScroll>
-
-            {/* Popular on CineLunatic */}
-            <div className="mt-16 mb-12">
-              <PopularSection />
-            </div>
 
             {/* Empty State */}
             {recentLogs.length === 0 && (

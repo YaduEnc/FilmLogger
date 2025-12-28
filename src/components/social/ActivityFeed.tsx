@@ -89,7 +89,7 @@ export function ActivityFeed() {
               {activity.movieTitle}
             </Link>
             {activity.reviewText && (
-              <p className="text-sm text-muted-foreground mt-1 line-clamp-2">"{activity.reviewText}"</p>
+              <div className="text-sm text-muted-foreground mt-1 line-clamp-2">"{activity.reviewText}"</div>
             )}
           </>
         );
@@ -218,12 +218,12 @@ export function ActivityFeed() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2">
                     <div className="flex-1">
-                      <p className="text-sm">
+                      <div className="text-sm">
                         <Link to={`/profile/${activity.userName}`} className="font-medium hover:underline">
                           {activity.userName}
                         </Link>{' '}
                         {getActivityText(activity)}
-                      </p>
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                       </p>

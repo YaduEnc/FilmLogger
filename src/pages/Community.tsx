@@ -13,7 +13,7 @@ import { Link } from "react-router-dom";
 import { 
   Search, UserPlus, Check, Clock, Users, ArrowRight, Loader2, 
   Plus, BarChart3, MessageSquare, List, ThumbsUp, Send,
-  TrendingUp, Film, X, Activity
+  TrendingUp, Film, X, Activity, Sparkles
 } from "lucide-react";
 import { searchMovies, searchTV } from "@/lib/tmdb";
 import { Movie } from "@/types/movie";
@@ -22,10 +22,10 @@ import {
   searchUsers, getConnectionStatus, sendConnectionRequest, acceptConnectionRequest,
   getPolls, createPoll, votePoll, getUserPollVote,
   getDebates, createDebate, voteDebate, getUserDebateVote, getDebateComments, addDebateComment,
-  getPublicLists, getListComments, addListComment, logActivity
+  getPublicLists, getListComments, addListComment, logActivity,
+  getRecommendedUsers, getMostActiveUsers, getNewUsers
 } from "@/lib/db";
 import { ActivityFeed } from "@/components/social/ActivityFeed";
-import { UserRecommendations } from "@/components/social/UserRecommendations";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -935,6 +935,35 @@ function PeopleSection({ user }: { user: any }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [recommendedUsers, setRecommendedUsers] = useState<any[]>([]);
+  const [activeUsers, setActiveUsers] = useState<any[]>([]);
+  const [newUsers, setNewUsers] = useState<any[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadRecommendations();
+    }
+  }, [user]);
+
+  const loadRecommendations = async () => {
+    if (!user) return;
+    setIsLoadingRecommendations(true);
+    try {
+      const [recommended, active, newUsersList] = await Promise.all([
+        getRecommendedUsers(user.uid, 6),
+        getMostActiveUsers(user.uid, 6),
+        getNewUsers(user.uid, 6)
+      ]);
+      setRecommendedUsers(recommended);
+      setActiveUsers(active);
+      setNewUsers(newUsersList);
+    } catch (error) {
+      console.error("Error loading recommendations:", error);
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
 
   useEffect(() => {
     if (!searchTerm || searchTerm.length < 2) {
@@ -957,15 +986,26 @@ function PeopleSection({ user }: { user: any }) {
     return () => clearTimeout(timer);
   }, [searchTerm, user]);
 
+  const renderUserCategory = (title: string, users: any[], icon: any) => {
+    if (users.length === 0) return null;
+    
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          {icon}
+          <H3 className="text-xl">{title}</H3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {users.map((targetUser) => (
+            <UserResultCard key={targetUser.uid} targetUser={targetUser} currentUser={user} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
-      {/* User Recommendations */}
-      {user && searchTerm.length < 2 && (
-        <div>
-          <UserRecommendations currentUserId={user.uid} />
-        </div>
-      )}
-
       {/* Search Section */}
       <div>
         <H2 className="text-2xl mb-6">Find People</H2>
@@ -985,22 +1025,61 @@ function PeopleSection({ user }: { user: any }) {
         )}
       </div>
 
-      {searchResults.length > 0 ? (
-        <div className="grid gap-4">
-          {searchResults.map((targetUser) => (
-            <UserResultCard key={targetUser.uid} targetUser={targetUser} currentUser={user} />
-          ))}
+      {searchTerm.length >= 2 ? (
+        // Show search results
+        searchResults.length > 0 ? (
+          <div className="grid gap-4">
+            {searchResults.map((targetUser) => (
+              <UserResultCard key={targetUser.uid} targetUser={targetUser} currentUser={user} />
+            ))}
+          </div>
+        ) : isSearching ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          <div className="text-center py-16 border border-dashed rounded-xl">
+            <p className="text-muted-foreground">No users found matching "{searchTerm}"</p>
+          </div>
+        )
+      ) : (
+        // Show recommendations when no search
+        <div className="space-y-12">
+          {isLoadingRecommendations ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {recommendedUsers.length > 0 && renderUserCategory(
+                "Recommended for You",
+                recommendedUsers,
+                <Sparkles className="h-5 w-5 text-primary" />
+              )}
+              
+              {activeUsers.length > 0 && renderUserCategory(
+                "Most Active",
+                activeUsers,
+                <TrendingUp className="h-5 w-5 text-primary" />
+              )}
+              
+              {newUsers.length > 0 && renderUserCategory(
+                "New to CineLunatic",
+                newUsers,
+                <Sparkles className="h-5 w-5 text-primary" />
+              )}
+              
+              {recommendedUsers.length === 0 && activeUsers.length === 0 && newUsers.length === 0 && (
+                <div className="text-center py-16 border border-dashed rounded-xl">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
+                  <p className="text-muted-foreground">No recommendations available</p>
+                  <p className="text-sm text-muted-foreground mt-2">Start watching movies to get personalized recommendations!</p>
+                </div>
+              )}
+            </>
+          )}
         </div>
-      ) : searchTerm ? (
-        <div className="text-center py-16 border border-dashed rounded-xl">
-          <p className="text-muted-foreground">No users found matching "{searchTerm}"</p>
-        </div>
-      ) : searchTerm.length >= 2 ? (
-        <div className="text-center py-16 border border-dashed rounded-xl">
-          <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
-          <p className="text-muted-foreground">Start typing to find cinephiles</p>
-        </div>
-      ) : null}
+      )}
       </div>
     </div>
   );

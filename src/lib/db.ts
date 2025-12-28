@@ -792,7 +792,16 @@ export const getUserActivities = async (userId: string, limitCount: number = 20)
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-    } catch (error) {
+    } catch (error: any) {
+        // If index error, provide helpful message
+        if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
+            const indexUrl = error?.message?.match(/https:\/\/[^\s]+/)?.[0];
+            if (indexUrl) {
+                console.warn("Firestore index required. Create it here:", indexUrl);
+            } else {
+                console.warn("Firestore index required for user_activities collection. Please create a composite index on userId (Ascending) and createdAt (Descending)");
+            }
+        }
         console.error("Error getting user activities:", error);
         return [];
     }
@@ -974,6 +983,88 @@ export const getRecommendedUsers = async (currentUserId: string, limitCount: num
             .slice(0, limitCount);
     } catch (error) {
         console.error("Error getting recommended users:", error);
+        return [];
+    }
+};
+
+// Get most active users
+export const getMostActiveUsers = async (currentUserId: string, limitCount: number = 8) => {
+    try {
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        
+        const connections = await getUserFriends(currentUserId);
+        const connectedUserIds = new Set(connections.map((f: any) => f.uid));
+        
+        const usersWithActivity = [];
+        
+        for (const userDoc of usersSnapshot.docs) {
+            if (userDoc.id === currentUserId || connectedUserIds.has(userDoc.id)) continue;
+            
+            const userData = userDoc.data();
+            const recentActivities = await getUserActivities(userDoc.id, 20);
+            const userLogs = await getUserLogs(userDoc.id);
+            
+            if (recentActivities.length > 0) {
+                usersWithActivity.push({
+                    uid: userDoc.id,
+                    username: userData.username,
+                    displayName: userData.displayName,
+                    photoURL: userData.photoURL,
+                    bio: userData.bio,
+                    activityScore: recentActivities.length,
+                    totalWatched: userLogs.length,
+                    reviewCount: recentActivities.filter((a: any) => a.type === 'review').length
+                });
+            }
+        }
+        
+        return usersWithActivity
+            .sort((a, b) => b.activityScore - a.activityScore)
+            .slice(0, limitCount);
+    } catch (error) {
+        console.error("Error getting most active users:", error);
+        return [];
+    }
+};
+
+// Get new users
+export const getNewUsers = async (currentUserId: string, limitCount: number = 8) => {
+    try {
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        
+        const connections = await getUserFriends(currentUserId);
+        const connectedUserIds = new Set(connections.map((f: any) => f.uid));
+        
+        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const newUsers = [];
+        
+        for (const userDoc of usersSnapshot.docs) {
+            if (userDoc.id === currentUserId || connectedUserIds.has(userDoc.id)) continue;
+            
+            const userData = userDoc.data();
+            const createdAt = new Date(userData.createdAt);
+            
+            if (createdAt > thirtyDaysAgo) {
+                const userLogs = await getUserLogs(userDoc.id);
+                newUsers.push({
+                    uid: userDoc.id,
+                    username: userData.username,
+                    displayName: userData.displayName,
+                    photoURL: userData.photoURL,
+                    bio: userData.bio,
+                    totalWatched: userLogs.length,
+                    createdAt: userData.createdAt
+                });
+            }
+        }
+        
+        return newUsers
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, limitCount);
+    } catch (error) {
+        console.error("Error getting new users:", error);
         return [];
     }
 };
