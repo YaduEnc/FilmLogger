@@ -2232,4 +2232,51 @@ export const getAllTVProgress = async (userId: string): Promise<TVProgress[]> =>
     }
 };
 
+// ==================== DATA EXPORT ====================
 
+// Get all user data for export
+export const getAllUserDataForExport = async (userId: string) => {
+    try {
+        // Get user profile
+        const userData = await getUserData(userId);
+        
+        // Get all logs
+        const logs = await getUserLogs(userId, { limitCount: 10000 });
+        
+        // Get all lists
+        const lists = await getUserLists(userId);
+        
+        // Get favorites
+        const favorites = await getFavoriteMovies(userId);
+        
+        // Get watchlist
+        const watchlist = await getWatchlist(userId);
+        
+        // Get user's reviews
+        const reviewsRef = collection(db, "reviews");
+        const reviewsQuery = query(reviewsRef, where("authorUid", "==", userId));
+        const reviewsSnapshot = await getDocs(reviewsQuery);
+        const reviews = reviewsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        } as Review));
+        
+        // Get TV progress
+        const tvProgress = await getAllTVProgress(userId);
+        
+        return {
+            profile: userData,
+            logs,
+            lists,
+            favorites,
+            watchlist,
+            reviews,
+            tvProgress,
+            exportDate: new Date().toISOString()
+        };
+    } catch (error) {
+        console.error("Error getting user data for export:", error);
+        throw error;
+    }
+};

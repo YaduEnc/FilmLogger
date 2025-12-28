@@ -161,3 +161,90 @@ All colors MUST be HSL.
     scrollbar-width: none;  /* Firefox */
   }
 }
+
+/* Story Ring Gradient Animation */
+@keyframes story-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.story-ring-active {
+  background: linear-gradient(135deg, #f59e0b, #ef4444, #a855f7, #f59e0b);
+  background-size: 300% 300%;
+  animation: story-gradient 3s ease infinite;
+}
+
+/* Story Viewer Progress Bar Animation */
+@keyframes story-progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+/* Story Card Shine Effect */
+@keyframes shine {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.story-card-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: shine 2s infinite;
+}
+
+/* Story Reactions Animation */
+@keyframes reaction-pop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.reaction-animation {
+  animation: reaction-pop 0.3s ease-out;
+}
+
+/* Story View Counter Animation */
+@keyframes count-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.view-count-animation {
+  animation: count-up 0.3s ease-out;
+}

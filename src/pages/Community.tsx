@@ -1157,7 +1157,7 @@ function UserResultCard({ targetUser, currentUser }: { targetUser: any; currentU
           <div className="flex items-center gap-2 text-muted-foreground">
             <span className="text-xs font-mono opacity-70">@{targetUser.username}</span>
             <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">{targetUser.stats?.totalWatched || 0} films</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">{targetUser.totalWatched || targetUser.stats?.totalWatched || 0} films</span>
           </div>
         </div>
       </div>

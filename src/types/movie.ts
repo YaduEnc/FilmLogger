@@ -375,3 +375,4 @@ export interface AdminStats {
   hourlyActivity: { hour: number; count: number }[];
   dailyActivity: { date: string; count: number }[];
 }
+
