@@ -55,15 +55,15 @@ export function PopularSection() {
   const renderMovieGrid = (movies: PopularMovie[], showMetric: 'logs' | 'favorites' | 'rating' | 'weekly') => {
     if (movies.length === 0) {
       return (
-        <Card className="p-8 text-center text-muted-foreground">
-          <p>No data yet</p>
-          <p className="text-sm mt-1">Start logging movies to see popular content!</p>
+        <Card className="p-6 text-center text-muted-foreground">
+          <p className="text-sm">No data yet</p>
+          <p className="text-xs mt-1">Start logging movies to see popular content!</p>
         </Card>
       );
     }
 
     return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-2">
         {movies.map((movie, index) => (
           <Link
             key={movie.id}
@@ -71,12 +71,12 @@ export function PopularSection() {
             className="group relative"
           >
             {/* Rank Badge */}
-            <div className="absolute -top-2 -left-2 z-10 bg-primary text-primary-foreground rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold shadow-lg">
+            <div className="absolute -top-1 -left-1 z-10 bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold shadow-lg">
               #{index + 1}
             </div>
 
             {/* Poster */}
-            <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-muted">
+            <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-muted">
               {movie.posterUrl ? (
                 <img
                   src={movie.posterUrl}
@@ -85,39 +85,39 @@ export function PopularSection() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <Film className="h-12 w-12 text-muted-foreground" />
+                  <Film className="h-8 w-8 text-muted-foreground" />
                 </div>
               )}
 
               {/* Overlay with stats */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="absolute bottom-0 left-0 right-0 p-3 space-y-1">
-                  <p className="text-white text-xs font-medium line-clamp-2">{movie.title}</p>
+                <div className="absolute bottom-0 left-0 right-0 p-2 space-y-0.5">
+                  <p className="text-white text-[10px] font-medium line-clamp-2">{movie.title}</p>
                   
                   {showMetric === 'logs' && (
-                    <div className="flex items-center gap-1 text-white text-xs">
-                      <Eye className="h-3 w-3" />
+                    <div className="flex items-center gap-1 text-white text-[10px]">
+                      <Eye className="h-2.5 w-2.5" />
                       <span>{movie.logCount} logs</span>
                     </div>
                   )}
                   
                   {showMetric === 'favorites' && (
-                    <div className="flex items-center gap-1 text-white text-xs">
-                      <Heart className="h-3 w-3 fill-current" />
+                    <div className="flex items-center gap-1 text-white text-[10px]">
+                      <Heart className="h-2.5 w-2.5 fill-current" />
                       <span>{movie.favoriteCount} favorites</span>
                     </div>
                   )}
                   
                   {showMetric === 'rating' && movie.avgRating > 0 && (
-                    <div className="flex items-center gap-1 text-white text-xs">
-                      <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                    <div className="flex items-center gap-1 text-white text-[10px]">
+                      <Star className="h-2.5 w-2.5 fill-yellow-500 text-yellow-500" />
                       <span>{movie.avgRating.toFixed(1)}/10</span>
                     </div>
                   )}
                   
                   {showMetric === 'weekly' && (
-                    <div className="flex items-center gap-1 text-white text-xs">
-                      <TrendingUp className="h-3 w-3" />
+                    <div className="flex items-center gap-1 text-white text-[10px]">
+                      <TrendingUp className="h-2.5 w-2.5" />
                       <span>{movie.weeklyLogs} this week</span>
                     </div>
                   )}
@@ -126,7 +126,7 @@ export function PopularSection() {
             </div>
 
             {/* Title below poster (always visible) */}
-            <p className="mt-2 text-sm font-medium line-clamp-2 text-center">{movie.title}</p>
+            <p className="mt-1 text-xs font-medium line-clamp-2 text-center">{movie.title}</p>
           </Link>
         ))}
       </div>
@@ -142,28 +142,28 @@ export function PopularSection() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <TrendingUp className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Popular on CineLunatic</h2>
+        <TrendingUp className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-bold">Popular on CineLunatic</h2>
       </div>
 
       <Tabs defaultValue="trending" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
-          <TabsTrigger value="trending" className="gap-2">
-            <TrendingUp className="h-4 w-4" />
+        <TabsList className="grid w-full grid-cols-4 mb-4 h-9">
+          <TabsTrigger value="trending" className="gap-1.5 text-xs">
+            <TrendingUp className="h-3.5 w-3.5" />
             Trending
           </TabsTrigger>
-          <TabsTrigger value="logged" className="gap-2">
-            <Eye className="h-4 w-4" />
+          <TabsTrigger value="logged" className="gap-1.5 text-xs">
+            <Eye className="h-3.5 w-3.5" />
             Most Logged
           </TabsTrigger>
-          <TabsTrigger value="favorited" className="gap-2">
-            <Heart className="h-4 w-4" />
+          <TabsTrigger value="favorited" className="gap-1.5 text-xs">
+            <Heart className="h-3.5 w-3.5" />
             Most Favorited
           </TabsTrigger>
-          <TabsTrigger value="rated" className="gap-2">
-            <Star className="h-4 w-4" />
+          <TabsTrigger value="rated" className="gap-1.5 text-xs">
+            <Star className="h-3.5 w-3.5" />
             Top Rated
           </TabsTrigger>
         </TabsList>

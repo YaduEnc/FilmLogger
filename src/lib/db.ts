@@ -1749,4 +1749,316 @@ export const getAllActors = async (userId: string) => {
     }
 };
 
+// ==================== ADMIN STATISTICS ====================
+
+export interface AdminStats {
+    // User Statistics
+    totalUsers: number;
+    newUsersToday: number;
+    newUsersThisWeek: number;
+    newUsersThisMonth: number;
+    activeUsersToday: number;
+    activeUsersThisWeek: number;
+    
+    // Content Statistics
+    totalLogs: number;
+    newLogsToday: number;
+    newLogsThisWeek: number;
+    newLogsThisMonth: number;
+    
+    totalReviews: number;
+    newReviewsToday: number;
+    newReviewsThisWeek: number;
+    newReviewsThisMonth: number;
+    
+    totalLists: number;
+    newListsToday: number;
+    newListsThisWeek: number;
+    newListsThisMonth: number;
+    
+    totalFavorites: number;
+    newFavoritesToday: number;
+    newFavoritesThisWeek: number;
+    
+    // Community Statistics
+    totalConnections: number;
+    newConnectionsToday: number;
+    newConnectionsThisWeek: number;
+    
+    totalPolls: number;
+    newPollsToday: number;
+    newPollsThisWeek: number;
+    
+    totalDebates: number;
+    newDebatesToday: number;
+    newDebatesThisWeek: number;
+    
+    totalComments: number;
+    newCommentsToday: number;
+    newCommentsThisWeek: number;
+    
+    totalActivities: number;
+    newActivitiesToday: number;
+    newActivitiesThisWeek: number;
+    
+    // Engagement
+    avgLogsPerUser: number;
+    avgReviewsPerUser: number;
+    avgListsPerUser: number;
+}
+
+// Get admin statistics
+export const getAdminStats = async (): Promise<AdminStats> => {
+    try {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const monthStart = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
+        
+        // Helper to check if date is within range
+        const isToday = (dateStr: string) => new Date(dateStr) >= todayStart;
+        const isThisWeek = (dateStr: string) => new Date(dateStr) >= weekStart;
+        const isThisMonth = (dateStr: string) => new Date(dateStr) >= monthStart;
+        
+        // Get all users
+        const usersRef = collection(db, "users");
+        const usersSnapshot = await getDocs(usersRef);
+        const allUsers = usersSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const totalUsers = allUsers.length;
+        const newUsersToday = allUsers.filter(u => isToday(u.createdAt)).length;
+        const newUsersThisWeek = allUsers.filter(u => isThisWeek(u.createdAt)).length;
+        const newUsersThisMonth = allUsers.filter(u => isThisMonth(u.createdAt)).length;
+        
+        // Get active users (users with activity today/this week)
+        const activitiesRef = collection(db, "user_activities");
+        const activitiesSnapshot = await getDocs(activitiesRef);
+        const allActivities = activitiesSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const todayActivities = allActivities.filter(a => isToday(a.createdAt));
+        const weekActivities = allActivities.filter(a => isThisWeek(a.createdAt));
+        
+        const activeUsersToday = new Set(todayActivities.map((a: any) => a.userId)).size;
+        const activeUsersThisWeek = new Set(weekActivities.map((a: any) => a.userId)).size;
+        
+        // Get all logs
+        let totalLogs = 0;
+        let newLogsToday = 0;
+        let newLogsThisWeek = 0;
+        let newLogsThisMonth = 0;
+        
+        for (const userDoc of usersSnapshot.docs) {
+            const logsRef = collection(db, "users", userDoc.id, "logs");
+            const logsSnapshot = await getDocs(logsRef);
+            const userLogs = logsSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }));
+            
+            totalLogs += userLogs.length;
+            newLogsToday += userLogs.filter((l: any) => isToday(l.createdAt)).length;
+            newLogsThisWeek += userLogs.filter((l: any) => isThisWeek(l.createdAt)).length;
+            newLogsThisMonth += userLogs.filter((l: any) => isThisMonth(l.createdAt)).length;
+        }
+        
+        // Get reviews
+        const reviewsRef = collection(db, "reviews");
+        const reviewsSnapshot = await getDocs(reviewsRef);
+        const allReviews = reviewsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const totalReviews = allReviews.length;
+        const newReviewsToday = allReviews.filter((r: any) => isToday(r.createdAt)).length;
+        const newReviewsThisWeek = allReviews.filter((r: any) => isThisWeek(r.createdAt)).length;
+        const newReviewsThisMonth = allReviews.filter((r: any) => isThisMonth(r.createdAt)).length;
+        
+        // Get lists
+        let totalLists = 0;
+        let newListsToday = 0;
+        let newListsThisWeek = 0;
+        let newListsThisMonth = 0;
+        
+        for (const userDoc of usersSnapshot.docs) {
+            const listsRef = collection(db, "users", userDoc.id, "lists");
+            const listsSnapshot = await getDocs(listsRef);
+            const userLists = listsSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }));
+            
+            totalLists += userLists.length;
+            newListsToday += userLists.filter((l: any) => isToday(l.createdAt)).length;
+            newListsThisWeek += userLists.filter((l: any) => isThisWeek(l.createdAt)).length;
+            newListsThisMonth += userLists.filter((l: any) => isThisMonth(l.createdAt)).length;
+        }
+        
+        // Get favorites
+        let totalFavorites = 0;
+        let newFavoritesToday = 0;
+        let newFavoritesThisWeek = 0;
+        
+        for (const userDoc of usersSnapshot.docs) {
+            const favoritesRef = collection(db, "users", userDoc.id, "favorites");
+            const favoritesSnapshot = await getDocs(favoritesRef);
+            const userFavorites = favoritesSnapshot.docs.map(doc => ({
+                ...doc.data(),
+                addedAt: safeTimestampToISO(doc.data().addedAt)
+            }));
+            
+            totalFavorites += userFavorites.length;
+            newFavoritesToday += userFavorites.filter((f: any) => f.addedAt && isToday(f.addedAt)).length;
+            newFavoritesThisWeek += userFavorites.filter((f: any) => f.addedAt && isThisWeek(f.addedAt)).length;
+        }
+        
+        // Get connections
+        const connectionsRef = collection(db, "connections");
+        const connectionsSnapshot = await getDocs(connectionsRef);
+        const allConnections = connectionsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            since: safeTimestampToISO(doc.data().since)
+        }));
+        
+        const totalConnections = allConnections.length;
+        const newConnectionsToday = allConnections.filter((c: any) => c.since && isToday(c.since)).length;
+        const newConnectionsThisWeek = allConnections.filter((c: any) => c.since && isThisWeek(c.since)).length;
+        
+        // Get polls
+        const pollsRef = collection(db, "polls");
+        const pollsSnapshot = await getDocs(pollsRef);
+        const allPolls = pollsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const totalPolls = allPolls.length;
+        const newPollsToday = allPolls.filter((p: any) => isToday(p.createdAt)).length;
+        const newPollsThisWeek = allPolls.filter((p: any) => isThisWeek(p.createdAt)).length;
+        
+        // Get debates
+        const debatesRef = collection(db, "debates");
+        const debatesSnapshot = await getDocs(debatesRef);
+        const allDebates = debatesSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const totalDebates = allDebates.length;
+        const newDebatesToday = allDebates.filter((d: any) => isToday(d.createdAt)).length;
+        const newDebatesThisWeek = allDebates.filter((d: any) => isThisWeek(d.createdAt)).length;
+        
+        // Get comments (list comments + debate comments)
+        const listCommentsRef = collection(db, "list_comments");
+        const listCommentsSnapshot = await getDocs(listCommentsRef);
+        const allListComments = listCommentsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const debateCommentsRef = collection(db, "debate_comments");
+        const debateCommentsSnapshot = await getDocs(debateCommentsRef);
+        const allDebateComments = debateCommentsSnapshot.docs.map(doc => ({
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+        
+        const totalComments = allListComments.length + allDebateComments.length;
+        const newCommentsToday = 
+            allListComments.filter((c: any) => isToday(c.createdAt)).length +
+            allDebateComments.filter((c: any) => isToday(c.createdAt)).length;
+        const newCommentsThisWeek = 
+            allListComments.filter((c: any) => isThisWeek(c.createdAt)).length +
+            allDebateComments.filter((c: any) => isThisWeek(c.createdAt)).length;
+        
+        // Activities
+        const totalActivities = allActivities.length;
+        const newActivitiesToday = todayActivities.length;
+        const newActivitiesThisWeek = weekActivities.length;
+        
+        // Calculate averages
+        const avgLogsPerUser = totalUsers > 0 ? parseFloat((totalLogs / totalUsers).toFixed(2)) : 0;
+        const avgReviewsPerUser = totalUsers > 0 ? parseFloat((totalReviews / totalUsers).toFixed(2)) : 0;
+        const avgListsPerUser = totalUsers > 0 ? parseFloat((totalLists / totalUsers).toFixed(2)) : 0;
+        
+        return {
+            totalUsers,
+            newUsersToday,
+            newUsersThisWeek,
+            newUsersThisMonth,
+            activeUsersToday,
+            activeUsersThisWeek,
+            totalLogs,
+            newLogsToday,
+            newLogsThisWeek,
+            newLogsThisMonth,
+            totalReviews,
+            newReviewsToday,
+            newReviewsThisWeek,
+            newReviewsThisMonth,
+            totalLists,
+            newListsToday,
+            newListsThisWeek,
+            newListsThisMonth,
+            totalFavorites,
+            newFavoritesToday,
+            newFavoritesThisWeek,
+            totalConnections,
+            newConnectionsToday,
+            newConnectionsThisWeek,
+            totalPolls,
+            newPollsToday,
+            newPollsThisWeek,
+            totalDebates,
+            newDebatesToday,
+            newDebatesThisWeek,
+            totalComments,
+            newCommentsToday,
+            newCommentsThisWeek,
+            totalActivities,
+            newActivitiesToday,
+            newActivitiesThisWeek,
+            avgLogsPerUser,
+            avgReviewsPerUser,
+            avgListsPerUser
+        };
+    } catch (error) {
+        console.error("Error getting admin stats:", error);
+        throw error;
+    }
+};
+
+// Check if user is admin
+export const isAdmin = async (userId: string): Promise<boolean> => {
+    try {
+        const userDoc = await getDoc(doc(db, "users", userId));
+        const userData = userDoc.data();
+        return userData?.isAdmin === true;
+    } catch (error) {
+        console.error("Error checking admin status:", error);
+        return false;
+    }
+};
+
+// Set user as admin (for initial setup)
+export const setUserAsAdmin = async (userId: string): Promise<void> => {
+    try {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, {
+            isAdmin: true,
+            updatedAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error setting user as admin:", error);
+        throw error;
+    }
+};
+
 

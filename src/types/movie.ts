@@ -307,3 +307,48 @@ export interface UserRecommendation {
   
   recommendationScore: number; // Overall score
 }
+
+// ==================== ADMIN ANALYTICS ====================
+export interface AdminStats {
+  // User Metrics
+  totalUsers: number;
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  newUsersThisMonth: number;
+  activeUsersToday: number;
+  activeUsersThisWeek: number;
+  
+  // Content Metrics
+  totalLogs: number;
+  newLogsToday: number;
+  newLogsThisWeek: number;
+  totalReviews: number;
+  newReviewsToday: number;
+  newReviewsThisWeek: number;
+  totalLists: number;
+  newListsToday: number;
+  totalComments: number;
+  newCommentsToday: number;
+  
+  // Engagement Metrics
+  totalConnections: number;
+  newConnectionsToday: number;
+  totalPolls: number;
+  newPollsToday: number;
+  totalDebates: number;
+  newDebatesToday: number;
+  totalMessages: number;
+  newMessagesToday: number;
+  
+  // Growth Trends
+  userGrowth: { date: string; count: number }[];
+  activityGrowth: { date: string; logs: number; reviews: number; comments: number }[];
+  
+  // Top Content
+  topMovies: { movieId: number; title: string; logCount: number; favoriteCount: number }[];
+  topUsers: { uid: string; username: string; displayName: string; activityCount: number }[];
+  
+  // Time-based breakdowns
+  hourlyActivity: { hour: number; count: number }[];
+  dailyActivity: { date: string; count: number }[];
+}

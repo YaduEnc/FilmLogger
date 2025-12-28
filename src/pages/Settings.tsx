@@ -9,9 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Divider } from "@/components/ui/divider";
 import { Switch } from "@/components/ui/switch";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Download, Trash2, Loader2, Save, AtSign, Globe, Lock, Check, X } from "lucide-react";
+import { ArrowLeft, Download, Trash2, Loader2, Save, AtSign, Globe, Lock, Check, X, Shield } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserData, updateUserData, checkUsernameAvailable, deleteUserAccount } from "@/lib/db";
+import { getUserData, updateUserData, checkUsernameAvailable, deleteUserAccount, isAdmin } from "@/lib/db";
 import { updateProfile, deleteUser } from "firebase/auth";
 import { toast } from "sonner";
 
@@ -29,6 +29,7 @@ export default function Settings() {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [userIsAdmin, setUserIsAdmin] = useState(false);
 
   useEffect(() => {
     async function loadSettings() {
@@ -42,6 +43,9 @@ export default function Settings() {
           setCurrentUsername(userData.username || "");
           setIsPublic(userData.isPublic !== false);
         }
+        // Check admin status
+        const adminStatus = await isAdmin(user.uid);
+        setUserIsAdmin(adminStatus);
       } catch (error) {
         console.error("Failed to load settings:", error);
       } finally {
@@ -257,6 +261,28 @@ export default function Settings() {
         </section>
 
         <Divider className="my-12 opacity-50" />
+
+        {/* Admin Section */}
+        {userIsAdmin && (
+          <>
+            <section className="space-y-4">
+              <H3 className="text-xl">Administration</H3>
+              <div className="bg-muted/5 p-6 rounded-2xl border border-border/50 space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Access the admin dashboard to monitor platform statistics, user activity, and content metrics.
+                </p>
+                <Link to="/admin">
+                  <Button className="gap-2 rounded-full h-10 px-5 transition-all hover:bg-primary/90">
+                    <Shield className="h-4 w-4" />
+                    Admin Dashboard
+                  </Button>
+                </Link>
+              </div>
+            </section>
+
+            <Divider className="my-12 opacity-50" />
+          </>
+        )}
 
         {/* Data & Export */}
         <section className="space-y-4">
