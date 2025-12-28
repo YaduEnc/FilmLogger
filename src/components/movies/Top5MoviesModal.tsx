@@ -165,23 +165,51 @@ export function Top5MoviesModal({ isOpen, onClose, onSave, currentTop5 = [] }: T
               {/* Search Results */}
               {searchResults.length > 0 && (
                 <div className="grid grid-cols-5 gap-3 max-h-60 overflow-y-auto">
-                  {searchResults.map((movie) => (
-                    <button
-                      key={movie.id}
-                      onClick={() => addMovie(movie)}
-                      disabled={selectedMovies.some(m => m.id === movie.id)}
-                      className="relative group disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <MovieCard movie={movie} size="sm" />
-                      {selectedMovies.some(m => m.id === movie.id) && (
-                        <div className="absolute inset-0 bg-primary/20 rounded flex items-center justify-center">
-                          <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
-                            ✓
+                  {searchResults.map((movie) => {
+                    const isSelected = selectedMovies.some(m => m.id === movie.id);
+                    return (
+                      <button
+                        key={movie.id}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          addMovie(movie);
+                        }}
+                        disabled={isSelected}
+                        className="relative group disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-primary rounded-sm"
+                      >
+                        {/* Custom movie display without Link */}
+                        <div className="relative w-20">
+                          <div className="aspect-[2/3] bg-muted rounded-sm overflow-hidden border border-border">
+                            {movie.posterUrl ? (
+                              <img
+                                src={movie.posterUrl}
+                                alt={movie.title}
+                                className="w-full h-full object-cover transition-opacity group-hover:opacity-90"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <span className="text-xs text-center px-1 leading-tight">
+                                  {movie.title}
+                                </span>
+                              </div>
+                            )}
                           </div>
+                          {/* Title below poster */}
+                          <p className="mt-1 text-[10px] font-medium leading-tight truncate text-center">
+                            {movie.title}
+                          </p>
                         </div>
-                      )}
-                    </button>
-                  ))}
+                        {isSelected && (
+                          <div className="absolute inset-0 bg-primary/20 rounded-sm flex items-center justify-center pointer-events-none">
+                            <div className="bg-primary text-primary-foreground rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold">
+                              ✓
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>

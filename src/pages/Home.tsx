@@ -8,8 +8,8 @@ import { MovieCard } from "@/components/movies/MovieCard";
 import { PopularSection } from "@/components/movies/PopularSection";
 import { UpcomingReleases } from "@/components/movies/UpcomingReleases";
 import { Divider } from "@/components/ui/divider";
-import { Plus, Search, Clock, Film, Loader2, Tv, Clapperboard, TrendingUp, Star, Calendar, Flame, ChevronLeft, ChevronRight, Play, Info } from "lucide-react";
-import { LogEntry, Movie, UserStats } from "@/types/movie";
+import { Plus, Search, Clock, Film, Loader2, Tv, Clapperboard, TrendingUp, Star, Calendar, ChevronLeft, ChevronRight, Play, Info } from "lucide-react";
+import { LogEntry, Movie } from "@/types/movie";
 import {
   getTrendingMovies,
   getPopularMovies,
@@ -20,7 +20,7 @@ import {
   getUpcomingMovies
 } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
-import { getUserLogs, getUserStats, getUserLists } from "@/lib/db";
+import { getUserLogs, getUserLists } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
 // Horizontal Scroll Component
@@ -106,40 +106,7 @@ export default function Home() {
   const [onTheAirTV, setOnTheAirTV] = useState<Movie[]>([]);
   const [upcomingMovies, setUpcomingMovies] = useState<Movie[]>([]);
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [weekStreak, setWeekStreak] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Calculate viewing streak
-  const calculateStreak = (logs: LogEntry[]) => {
-    if (logs.length === 0) return 0;
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const sortedLogs = [...logs].sort((a, b) => 
-      new Date(b.watchedDate).getTime() - new Date(a.watchedDate).getTime()
-    );
-    
-    let streak = 0;
-    let currentDate = new Date(today);
-    
-    for (const log of sortedLogs) {
-      const logDate = new Date(log.watchedDate);
-      logDate.setHours(0, 0, 0, 0);
-      
-      const diffDays = Math.floor((currentDate.getTime() - logDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === streak) {
-        streak++;
-        currentDate = new Date(logDate);
-      } else if (diffDays > streak) {
-        break;
-      }
-    }
-    
-    return streak;
-  };
 
   useEffect(() => {
     async function loadData() {
@@ -179,17 +146,10 @@ export default function Home() {
         setOnTheAirTV(onTheAirTVData.movies.slice(0, 12));
 
         if (user) {
-          const [fetchedLogs, fetchedLists] = await Promise.all([
-            getUserLogs(user.uid, { limitCount: 50 }),
-            getUserLists(user.uid)
+          const [fetchedLogs] = await Promise.all([
+            getUserLogs(user.uid, { limitCount: 50 })
           ]);
           setRecentLogs(fetchedLogs.slice(0, 5));
-          const calculatedStats = await getUserStats(fetchedLogs, fetchedLists.length);
-          setStats(calculatedStats as any);
-          
-          // Calculate streak
-          const streak = calculateStreak(fetchedLogs);
-          setWeekStreak(streak);
         }
       } catch (error) {
         console.error("Failed to load home data:", error);
@@ -326,60 +286,6 @@ export default function Home() {
       </div>
 
       <div className="container mx-auto px-6 py-8">
-
-        {/* Quick Stats Bar */}
-        {user && stats && (
-          <div className="stats-bar grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
-            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-              <div className="flex items-center justify-center gap-1.5 mb-0.5">
-                <Flame className="h-3.5 w-3.5 text-orange-500" />
-                <p className="text-xl font-serif font-bold">{weekStreak}</p>
-              </div>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Day Streak</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-              <p className="text-xl font-serif font-bold mb-0.5">{stats.thisYearWatched}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">This Year</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-              <p className="text-xl font-serif font-bold mb-0.5">{stats.avgRating}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Avg Rating</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-lg border border-border/50 text-center">
-              <p className="text-xl font-serif font-bold mb-0.5">{stats.totalWatched}</p>
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total Films</p>
-            </div>
-          </div>
-        )}
-
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-3 mb-12">
-            <Link to="/log">
-              <Button className="gap-2 h-10 px-5 rounded-full shadow-lg shadow-primary/5">
-                <Plus className="h-4 w-4" />
-              Log Entry
-              </Button>
-            </Link>
-            <Link to="/search">
-              <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
-                <Search className="h-4 w-4" />
-              Explore
-              </Button>
-            </Link>
-            <Link to="/diary">
-              <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
-                <Clock className="h-4 w-4" />
-                Diary
-              </Button>
-            </Link>
-          <Link to="/lists">
-            <Button variant="outline" className="gap-2 h-10 px-5 rounded-full">
-              <Film className="h-4 w-4" />
-              Lists
-            </Button>
-          </Link>
-        </div>
-
         {/* Loading State */}
         {isLoading && (
           <div className="flex items-center justify-center py-24">
