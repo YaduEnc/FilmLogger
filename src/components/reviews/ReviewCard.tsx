@@ -31,7 +31,7 @@ export function ReviewCard({ review }: ReviewCardProps) {
         }
         setIsLiking(true);
         try {
-            const added = await toggleEntityLike(user.uid, review.id, 'review');
+            const added = await toggleEntityLike(user.uid, review.id, 'review', user.displayName || 'Someone', user.photoURL || undefined);
             setLikes(prev => added ? prev + 1 : prev - 1);
         } catch (error) {
             toast.error("Action failed");
@@ -166,21 +166,52 @@ export function ReviewCard({ review }: ReviewCardProps) {
                         </div>
                     ) : (
                         <>
-                            {comments.map((comment) => (
-                                <div key={comment.id} className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                        <Avatar className="h-6 w-6">
-                                            <AvatarImage src={comment.authorPhoto} />
-                                            <AvatarFallback className="text-[8px]">{comment.authorName.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="text-[11px] font-serif font-medium">{comment.authorName}</span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : "just now"}
-                                        </span>
+                            {comments.map((comment) => {
+                                const [commentLikes, setCommentLikes] = useState(comment.likeCount || 0);
+                                const [isLikingComment, setIsLikingComment] = useState(false);
+
+                                const handleLikeComment = async () => {
+                                    if (!user) {
+                                        toast.error("Please sign in to like comments");
+                                        return;
+                                    }
+                                    setIsLikingComment(true);
+                                    try {
+                                        const added = await toggleEntityLike(user.uid, comment.id, 'comment', user.displayName || 'Someone', user.photoURL || undefined);
+                                        setCommentLikes(prev => added ? prev + 1 : prev - 1);
+                                    } catch (error) {
+                                        toast.error("Action failed");
+                                    } finally {
+                                        setIsLikingComment(false);
+                                    }
+                                };
+
+                                return (
+                                    <div key={comment.id} className="space-y-2 group/comment">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={comment.authorPhoto} />
+                                                    <AvatarFallback className="text-[8px]">{comment.authorName.charAt(0)}</AvatarFallback>
+                                                </Avatar>
+                                                <span className="text-[11px] font-serif font-medium">{comment.authorName}</span>
+                                                <span className="text-[10px] text-muted-foreground">
+                                                    {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : "just now"}
+                                                </span>
+                                            </div>
+                                            <button
+                                                onClick={handleLikeComment}
+                                                disabled={isLikingComment}
+                                                className="flex items-center gap-1.5 opacity-0 group-hover/comment:opacity-100 transition-opacity"
+                                            >
+                                                <Heart className={cn("h-3 w-3 text-muted-foreground hover:text-destructive", commentLikes > 0 && "fill-destructive text-destructive")} />
+                                                <span className="text-[10px] text-muted-foreground">{commentLikes}</span>
+                                            </button>
+                                        </div>
+                                        <p className="text-sm text-foreground/80 pl-8 leading-relaxed">{comment.text}</p>
                                     </div>
-                                    <p className="text-sm text-foreground/80 pl-8 leading-relaxed">{comment.text}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
 
                             {user ? (
                                 <div className="flex gap-3 pt-2">

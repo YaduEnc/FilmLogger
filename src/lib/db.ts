@@ -17,7 +17,7 @@ import {
     runTransaction
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { LogEntry, Movie, MovieList, Review, ReviewComment, TVProgress } from "@/types/movie";
+import { LogEntry, Movie, MovieList, Notification, Review, ReviewComment, TVProgress } from "@/types/movie";
 
 // Community Ratings & Genres
 export const updateCommunityRating = async (userId: string, mediaId: string, mediaType: 'movie' | 'tv', rating: number) => {
@@ -196,7 +196,7 @@ export const getUserCommunityInteraction = async (userId: string, mediaId: strin
 export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" | "createdAt" | "updatedAt">) => {
     try {
         const logsRef = collection(db, "users", userId, "logs");
-        
+
         // Check if this is a rewatch
         const existingLogsQuery = query(
             logsRef,
@@ -205,19 +205,19 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
         const existingLogs = await getDocs(existingLogsQuery);
         const isRewatch = existingLogs.size > 0;
         const rewatchCount = existingLogs.size;
-        
+
         // Clean undefined fields from the movie object and the entire entry
         const cleanedEntry = cleanUndefinedFields({
             ...entry,
-            movie: cleanUndefinedFields(entry.movie), 
-            userId, 
+            movie: cleanUndefinedFields(entry.movie),
+            userId,
             isRewatch,
             rewatchCount,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             watchedDate: Timestamp.fromDate(new Date(entry.watchedDate))
         });
-        
+
         const docRef = await addDoc(logsRef, cleanedEntry);
 
         // Update community rating if rating is provided
@@ -274,6 +274,34 @@ export const getUserLogs = async (userId: string, options: { currentUserId?: str
     }
 };
 
+export const getUserActivityData = async (userId: string) => {
+    try {
+        const logsRef = collection(db, "users", userId, "logs");
+        // Strictly track Movie Logs for the heatmap
+        const q = query(
+            logsRef,
+            orderBy("watchedDate", "desc"),
+            limit(1000)
+        );
+
+        const querySnapshot = await getDocs(q);
+        const counts: Record<string, number> = {};
+
+        querySnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const date = safeTimestampToISO(data.watchedDate).split('T')[0];
+            counts[date] = (counts[date] || 0) + 1;
+        });
+
+        return Object.entries(counts).map(([date, count]) => ({ date, count }));
+    } catch (error) {
+        console.error("Error getting activity data:", error);
+        return [];
+    }
+};
+
+
+
 
 export const getMovieLogs = async (userId: string, movieId: number, mediaType: 'movie' | 'tv' = 'movie') => {
     try {
@@ -308,7 +336,7 @@ const cleanUndefinedFields = (obj: any): any => {
         const value = obj[key];
         if (value !== undefined) {
             if (Array.isArray(value)) {
-                cleaned[key] = value.map(item => 
+                cleaned[key] = value.map(item =>
                     typeof item === 'object' && item !== null ? cleanUndefinedFields(item) : item
                 );
             } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
@@ -324,20 +352,20 @@ const cleanUndefinedFields = (obj: any): any => {
 // Helper function to safely convert Firestore Timestamp to ISO string
 const safeTimestampToISO = (value: any): string => {
     if (!value) return new Date().toISOString();
-    
+
     // If it's already a string, return it
     if (typeof value === 'string') return value;
-    
+
     // If it's a Firestore Timestamp, convert it
     if (value && typeof value.toDate === 'function') {
         return value.toDate().toISOString();
     }
-    
+
     // If it's a Date object
     if (value instanceof Date) {
         return value.toISOString();
     }
-    
+
     // Fallback
     return new Date().toISOString();
 };
@@ -688,12 +716,12 @@ export const getUserFriends = async (userId: string) => {
         const connectionsRef = collection(db, "connections");
         const q = query(connectionsRef, where("uids", "array-contains", userId));
         const snapshot = await getDocs(q);
-        
+
         const friendIds = snapshot.docs.map(doc => {
             const uids = doc.data().uids;
             return uids.find((uid: string) => uid !== userId);
         }).filter(Boolean);
-        
+
         // Get user details for each friend
         const friends = await Promise.all(
             friendIds.map(async (friendId) => {
@@ -707,7 +735,7 @@ export const getUserFriends = async (userId: string) => {
                 return null;
             })
         );
-        
+
         return friends.filter(Boolean);
     } catch (error) {
         console.error("Error getting user friends:", error);
@@ -762,14 +790,24 @@ export const logActivity = async (activity: {
 export const getRecentActivities = async (limitCount: number = 50) => {
     try {
         const activitiesRef = collection(db, "user_activities");
-        const q = query(activitiesRef, orderBy("createdAt", "desc"), limit(limitCount));
+        // Exclude simple 'log' or 'watched' entries to keep the feed high-signal
+        const q = query(
+            activitiesRef,
+            where("type", "!=", "log"),
+            orderBy("type"), // Required for inequality filters
+            orderBy("createdAt", "desc"),
+            limit(limitCount)
+        );
         const snapshot = await getDocs(q);
-        
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: safeTimestampToISO(doc.data().createdAt)
-        }));
+
+        return snapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }))
+            // Secondary client-side filter for 'watched' if needed, but 'log' is the main one to exclude
+            .filter((a: any) => a.type !== 'watched');
     } catch (error) {
         console.error("Error getting recent activities:", error);
         return [];
@@ -783,30 +821,26 @@ export const getUserActivities = async (userId: string, limitCount: number = 20)
         const q = query(
             activitiesRef,
             where("userId", "==", userId),
+            where("type", "!=", "log"),
+            orderBy("type"),
             orderBy("createdAt", "desc"),
             limit(limitCount)
         );
         const snapshot = await getDocs(q);
-        
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            createdAt: safeTimestampToISO(doc.data().createdAt)
-        }));
+
+        return snapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }))
+            .filter((a: any) => a.type !== 'watched');
     } catch (error: any) {
-        // If index error, provide helpful message
-        if (error?.code === 'failed-precondition' || error?.message?.includes('index')) {
-            const indexUrl = error?.message?.match(/https:\/\/[^\s]+/)?.[0];
-            if (indexUrl) {
-                console.warn("Firestore index required. Create it here:", indexUrl);
-            } else {
-                console.warn("Firestore index required for user_activities collection. Please create a composite index on userId (Ascending) and createdAt (Descending)");
-            }
-        }
         console.error("Error getting user activities:", error);
         return [];
     }
 };
+
 
 // ==================== MOVIE STATISTICS ====================
 
@@ -823,7 +857,7 @@ export const updateMovieStats = async (
         const statsId = `${mediaType}_${movieId}`;
         const statsRef = doc(db, "movie_stats", statsId);
         const statsDoc = await getDoc(statsRef);
-        
+
         if (!statsDoc.exists()) {
             // Create new stats document
             await setDoc(statsRef, {
@@ -848,7 +882,7 @@ export const updateMovieStats = async (
             const updates: any = {
                 lastUpdated: serverTimestamp()
             };
-            
+
             if (action === 'log') {
                 updates.logCount = (currentData.logCount || 0) + 1;
                 updates.weeklyLogs = (currentData.weeklyLogs || 0) + 1;
@@ -860,7 +894,7 @@ export const updateMovieStats = async (
             } else if (action === 'watchlist') {
                 updates.watchlistCount = (currentData.watchlistCount || 0) + 1;
             }
-            
+
             if (rating) {
                 const newRatingSum = (currentData.ratingSum || 0) + rating;
                 const newRatingCount = (currentData.ratingCount || 0) + 1;
@@ -868,7 +902,7 @@ export const updateMovieStats = async (
                 updates.ratingCount = newRatingCount;
                 updates.avgRating = newRatingSum / newRatingCount;
             }
-            
+
             await updateDoc(statsRef, updates);
         }
     } catch (error) {
@@ -883,11 +917,11 @@ export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]
         const statsRef = collection(db, "movie_stats");
         const statsQuery = query(statsRef, limit(200));
         const statsSnapshot = await getDocs(statsQuery);
-        
+
         // Get all comments to count per movie
         const commentsRef = collection(db, "comments");
         const commentsSnapshot = await getDocs(query(commentsRef, limit(1000))); // Limit to avoid huge queries
-        
+
         // Group comments by reviewId, then get reviews to map to movies
         const reviewCommentMap = new Map<string, number>();
         commentsSnapshot.docs.forEach(doc => {
@@ -897,15 +931,15 @@ export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]
                 reviewCommentMap.set(reviewId, (reviewCommentMap.get(reviewId) || 0) + 1);
             }
         });
-        
+
         // Get reviews to map comments to movies
         const reviewIds = Array.from(reviewCommentMap.keys());
         const movieCommentMap = new Map<number, number>();
-        
+
         if (reviewIds.length > 0) {
             const reviewPromises = reviewIds.slice(0, 500).map(reviewId => getDoc(doc(db, "reviews", reviewId)));
             const reviewDocs = await Promise.all(reviewPromises);
-            
+
             reviewDocs.forEach((reviewDoc, index) => {
                 if (reviewDoc.exists()) {
                     const reviewData = reviewDoc.data() as Review;
@@ -915,7 +949,7 @@ export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]
                 }
             });
         }
-        
+
         // Also get comment counts from review.commentCount field as fallback
         const reviewsRef = collection(db, "reviews");
         const reviewsQuery = query(reviewsRef, where("commentCount", ">", 0), limit(500));
@@ -931,7 +965,7 @@ export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]
             // If index doesn't exist, continue without this data
             console.log("Could not fetch reviews with comments, continuing...");
         }
-        
+
         // Calculate trending score for each movie
         const moviesWithScore = statsSnapshot.docs.map(doc => {
             const data = doc.data();
@@ -942,22 +976,22 @@ export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]
             const avgRating = data.avgRating || 0;
             const ratingCount = data.ratingCount || 0;
             const commentCount = movieCommentMap.get(movieId) || 0;
-            
+
             // Calculate weighted trending score
             // Weekly logs: 3x (recent activity is most important)
             // Favorites: 2x (shows strong engagement)
             // Ratings: normalized (rating * count) - 1.5x
             // Comments: 2x (shows discussion)
             // Total logs: 1x (baseline engagement)
-            
+
             const weeklyScore = weeklyLogs * 3;
             const favoriteScore = favoriteCount * 2;
             const ratingScore = (avgRating * ratingCount) * 1.5;
             const commentScore = commentCount * 2;
             const logScore = logCount * 1;
-            
+
             const trendingScore = weeklyScore + favoriteScore + ratingScore + commentScore + logScore;
-            
+
             return {
                 id: doc.id,
                 movieId,
@@ -975,10 +1009,10 @@ export const getUnifiedTrending = async (limitCount: number = 20): Promise<any[]
                 trendingScore
             };
         });
-        
+
         // Sort by trending score (descending)
         moviesWithScore.sort((a, b) => b.trendingScore - a.trendingScore);
-        
+
         return moviesWithScore.slice(0, limitCount);
     } catch (error) {
         console.error("Error getting unified trending movies:", error);
@@ -994,48 +1028,48 @@ export const getRecommendedUsers = async (currentUserId: string, limitCount: num
         // Get all users except current user
         const usersRef = collection(db, "users");
         const usersSnapshot = await getDocs(usersRef);
-        
+
         // Get current user's data
         const currentUserDoc = await getDoc(doc(db, "users", currentUserId));
         if (!currentUserDoc.exists()) return [];
-        
+
         // Get current user's logs to find common movies
         const currentUserLogs = await getUserLogs(currentUserId);
         const currentUserMovieIds = new Set(currentUserLogs.map(log => log.movieId));
-        
+
         // Get current user's connections to exclude them
         const connections = await getUserFriends(currentUserId);
         const connectedUserIds = new Set(connections.map((f: any) => f.uid));
-        
+
         const recommendations = [];
-        
+
         for (const userDoc of usersSnapshot.docs) {
             if (userDoc.id === currentUserId || connectedUserIds.has(userDoc.id)) continue;
-            
+
             const userData = userDoc.data();
-            
+
             // Get user's logs
             const userLogs = await getUserLogs(userDoc.id);
             const userMovieIds = new Set(userLogs.map(log => log.movieId));
-            
+
             // Calculate common movies
             const commonMovies = [...currentUserMovieIds].filter(id => userMovieIds.has(id)).length;
-            
+
             // Calculate activity score (recent activity)
             const recentActivities = await getUserActivities(userDoc.id, 10);
             const activityScore = recentActivities.length;
-            
+
             // Check if new user (joined in last 30 days)
             const createdAt = new Date(userData.createdAt);
             const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
             const isNewUser = createdAt > thirtyDaysAgo;
-            
+
             // Calculate recommendation score
-            const recommendationScore = 
+            const recommendationScore =
                 (commonMovies * 10) + // Common movies weight heavily
                 (activityScore * 2) + // Active users
                 (isNewUser ? 5 : 0); // Boost for new users
-            
+
             if (recommendationScore > 0) {
                 recommendations.push({
                     uid: userDoc.id,
@@ -1053,7 +1087,7 @@ export const getRecommendedUsers = async (currentUserId: string, limitCount: num
                 });
             }
         }
-        
+
         // Sort by recommendation score and limit
         return recommendations
             .sort((a, b) => b.recommendationScore - a.recommendationScore)
@@ -1069,19 +1103,19 @@ export const getMostActiveUsers = async (currentUserId: string, limitCount: numb
     try {
         const usersRef = collection(db, "users");
         const usersSnapshot = await getDocs(usersRef);
-        
+
         const connections = await getUserFriends(currentUserId);
         const connectedUserIds = new Set(connections.map((f: any) => f.uid));
-        
+
         const usersWithActivity = [];
-        
+
         for (const userDoc of usersSnapshot.docs) {
             if (userDoc.id === currentUserId || connectedUserIds.has(userDoc.id)) continue;
-            
+
             const userData = userDoc.data();
             const recentActivities = await getUserActivities(userDoc.id, 20);
             const userLogs = await getUserLogs(userDoc.id);
-            
+
             if (recentActivities.length > 0) {
                 usersWithActivity.push({
                     uid: userDoc.id,
@@ -1095,7 +1129,7 @@ export const getMostActiveUsers = async (currentUserId: string, limitCount: numb
                 });
             }
         }
-        
+
         return usersWithActivity
             .sort((a, b) => b.activityScore - a.activityScore)
             .slice(0, limitCount);
@@ -1110,19 +1144,19 @@ export const getNewUsers = async (currentUserId: string, limitCount: number = 8)
     try {
         const usersRef = collection(db, "users");
         const usersSnapshot = await getDocs(usersRef);
-        
+
         const connections = await getUserFriends(currentUserId);
         const connectedUserIds = new Set(connections.map((f: any) => f.uid));
-        
+
         const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         const newUsers = [];
-        
+
         for (const userDoc of usersSnapshot.docs) {
             if (userDoc.id === currentUserId || connectedUserIds.has(userDoc.id)) continue;
-            
+
             const userData = userDoc.data();
             const createdAt = new Date(userData.createdAt);
-            
+
             if (createdAt > thirtyDaysAgo) {
                 const userLogs = await getUserLogs(userDoc.id);
                 newUsers.push({
@@ -1136,7 +1170,7 @@ export const getNewUsers = async (currentUserId: string, limitCount: number = 8)
                 });
             }
         }
-        
+
         return newUsers
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
             .slice(0, limitCount);
@@ -1182,6 +1216,18 @@ export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "li
             commentCount: 0,
             createdAt: serverTimestamp()
         });
+
+        // Log social activity
+        logActivity({
+            userId: review.authorUid,
+            userName: review.authorName,
+            userPhoto: review.authorPhoto,
+            type: 'review',
+            movieId: review.movieId,
+            movieTitle: (review as any).movieTitle || 'Film', // Assuming movieTitle might be passed
+            mediaType: review.mediaType
+        }).catch(console.error);
+
         return docRef.id;
     } catch (error) {
         console.error("Error submitting review:", error);
@@ -1221,6 +1267,20 @@ export const submitComment = async (comment: Omit<ReviewComment, "id" | "created
             commentCount: (reviewSnapshot.data()?.commentCount || 0) + 1
         });
 
+        // Trigger Notification
+        const reviewData = reviewSnapshot.data();
+        if (reviewData && reviewData.authorUid !== comment.authorUid) {
+            await createNotification({
+                recipientId: reviewData.authorUid,
+                senderId: comment.authorUid,
+                senderName: comment.authorName,
+                senderPhoto: comment.authorPhoto,
+                type: 'comment_review',
+                reviewId: comment.reviewId,
+                text: comment.text
+            });
+        }
+
         return docRef.id;
     } catch (error) {
         console.error("Error submitting comment:", error);
@@ -1244,24 +1304,71 @@ export const getReviewComments = async (reviewId: string) => {
     }
 };
 
-export const toggleEntityLike = async (userId: string, entityId: string, entityType: 'review' | 'comment' | 'list') => {
+export const toggleEntityLike = async (
+    userId: string,
+    entityId: string,
+    entityType: 'review' | 'comment' | 'list',
+    senderName?: string,
+    senderPhoto?: string
+) => {
     try {
         const likeRef = doc(db, `${entityType}_likes`, `${entityId}_${userId}`);
-        const entityRef = doc(db, entityType === 'review' ? 'reviews' : entityType === 'comment' ? 'comments' : 'users/' + userId + '/lists', entityId);
+        let entityRef: any;
 
-        const likeDoc = await getDoc(likeRef);
+        if (entityType === 'review') {
+            entityRef = doc(db, 'reviews', entityId);
+        } else if (entityType === 'comment') {
+            entityRef = doc(db, 'comments', entityId);
+        } else {
+            // For lists, we should use toggleListLike, but providing fallback
+            // This path is likely legacy or needsuserId/ownerId context
+            console.warn("toggleEntityLike called for list - recommended to use toggleListLike");
+            return false;
+        }
 
-        if (likeDoc.exists()) {
+        const likeSnap = await getDoc(likeRef);
+        const entitySnap = await getDoc(entityRef);
+
+        if (!entitySnap.exists()) throw new Error("Entity does not exist");
+        const entityData = entitySnap.data();
+
+        if (likeSnap.exists()) {
             await deleteDoc(likeRef);
             await updateDoc(entityRef, {
-                likeCount: (await getDoc(entityRef)).data()?.likeCount - 1
+                likeCount: Math.max(0, ((entityData as any).likeCount || 0) - 1)
             });
             return false;
         } else {
             await setDoc(likeRef, { userId, entityId, createdAt: serverTimestamp() });
             await updateDoc(entityRef, {
-                likeCount: ((await getDoc(entityRef)).data()?.likeCount || 0) + 1
+                likeCount: ((entityData as any).likeCount || 0) + 1
             });
+
+            // Trigger Notification
+            const recipientId = (entityData as any).authorUid || (entityData as any).senderId;
+            if (recipientId && recipientId !== userId) {
+                await createNotification({
+                    recipientId,
+                    senderId: userId,
+                    senderName: senderName || 'Someone',
+                    senderPhoto: senderPhoto,
+                    type: entityType === 'review' ? 'like_review' : 'like_comment',
+                    reviewId: entityType === 'review' ? entityId : (entityData as any).reviewId,
+                    movieTitle: (entityData as any).movieTitle
+                });
+            }
+
+            // Log social activity for the community feed
+            logActivity({
+                userId,
+                userName: senderName || 'Anonymous',
+                userPhoto: senderPhoto,
+                type: `like_${entityType}`,
+                movieId: (entityData as any).movieId,
+                movieTitle: (entityData as any).movieTitle || 'Film',
+                mediaType: (entityData as any).mediaType || 'movie'
+            }).catch(console.error);
+
             return true;
         }
     } catch (error) {
@@ -1464,7 +1571,7 @@ export const votePoll = async (pollId: string, optionId: string, userId: string)
     try {
         const voteRef = doc(db, "poll_votes", `${pollId}_${userId}`);
         const voteDoc = await getDoc(voteRef);
-        
+
         if (voteDoc.exists()) {
             throw new Error("You have already voted on this poll");
         }
@@ -1472,19 +1579,19 @@ export const votePoll = async (pollId: string, optionId: string, userId: string)
         await runTransaction(db, async (transaction) => {
             const pollRef = doc(db, "polls", pollId);
             const pollDoc = await transaction.get(pollRef);
-            
+
             if (!pollDoc.exists()) throw new Error("Poll not found");
-            
+
             const pollData = pollDoc.data();
-            const options = pollData.options.map((opt: any) => 
+            const options = pollData.options.map((opt: any) =>
                 opt.id === optionId ? { ...opt, votes: opt.votes + 1 } : opt
             );
-            
+
             transaction.update(pollRef, {
                 options,
                 totalVotes: pollData.totalVotes + 1
             });
-            
+
             transaction.set(voteRef, {
                 pollId,
                 optionId,
@@ -1547,27 +1654,27 @@ export const voteDebate = async (debateId: string, side: 1 | 2, userId: string) 
     try {
         const voteRef = doc(db, "debate_votes", `${debateId}_${userId}`);
         const voteDoc = await getDoc(voteRef);
-        
+
         await runTransaction(db, async (transaction) => {
             const debateRef = doc(db, "debates", debateId);
             const debateDoc = await transaction.get(debateRef);
-            
+
             if (!debateDoc.exists()) throw new Error("Debate not found");
-            
+
             const debateData = debateDoc.data();
             let side1Votes = debateData.side1Votes;
             let side2Votes = debateData.side2Votes;
-            
+
             if (voteDoc.exists()) {
                 // Change vote
                 const oldSide = voteDoc.data().side;
                 if (oldSide === 1) side1Votes--;
                 else side2Votes--;
             }
-            
+
             if (side === 1) side1Votes++;
             else side2Votes++;
-            
+
             transaction.update(debateRef, { side1Votes, side2Votes });
             transaction.set(voteRef, {
                 debateId,
@@ -1601,14 +1708,14 @@ export const addDebateComment = async (comment: any) => {
             likeCount: 0,
             createdAt: serverTimestamp()
         });
-        
+
         // Increment comment count
         const debateRef = doc(db, "debates", comment.debateId);
         const debateDoc = await getDoc(debateRef);
         await updateDoc(debateRef, {
             commentCount: (debateDoc.data()?.commentCount || 0) + 1
         });
-        
+
         return docRef.id;
     } catch (error) {
         console.error("Error adding debate comment:", error);
@@ -1637,14 +1744,14 @@ export const getPublicLists = async (limitCount: number = 20) => {
     try {
         const usersRef = collection(db, "users");
         const usersSnapshot = await getDocs(usersRef);
-        
+
         const allLists: any[] = [];
-        
+
         for (const userDoc of usersSnapshot.docs) {
             const listsRef = collection(db, "users", userDoc.id, "lists");
             const q = query(listsRef, where("visibility", "==", "public"));
             const listsSnapshot = await getDocs(q);
-            
+
             listsSnapshot.docs.forEach(listDoc => {
                 allLists.push({
                     id: listDoc.id,
@@ -1656,14 +1763,241 @@ export const getPublicLists = async (limitCount: number = 20) => {
                 });
             });
         }
-        
+
         // Sort by creation date
         allLists.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        
+
         return allLists.slice(0, limitCount);
     } catch (error) {
         console.error("Error getting public lists:", error);
         return [];
+    }
+};
+
+export const getList = async (userId: string, listId: string) => {
+    try {
+        const listRef = doc(db, "users", userId, "lists", listId);
+        const listSnap = await getDoc(listRef);
+
+        if (!listSnap.exists()) return null;
+
+        const userData = await getDoc(doc(db, "users", userId));
+
+        return {
+            id: listSnap.id,
+            userId,
+            userName: userData.exists() ? userData.data().displayName : 'Anonymous',
+            userPhoto: userData.exists() ? userData.data().photoURL : undefined,
+            ...listSnap.data(),
+            createdAt: safeTimestampToISO(listSnap.data().createdAt)
+        } as any;
+    } catch (error) {
+        console.error("Error getting list:", error);
+        throw error;
+    }
+};
+
+// Social Interactions for Lists
+export const toggleListLike = async (
+    userId: string,
+    listOwnerId: string,
+    listId: string,
+    listName?: string,
+    senderName?: string,
+    senderPhoto?: string
+) => {
+    try {
+        const listRef = doc(db, "users", listOwnerId, "lists", listId);
+        const likeRef = doc(db, "list_likes", `${listId}_${userId}`);
+
+        let liked = false;
+
+        await runTransaction(db, async (transaction) => {
+            const listSnap = await transaction.get(listRef);
+            const likeSnap = await transaction.get(likeRef);
+
+            if (!listSnap.exists()) throw new Error("List does not exist");
+
+            const currentLikes = listSnap.data().likeCount || 0;
+
+            if (likeSnap.exists()) {
+                // Unlike
+                transaction.delete(likeRef);
+                transaction.update(listRef, { likeCount: Math.max(0, currentLikes - 1) });
+                liked = false;
+            } else {
+                // Like
+                transaction.set(likeRef, {
+                    listId,
+                    userId,
+                    listOwnerId,
+                    createdAt: serverTimestamp()
+                });
+                transaction.update(listRef, { likeCount: currentLikes + 1 });
+                liked = true;
+            }
+        });
+
+        if (liked && userId !== listOwnerId) {
+            await createNotification({
+                recipientId: listOwnerId,
+                senderId: userId,
+                senderName: senderName || 'Someone',
+                senderPhoto: senderPhoto,
+                type: 'like_list',
+                listId,
+                listName
+            });
+        }
+
+        return liked;
+    } catch (error) {
+        console.error("Error toggling list like:", error);
+        throw error;
+    }
+};
+
+export const toggleSaveList = async (
+    userId: string,
+    listOwnerId: string,
+    listId: string,
+    listName?: string,
+    senderName?: string,
+    senderPhoto?: string
+) => {
+    try {
+        const listRef = doc(db, "users", listOwnerId, "lists", listId);
+        const saveRef = doc(db, "users", userId, "saved_lists", listId);
+
+        if (userId === listOwnerId) {
+            throw new Error("You cannot save your own list");
+        }
+
+        let saved = false;
+
+        await runTransaction(db, async (transaction) => {
+            const listSnap = await transaction.get(listRef);
+            const saveSnap = await transaction.get(saveRef);
+
+            if (!listSnap.exists()) throw new Error("List does not exist");
+
+            const currentSaves = listSnap.data().saveCount || 0;
+
+            if (saveSnap.exists()) {
+                // Unsave
+                transaction.delete(saveRef);
+                transaction.update(listRef, { saveCount: Math.max(0, currentSaves - 1) });
+                saved = false;
+            } else {
+                // Save
+                transaction.set(saveRef, {
+                    listId,
+                    listOwnerId,
+                    savedAt: serverTimestamp()
+                });
+                transaction.update(listRef, { saveCount: currentSaves + 1 });
+                saved = true;
+            }
+        });
+
+        if (saved && userId !== listOwnerId) {
+            await createNotification({
+                recipientId: listOwnerId,
+                senderId: userId,
+                senderName: senderName || 'Someone',
+                senderPhoto: senderPhoto,
+                type: 'save_list',
+                listId,
+                listName
+            });
+        }
+
+        return saved;
+    } catch (error) {
+        console.error("Error toggling list save:", error);
+        throw error;
+    }
+};
+
+export const getListInteractions = async (userId: string, listId: string, listOwnerId: string) => {
+    try {
+        const likeRef = doc(db, "list_likes", `${listId}_${userId}`);
+        const saveRef = doc(db, "users", userId, "saved_lists", listId);
+
+        const [likeSnap, saveSnap] = await Promise.all([
+            getDoc(likeRef),
+            getDoc(saveRef)
+        ]);
+
+        return {
+            isLiked: likeSnap.exists(),
+            isSaved: saveSnap.exists()
+        };
+    } catch (error) {
+        console.error("Error getting list interactions:", error);
+        return { isLiked: false, isSaved: false };
+    }
+};
+
+export const getSavedLists = async (userId: string) => {
+    try {
+        const savedRef = collection(db, "users", userId, "saved_lists");
+        const snapshot = await getDocs(savedRef);
+
+        const fetchPromises = snapshot.docs.map(async (saveDoc) => {
+            const { listId, listOwnerId } = saveDoc.data();
+            return getList(listOwnerId, listId);
+        });
+
+        const results = await Promise.all(fetchPromises);
+        return results.filter(list => list !== null && list.userId !== userId);
+    } catch (error) {
+        console.error("Error getting saved lists:", error);
+        return [];
+    }
+};
+
+// ==================== NOTIFICATIONS ====================
+
+export const createNotification = async (notif: Omit<Notification, 'id' | 'read' | 'createdAt'>) => {
+    try {
+        // Don't notify yourself
+        if (notif.senderId === notif.recipientId) return;
+
+        const notifRef = collection(db, "users", notif.recipientId, "notifications");
+        await addDoc(notifRef, {
+            ...notif,
+            read: false,
+            createdAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error creating notification:", error);
+    }
+};
+
+export const getNotifications = async (userId: string, limitCount: number = 20) => {
+    try {
+        const notifRef = collection(db, "users", userId, "notifications");
+        const q = query(notifRef, orderBy("createdAt", "desc"), limit(limitCount));
+        const snapshot = await getDocs(q);
+
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        }));
+    } catch (error) {
+        console.error("Error getting notifications:", error);
+        return [];
+    }
+};
+
+export const markNotificationAsRead = async (userId: string, notifId: string) => {
+    try {
+        const docRef = doc(db, "users", userId, "notifications", notifId);
+        await updateDoc(docRef, { read: true });
+    } catch (error) {
+        console.error("Error marking notification as read:", error);
     }
 };
 
@@ -1675,6 +2009,19 @@ export const addListComment = async (comment: any) => {
             likeCount: 0,
             createdAt: serverTimestamp()
         });
+
+        if (comment.authorUid !== comment.listOwnerId) {
+            await createNotification({
+                recipientId: comment.listOwnerId,
+                senderId: comment.authorUid,
+                senderName: comment.authorName,
+                senderPhoto: comment.authorPhoto,
+                type: 'comment_list',
+                listId: comment.listId,
+                text: comment.text
+            });
+        }
+
         return docRef.id;
     } catch (error) {
         console.error("Error adding list comment:", error);
@@ -1686,7 +2033,7 @@ export const getListComments = async (listId: string, listOwnerId: string) => {
     try {
         const commentsRef = collection(db, "list_comments");
         const q = query(
-            commentsRef, 
+            commentsRef,
             where("listId", "==", listId),
             where("listOwnerId", "==", listOwnerId),
             orderBy("createdAt", "desc")
@@ -1710,7 +2057,7 @@ export const getDirectorFilmography = async (userId: string, directorName: strin
     try {
         const logsRef = collection(db, 'users', userId, 'logs');
         const snapshot = await getDocs(logsRef);
-        
+
         const films = snapshot.docs
             .map(doc => ({
                 id: doc.id,
@@ -1719,7 +2066,7 @@ export const getDirectorFilmography = async (userId: string, directorName: strin
                 createdAt: safeTimestampToISO(doc.data().createdAt)
             }))
             .filter((log: any) => log.movie.director?.toLowerCase().includes(directorName.toLowerCase()));
-        
+
         return films;
     } catch (error) {
         console.error("Error getting director filmography:", error);
@@ -1732,7 +2079,7 @@ export const getActorFilmography = async (userId: string, actorName: string) => 
     try {
         const logsRef = collection(db, 'users', userId, 'logs');
         const snapshot = await getDocs(logsRef);
-        
+
         const films = snapshot.docs
             .map(doc => ({
                 id: doc.id,
@@ -1744,7 +2091,7 @@ export const getActorFilmography = async (userId: string, actorName: string) => 
                 const cast = log.movie.cast || [];
                 return cast.some((actor: string) => actor.toLowerCase().includes(actorName.toLowerCase()));
             });
-        
+
         return films;
     } catch (error) {
         console.error("Error getting actor filmography:", error);
@@ -1757,13 +2104,13 @@ export const getAllDirectors = async (userId: string) => {
     try {
         const logsRef = collection(db, 'users', userId, 'logs');
         const snapshot = await getDocs(logsRef);
-        
+
         const directorMap = new Map<string, { name: string; count: number; films: any[] }>();
-        
+
         snapshot.docs.forEach(doc => {
             const log = doc.data();
             const director = log.movie.director;
-            
+
             if (director) {
                 if (directorMap.has(director)) {
                     const entry = directorMap.get(director)!;
@@ -1778,7 +2125,7 @@ export const getAllDirectors = async (userId: string) => {
                 }
             }
         });
-        
+
         return Array.from(directorMap.values()).sort((a, b) => b.count - a.count);
     } catch (error) {
         console.error("Error getting all directors:", error);
@@ -1791,13 +2138,13 @@ export const getAllActors = async (userId: string) => {
     try {
         const logsRef = collection(db, 'users', userId, 'logs');
         const snapshot = await getDocs(logsRef);
-        
+
         const actorMap = new Map<string, { name: string; count: number; films: any[] }>();
-        
+
         snapshot.docs.forEach(doc => {
             const log = doc.data();
             const cast = log.movie.cast || [];
-            
+
             cast.forEach((actor: string) => {
                 if (actorMap.has(actor)) {
                     const entry = actorMap.get(actor)!;
@@ -1812,7 +2159,7 @@ export const getAllActors = async (userId: string) => {
                 }
             });
         });
-        
+
         return Array.from(actorMap.values()).sort((a, b) => b.count - a.count);
     } catch (error) {
         console.error("Error getting all actors:", error);
@@ -1830,48 +2177,48 @@ export interface AdminStats {
     newUsersThisMonth: number;
     activeUsersToday: number;
     activeUsersThisWeek: number;
-    
+
     // Content Statistics
     totalLogs: number;
     newLogsToday: number;
     newLogsThisWeek: number;
     newLogsThisMonth: number;
-    
+
     totalReviews: number;
     newReviewsToday: number;
     newReviewsThisWeek: number;
     newReviewsThisMonth: number;
-    
+
     totalLists: number;
     newListsToday: number;
     newListsThisWeek: number;
     newListsThisMonth: number;
-    
+
     totalFavorites: number;
     newFavoritesToday: number;
     newFavoritesThisWeek: number;
-    
+
     // Community Statistics
     totalConnections: number;
     newConnectionsToday: number;
     newConnectionsThisWeek: number;
-    
+
     totalPolls: number;
     newPollsToday: number;
     newPollsThisWeek: number;
-    
+
     totalDebates: number;
     newDebatesToday: number;
     newDebatesThisWeek: number;
-    
+
     totalComments: number;
     newCommentsToday: number;
     newCommentsThisWeek: number;
-    
+
     totalActivities: number;
     newActivitiesToday: number;
     newActivitiesThisWeek: number;
-    
+
     // Engagement
     avgLogsPerUser: number;
     avgReviewsPerUser: number;
@@ -1885,12 +2232,12 @@ export const getAdminStats = async (): Promise<AdminStats> => {
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const weekStart = new Date(todayStart.getTime() - 7 * 24 * 60 * 60 * 1000);
         const monthStart = new Date(todayStart.getTime() - 30 * 24 * 60 * 60 * 1000);
-        
+
         // Helper to check if date is within range
         const isToday = (dateStr: string) => new Date(dateStr) >= todayStart;
         const isThisWeek = (dateStr: string) => new Date(dateStr) >= weekStart;
         const isThisMonth = (dateStr: string) => new Date(dateStr) >= monthStart;
-        
+
         // Get all users
         const usersRef = collection(db, "users");
         const usersSnapshot = await getDocs(usersRef);
@@ -1899,12 +2246,12 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const totalUsers = allUsers.length;
         const newUsersToday = allUsers.filter(u => isToday(u.createdAt)).length;
         const newUsersThisWeek = allUsers.filter(u => isThisWeek(u.createdAt)).length;
         const newUsersThisMonth = allUsers.filter(u => isThisMonth(u.createdAt)).length;
-        
+
         // Get active users (users with activity today/this week)
         const activitiesRef = collection(db, "user_activities");
         const activitiesSnapshot = await getDocs(activitiesRef);
@@ -1912,19 +2259,19 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const todayActivities = allActivities.filter(a => isToday(a.createdAt));
         const weekActivities = allActivities.filter(a => isThisWeek(a.createdAt));
-        
+
         const activeUsersToday = new Set(todayActivities.map((a: any) => a.userId)).size;
         const activeUsersThisWeek = new Set(weekActivities.map((a: any) => a.userId)).size;
-        
+
         // Get all logs
         let totalLogs = 0;
         let newLogsToday = 0;
         let newLogsThisWeek = 0;
         let newLogsThisMonth = 0;
-        
+
         for (const userDoc of usersSnapshot.docs) {
             const logsRef = collection(db, "users", userDoc.id, "logs");
             const logsSnapshot = await getDocs(logsRef);
@@ -1932,13 +2279,13 @@ export const getAdminStats = async (): Promise<AdminStats> => {
                 ...doc.data(),
                 createdAt: safeTimestampToISO(doc.data().createdAt)
             }));
-            
+
             totalLogs += userLogs.length;
             newLogsToday += userLogs.filter((l: any) => isToday(l.createdAt)).length;
             newLogsThisWeek += userLogs.filter((l: any) => isThisWeek(l.createdAt)).length;
             newLogsThisMonth += userLogs.filter((l: any) => isThisMonth(l.createdAt)).length;
         }
-        
+
         // Get reviews
         const reviewsRef = collection(db, "reviews");
         const reviewsSnapshot = await getDocs(reviewsRef);
@@ -1946,18 +2293,18 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const totalReviews = allReviews.length;
         const newReviewsToday = allReviews.filter((r: any) => isToday(r.createdAt)).length;
         const newReviewsThisWeek = allReviews.filter((r: any) => isThisWeek(r.createdAt)).length;
         const newReviewsThisMonth = allReviews.filter((r: any) => isThisMonth(r.createdAt)).length;
-        
+
         // Get lists
         let totalLists = 0;
         let newListsToday = 0;
         let newListsThisWeek = 0;
         let newListsThisMonth = 0;
-        
+
         for (const userDoc of usersSnapshot.docs) {
             const listsRef = collection(db, "users", userDoc.id, "lists");
             const listsSnapshot = await getDocs(listsRef);
@@ -1965,18 +2312,18 @@ export const getAdminStats = async (): Promise<AdminStats> => {
                 ...doc.data(),
                 createdAt: safeTimestampToISO(doc.data().createdAt)
             }));
-            
+
             totalLists += userLists.length;
             newListsToday += userLists.filter((l: any) => isToday(l.createdAt)).length;
             newListsThisWeek += userLists.filter((l: any) => isThisWeek(l.createdAt)).length;
             newListsThisMonth += userLists.filter((l: any) => isThisMonth(l.createdAt)).length;
         }
-        
+
         // Get favorites
         let totalFavorites = 0;
         let newFavoritesToday = 0;
         let newFavoritesThisWeek = 0;
-        
+
         for (const userDoc of usersSnapshot.docs) {
             const favoritesRef = collection(db, "users", userDoc.id, "favorites");
             const favoritesSnapshot = await getDocs(favoritesRef);
@@ -1984,12 +2331,12 @@ export const getAdminStats = async (): Promise<AdminStats> => {
                 ...doc.data(),
                 addedAt: safeTimestampToISO(doc.data().addedAt)
             }));
-            
+
             totalFavorites += userFavorites.length;
             newFavoritesToday += userFavorites.filter((f: any) => f.addedAt && isToday(f.addedAt)).length;
             newFavoritesThisWeek += userFavorites.filter((f: any) => f.addedAt && isThisWeek(f.addedAt)).length;
         }
-        
+
         // Get connections
         const connectionsRef = collection(db, "connections");
         const connectionsSnapshot = await getDocs(connectionsRef);
@@ -1997,11 +2344,11 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             since: safeTimestampToISO(doc.data().since)
         }));
-        
+
         const totalConnections = allConnections.length;
         const newConnectionsToday = allConnections.filter((c: any) => c.since && isToday(c.since)).length;
         const newConnectionsThisWeek = allConnections.filter((c: any) => c.since && isThisWeek(c.since)).length;
-        
+
         // Get polls
         const pollsRef = collection(db, "polls");
         const pollsSnapshot = await getDocs(pollsRef);
@@ -2009,11 +2356,11 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const totalPolls = allPolls.length;
         const newPollsToday = allPolls.filter((p: any) => isToday(p.createdAt)).length;
         const newPollsThisWeek = allPolls.filter((p: any) => isThisWeek(p.createdAt)).length;
-        
+
         // Get debates
         const debatesRef = collection(db, "debates");
         const debatesSnapshot = await getDocs(debatesRef);
@@ -2021,11 +2368,11 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const totalDebates = allDebates.length;
         const newDebatesToday = allDebates.filter((d: any) => isToday(d.createdAt)).length;
         const newDebatesThisWeek = allDebates.filter((d: any) => isThisWeek(d.createdAt)).length;
-        
+
         // Get comments (list comments + debate comments)
         const listCommentsRef = collection(db, "list_comments");
         const listCommentsSnapshot = await getDocs(listCommentsRef);
@@ -2033,32 +2380,32 @@ export const getAdminStats = async (): Promise<AdminStats> => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const debateCommentsRef = collection(db, "debate_comments");
         const debateCommentsSnapshot = await getDocs(debateCommentsRef);
         const allDebateComments = debateCommentsSnapshot.docs.map(doc => ({
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         }));
-        
+
         const totalComments = allListComments.length + allDebateComments.length;
-        const newCommentsToday = 
+        const newCommentsToday =
             allListComments.filter((c: any) => isToday(c.createdAt)).length +
             allDebateComments.filter((c: any) => isToday(c.createdAt)).length;
-        const newCommentsThisWeek = 
+        const newCommentsThisWeek =
             allListComments.filter((c: any) => isThisWeek(c.createdAt)).length +
             allDebateComments.filter((c: any) => isThisWeek(c.createdAt)).length;
-        
+
         // Activities
         const totalActivities = allActivities.length;
         const newActivitiesToday = todayActivities.length;
         const newActivitiesThisWeek = weekActivities.length;
-        
+
         // Calculate averages
         const avgLogsPerUser = totalUsers > 0 ? parseFloat((totalLogs / totalUsers).toFixed(2)) : 0;
         const avgReviewsPerUser = totalUsers > 0 ? parseFloat((totalReviews / totalUsers).toFixed(2)) : 0;
         const avgListsPerUser = totalUsers > 0 ? parseFloat((totalLists / totalUsers).toFixed(2)) : 0;
-        
+
         return {
             totalUsers,
             newUsersToday,
@@ -2148,7 +2495,7 @@ export const saveTVProgress = async (
     try {
         const progressRef = doc(db, "users", userId, "tv_progress", `tv_${tvId}`);
         const isCompleted = currentSeason >= totalSeasons && currentEpisode >= (totalEpisodes || 0);
-        
+
         await setDoc(progressRef, {
             userId,
             tvId,
@@ -2174,11 +2521,11 @@ export const getTVProgress = async (userId: string, tvId: number): Promise<TVPro
     try {
         const progressRef = doc(db, "users", userId, "tv_progress", `tv_${tvId}`);
         const progressSnap = await getDoc(progressRef);
-        
+
         if (!progressSnap.exists()) {
             return null;
         }
-        
+
         const data = progressSnap.data();
         return {
             id: progressSnap.id,
@@ -2206,7 +2553,7 @@ export const getAllTVProgress = async (userId: string): Promise<TVProgress[]> =>
     try {
         const progressRef = collection(db, "users", userId, "tv_progress");
         const progressSnap = await getDocs(progressRef);
-        
+
         return progressSnap.docs.map(doc => {
             const data = doc.data();
             return {
@@ -2225,7 +2572,7 @@ export const getAllTVProgress = async (userId: string): Promise<TVProgress[]> =>
                 updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString()
             } as TVProgress;
         }).filter(progress => !progress.isCompleted)
-          .sort((a, b) => new Date(b.lastWatchedDate).getTime() - new Date(a.lastWatchedDate).getTime());
+            .sort((a, b) => new Date(b.lastWatchedDate).getTime() - new Date(a.lastWatchedDate).getTime());
     } catch (error) {
         console.error("Error getting all TV progress:", error);
         throw error;
@@ -2239,19 +2586,19 @@ export const getAllUserDataForExport = async (userId: string) => {
     try {
         // Get user profile
         const userData = await getUserData(userId);
-        
+
         // Get all logs
         const logs = await getUserLogs(userId, { limitCount: 10000 });
-        
+
         // Get all lists
         const lists = await getUserLists(userId);
-        
+
         // Get favorites
         const favorites = await getFavoriteMovies(userId);
-        
+
         // Get watchlist
         const watchlist = await getWatchlist(userId);
-        
+
         // Get user's reviews
         const reviewsRef = collection(db, "reviews");
         const reviewsQuery = query(reviewsRef, where("authorUid", "==", userId));
@@ -2261,10 +2608,10 @@ export const getAllUserDataForExport = async (userId: string) => {
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
         } as Review));
-        
+
         // Get TV progress
         const tvProgress = await getAllTVProgress(userId);
-        
+
         return {
             profile: userData,
             logs,
@@ -2286,19 +2633,19 @@ export const getAllUserDataForExport = async (userId: string) => {
 // Helper: Extract YouTube video ID from URL
 export const extractYouTubeVideoId = (url: string): string | null => {
     if (!url) return null;
-    
+
     const patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
         /youtube\.com\/shorts\/([^&\n?#]+)/
     ];
-    
+
     for (const pattern of patterns) {
         const match = url.match(pattern);
         if (match && match[1]) {
             return match[1];
         }
     }
-    
+
     return null;
 };
 
@@ -2317,7 +2664,7 @@ export const createAnnouncement = async (data: {
 }): Promise<string> => {
     try {
         const youtubeVideoId = data.youtubeUrl ? extractYouTubeVideoId(data.youtubeUrl) : null;
-        
+
         const announcementData = {
             title: data.title,
             content: data.content,
@@ -2334,7 +2681,7 @@ export const createAnnouncement = async (data: {
             updatedAt: serverTimestamp(),
             expiresAt: data.expiresAt || null
         };
-        
+
         const docRef = await addDoc(collection(db, "announcements"), announcementData);
         return docRef.id;
     } catch (error) {
@@ -2347,7 +2694,7 @@ export const createAnnouncement = async (data: {
 export const getActiveAnnouncements = async (limitCount: number = 10): Promise<any[]> => {
     try {
         const now = new Date();
-        
+
         // Get all active announcements
         const q = query(
             collection(db, "announcements"),
@@ -2355,9 +2702,9 @@ export const getActiveAnnouncements = async (limitCount: number = 10): Promise<a
             orderBy("createdAt", "desc"),
             limit(limitCount * 2) // Fetch more to filter expired ones
         );
-        
+
         const snapshot = await getDocs(q);
-        
+
         const announcements: any[] = snapshot.docs
             .map(doc => ({
                 id: doc.id,
@@ -2374,7 +2721,7 @@ export const getActiveAnnouncements = async (limitCount: number = 10): Promise<a
                 return true;
             })
             .slice(0, limitCount);
-        
+
         // Sort: pinned first, then by date
         return announcements.sort((a, b) => {
             if (a.isPinned && !b.isPinned) return -1;
@@ -2394,9 +2741,9 @@ export const getAllAnnouncements = async (): Promise<any[]> => {
             collection(db, "announcements"),
             orderBy("createdAt", "desc")
         );
-        
+
         const snapshot = await getDocs(q);
-        
+
         return snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
@@ -2430,12 +2777,12 @@ export const updateAnnouncement = async (
             ...data,
             updatedAt: serverTimestamp()
         };
-        
+
         // If youtubeUrl is being updated, extract the video ID
         if (data.youtubeUrl !== undefined) {
             updateData.youtubeVideoId = data.youtubeUrl ? extractYouTubeVideoId(data.youtubeUrl) : null;
         }
-        
+
         await updateDoc(doc(db, "announcements", announcementId), updateData);
     } catch (error) {
         console.error("Error updating announcement:", error);

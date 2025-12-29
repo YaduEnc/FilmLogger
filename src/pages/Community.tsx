@@ -10,15 +10,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { 
-  Search, UserPlus, Check, Clock, Users, ArrowRight, Loader2, 
+import {
+  Search, UserPlus, Check, Clock, Users, ArrowRight, Loader2,
   Plus, BarChart3, MessageSquare, List, ThumbsUp, Send,
   TrendingUp, Film, X, Activity, Sparkles
 } from "lucide-react";
 import { searchMovies, searchTV } from "@/lib/tmdb";
 import { Movie } from "@/types/movie";
 import { useAuth } from "@/hooks/useAuth";
-import { 
+import {
   searchUsers, getConnectionStatus, sendConnectionRequest, acceptConnectionRequest,
   getPolls, createPoll, votePoll, getUserPollVote,
   getDebates, createDebate, voteDebate, getUserDebateVote, getDebateComments, addDebateComment,
@@ -30,7 +30,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function Community() {
-    const { user } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("activity");
 
   return (
@@ -172,7 +172,7 @@ function PollCard({ poll, user, onVote }: { poll: any; user: any; onVote: () => 
       toast.error("Please sign in to vote");
       return;
     }
-    
+
     setIsVoting(true);
     try {
       await votePoll(poll.id, optionId, user.uid);
@@ -220,15 +220,15 @@ function PollCard({ poll, user, onVote }: { poll: any; user: any; onVote: () => 
               )}
             >
               {userVote && (
-                <div 
+                <div
                   className="absolute inset-0 bg-primary/10 transition-all"
                   style={{ width: `${percentage}%` }}
                 />
               )}
               <div className="relative flex items-center gap-3">
                 {option.posterUrl && (
-                  <img 
-                    src={option.posterUrl} 
+                  <img
+                    src={option.posterUrl}
                     alt={option.text}
                     className="w-12 h-16 object-cover rounded flex-shrink-0"
                   />
@@ -274,7 +274,7 @@ function CreatePollForm({ user, onSuccess }: { user: any; onSuccess: () => void 
       setSearchResults([]);
       return;
     }
-    
+
     try {
       const { movies } = await searchMovies(query);
       setSearchResults(movies.slice(0, 5));
@@ -548,7 +548,7 @@ function DebateCard({ debate, user, onVote }: { debate: any; user: any; onVote: 
       toast.error("Please sign in to vote");
       return;
     }
-    
+
     try {
       await voteDebate(debate.id, side, user.uid);
       setUserVote(side);
@@ -561,7 +561,7 @@ function DebateCard({ debate, user, onVote }: { debate: any; user: any; onVote: 
 
   const handleComment = async () => {
     if (!user || !newComment.trim()) return;
-    
+
     try {
       await addDebateComment({
         debateId: debate.id,
@@ -655,7 +655,7 @@ function DebateCard({ debate, user, onVote }: { debate: any; user: any; onVote: 
               </Button>
             </div>
           )}
-          
+
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3 p-3 bg-muted/30 rounded-lg">
               <Avatar className="h-8 w-8">
@@ -821,7 +821,7 @@ function ListCard({ list, user }: { list: any; user: any }) {
 
   const handleComment = async () => {
     if (!user || !newComment.trim()) return;
-    
+
     try {
       await addListComment({
         listId: list.id,
@@ -841,7 +841,10 @@ function ListCard({ list, user }: { list: any; user: any }) {
   };
 
   return (
-    <div className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
+    <Link
+      to={`/list/${list.userId}/${list.id}`}
+      className="block border rounded-lg p-4 hover:bg-muted/30 transition-colors"
+    >
       <div className="flex items-center gap-4">
         {/* Movie Poster */}
         {list.movies && list.movies.length > 0 && list.movies[0].posterUrl && (
@@ -906,7 +909,7 @@ function ListCard({ list, user }: { list: any; user: any }) {
               </Button>
             </div>
           )}
-          
+
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-2 text-sm">
               <Avatar className="h-7 w-7">
@@ -926,15 +929,15 @@ function ListCard({ list, user }: { list: any; user: any }) {
           ))}
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 
 // ==================== PEOPLE SECTION ====================
 function PeopleSection({ user }: { user: any }) {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [searchResults, setSearchResults] = useState<any[]>([]);
-    const [isSearching, setIsSearching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [recommendedUsers, setRecommendedUsers] = useState<any[]>([]);
   const [activeUsers, setActiveUsers] = useState<any[]>([]);
   const [newUsers, setNewUsers] = useState<any[]>([]);
@@ -965,26 +968,26 @@ function PeopleSection({ user }: { user: any }) {
     }
   };
 
-    useEffect(() => {
-        if (!searchTerm || searchTerm.length < 2) {
-            setSearchResults([]);
-            return;
-        }
+  useEffect(() => {
+    if (!searchTerm || searchTerm.length < 2) {
+      setSearchResults([]);
+      return;
+    }
 
-        const timer = setTimeout(async () => {
-            setIsSearching(true);
-            try {
-                const results = await searchUsers(searchTerm);
-                setSearchResults(results.filter(r => r.uid !== user?.uid));
-            } catch (error) {
-                console.error("Search error:", error);
-            } finally {
-                setIsSearching(false);
-            }
-        }, 400);
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchUsers(searchTerm);
+        setSearchResults(results.filter(r => r.uid !== user?.uid));
+      } catch (error) {
+        console.error("Search error:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
 
-        return () => clearTimeout(timer);
-    }, [searchTerm, user]);
+    return () => clearTimeout(timer);
+  }, [searchTerm, user]);
 
   const renderUserCategory = (title: string, users: any[], icon: any) => {
     if (users.length === 0) return null;
@@ -1000,7 +1003,7 @@ function PeopleSection({ user }: { user: any }) {
             <UserResultCard key={targetUser.uid} targetUser={targetUser} currentUser={user} />
           ))}
         </div>
-                </div>
+      </div>
     );
   };
 
@@ -1010,110 +1013,110 @@ function PeopleSection({ user }: { user: any }) {
       <div>
         <H2 className="text-2xl mb-6">Find People</H2>
 
-      <div className="relative mb-8">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
-                    <Input
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Search by username or display name..."
-                        className="pl-12 h-14 text-lg bg-muted/5 border-border/50 focus:ring-primary rounded-2xl"
-                    />
-                    {isSearching && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
-                    )}
-                </div>
+        <div className="relative mb-8">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-50" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by username or display name..."
+            className="pl-12 h-14 text-lg bg-muted/5 border-border/50 focus:ring-primary rounded-2xl"
+          />
+          {isSearching && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </div>
 
-      {searchTerm.length >= 2 ? (
-        // Show search results
-        searchResults.length > 0 ? (
-                            <div className="grid gap-4">
-                                {searchResults.map((targetUser) => (
-                                    <UserResultCard key={targetUser.uid} targetUser={targetUser} currentUser={user} />
-                                ))}
-                            </div>
-        ) : isSearching ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="text-center py-16 border border-dashed rounded-xl">
-            <p className="text-muted-foreground">No users found matching "{searchTerm}"</p>
-          </div>
-        )
-      ) : (
-        // Show recommendations when no search
-        <div className="space-y-12">
-          {isLoadingRecommendations ? (
+        {searchTerm.length >= 2 ? (
+          // Show search results
+          searchResults.length > 0 ? (
+            <div className="grid gap-4">
+              {searchResults.map((targetUser) => (
+                <UserResultCard key={targetUser.uid} targetUser={targetUser} currentUser={user} />
+              ))}
+            </div>
+          ) : isSearching ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <>
-              {recommendedUsers.length > 0 && renderUserCategory(
-                "Recommended for You",
-                recommendedUsers,
-                <Sparkles className="h-5 w-5 text-primary" />
-              )}
-              
-              {activeUsers.length > 0 && renderUserCategory(
-                "Most Active",
-                activeUsers,
-                <TrendingUp className="h-5 w-5 text-primary" />
-              )}
-              
-              {newUsers.length > 0 && renderUserCategory(
-                "New to CineLunatic",
-                newUsers,
-                <Sparkles className="h-5 w-5 text-primary" />
-              )}
-              
-              {recommendedUsers.length === 0 && activeUsers.length === 0 && newUsers.length === 0 && (
-                <div className="text-center py-16 border border-dashed rounded-xl">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
-                  <p className="text-muted-foreground">No recommendations available</p>
-                  <p className="text-sm text-muted-foreground mt-2">Start watching movies to get personalized recommendations!</p>
-                        </div>
-                    )}
-            </>
-          )}
-                        </div>
-                    )}
-                </div>
+            <div className="text-center py-16 border border-dashed rounded-xl">
+              <p className="text-muted-foreground">No users found matching "{searchTerm}"</p>
             </div>
-    );
+          )
+        ) : (
+          // Show recommendations when no search
+          <div className="space-y-12">
+            {isLoadingRecommendations ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                {recommendedUsers.length > 0 && renderUserCategory(
+                  "Recommended for You",
+                  recommendedUsers,
+                  <Sparkles className="h-5 w-5 text-primary" />
+                )}
+
+                {activeUsers.length > 0 && renderUserCategory(
+                  "Most Active",
+                  activeUsers,
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                )}
+
+                {newUsers.length > 0 && renderUserCategory(
+                  "New to CineLunatic",
+                  newUsers,
+                  <Sparkles className="h-5 w-5 text-primary" />
+                )}
+
+                {recommendedUsers.length === 0 && activeUsers.length === 0 && newUsers.length === 0 && (
+                  <div className="text-center py-16 border border-dashed rounded-xl">
+                    <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
+                    <p className="text-muted-foreground">No recommendations available</p>
+                    <p className="text-sm text-muted-foreground mt-2">Start watching movies to get personalized recommendations!</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function UserResultCard({ targetUser, currentUser }: { targetUser: any; currentUser: any }) {
-    const [status, setStatus] = useState<any>({ status: 'none' });
-    const [isLoading, setIsLoading] = useState(true);
+  const [status, setStatus] = useState<any>({ status: 'none' });
+  const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
-        async function checkStatus() {
-            if (!currentUser || !targetUser) return;
-            const s = await getConnectionStatus(currentUser.uid, targetUser.uid);
-            setStatus(s);
-            setIsLoading(false);
-        }
-        checkStatus();
-    }, [currentUser, targetUser]);
+  useEffect(() => {
+    async function checkStatus() {
+      if (!currentUser || !targetUser) return;
+      const s = await getConnectionStatus(currentUser.uid, targetUser.uid);
+      setStatus(s);
+      setIsLoading(false);
+    }
+    checkStatus();
+  }, [currentUser, targetUser]);
 
-    const handleConnect = async () => {
-        if (!currentUser) {
-            toast.error("Please sign in to connect");
-            return;
-        }
+  const handleConnect = async () => {
+    if (!currentUser) {
+      toast.error("Please sign in to connect");
+      return;
+    }
 
-        try {
-            if (status.status === 'none') {
-                await sendConnectionRequest(currentUser.uid, targetUser.uid);
-                setStatus({ status: 'pending' });
-                toast.success("Connection request sent");
-            } else if (status.status === 'incoming') {
-                await acceptConnectionRequest(status.requestId, targetUser.uid, currentUser.uid);
-                setStatus({ status: 'accepted' });
-        
+    try {
+      if (status.status === 'none') {
+        await sendConnectionRequest(currentUser.uid, targetUser.uid);
+        setStatus({ status: 'pending' });
+        toast.success("Connection request sent");
+      } else if (status.status === 'incoming') {
+        await acceptConnectionRequest(status.requestId, targetUser.uid, currentUser.uid);
+        setStatus({ status: 'accepted' });
+
         // Log connection activity for both users
         await Promise.all([
           logActivity({
@@ -1133,83 +1136,83 @@ function UserResultCard({ targetUser, currentUser }: { targetUser: any; currentU
             connectedUserName: currentUser.displayName
           })
         ]);
-        
-                toast.success(`You are now connected with ${targetUser.displayName}`);
-            }
-        } catch (error) {
-            toast.error("Failed to update connection");
-        }
-    };
 
-    return (
-        <div className="flex items-center justify-between p-5 bg-background border border-border/50 rounded-2xl hover:border-primary/30 transition-all group">
-            <div className="flex items-center gap-5">
-                <Link to={`/profile/${targetUser.username}`}>
-                    <Avatar className="h-14 w-14 border-2 border-border/50 group-hover:border-primary/20 transition-all">
-                        <AvatarImage src={targetUser.photoURL} />
-                        <AvatarFallback className="font-serif bg-muted">{targetUser.displayName?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                </Link>
-                <div className="min-w-0">
-                    <Link to={`/profile/${targetUser.username}`} className="hover:underline underline-offset-4">
-                        <h4 className="font-serif text-lg leading-none mb-1">{targetUser.displayName}</h4>
-                    </Link>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <span className="text-xs font-mono opacity-70">@{targetUser.username}</span>
-                        <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
+        toast.success(`You are now connected with ${targetUser.displayName}`);
+      }
+    } catch (error) {
+      toast.error("Failed to update connection");
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-between p-5 bg-background border border-border/50 rounded-2xl hover:border-primary/30 transition-all group">
+      <div className="flex items-center gap-5">
+        <Link to={`/profile/${targetUser.username}`}>
+          <Avatar className="h-14 w-14 border-2 border-border/50 group-hover:border-primary/20 transition-all">
+            <AvatarImage src={targetUser.photoURL} />
+            <AvatarFallback className="font-serif bg-muted">{targetUser.displayName?.charAt(0)}</AvatarFallback>
+          </Avatar>
+        </Link>
+        <div className="min-w-0">
+          <Link to={`/profile/${targetUser.username}`} className="hover:underline underline-offset-4">
+            <h4 className="font-serif text-lg leading-none mb-1">{targetUser.displayName}</h4>
+          </Link>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <span className="text-xs font-mono opacity-70">@{targetUser.username}</span>
+            <span className="h-1 w-1 rounded-full bg-muted-foreground/30" />
             <span className="text-[10px] font-bold uppercase tracking-widest">{targetUser.totalWatched || targetUser.stats?.totalWatched || 0} films</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-                <Link to={`/profile/${targetUser.username}`}>
-                    <Button variant="ghost" size="sm" className="hidden sm:flex gap-2 rounded-full opacity-60 hover:opacity-100 hover:bg-muted">
-                        View Profile
-                        <ArrowRight className="h-3 w-3" />
-                    </Button>
-                </Link>
-
-                {isLoading ? (
-                    <div className="w-28 h-9 bg-muted animate-pulse rounded-full" />
-                ) : (
-                    <Button
-                        onClick={handleConnect}
-                        disabled={status.status === 'pending' || status.status === 'accepted'}
-                        variant={status.status === 'accepted' ? "secondary" : "outline"}
-                        className={cn(
-                            "rounded-full gap-2 px-6 h-9 transition-all",
-                            status.status === 'accepted' && "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20 shadow-none",
-                            status.status === 'pending' && "opacity-50 grayscale cursor-default"
-                        )}
-                    >
-                        {status.status === 'none' && (
-                            <>
-                                <UserPlus className="h-3.5 w-3.5" />
-                                Connect
-                            </>
-                        )}
-                        {status.status === 'pending' && (
-                            <>
-                                <Clock className="h-3.5 w-3.5" />
-                                Pending
-                            </>
-                        )}
-                        {status.status === 'incoming' && (
-                            <>
-                                <UserPlus className="h-3.5 w-3.5" />
-                                Accept
-                            </>
-                        )}
-                        {status.status === 'accepted' && (
-                            <>
-                                <Check className="h-3.5 w-3.5" />
-                                Connected
-                            </>
-                        )}
-                    </Button>
-                )}
-            </div>
+          </div>
         </div>
-    );
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Link to={`/profile/${targetUser.username}`}>
+          <Button variant="ghost" size="sm" className="hidden sm:flex gap-2 rounded-full opacity-60 hover:opacity-100 hover:bg-muted">
+            View Profile
+            <ArrowRight className="h-3 w-3" />
+          </Button>
+        </Link>
+
+        {isLoading ? (
+          <div className="w-28 h-9 bg-muted animate-pulse rounded-full" />
+        ) : (
+          <Button
+            onClick={handleConnect}
+            disabled={status.status === 'pending' || status.status === 'accepted'}
+            variant={status.status === 'accepted' ? "secondary" : "outline"}
+            className={cn(
+              "rounded-full gap-2 px-6 h-9 transition-all",
+              status.status === 'accepted' && "bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20 shadow-none",
+              status.status === 'pending' && "opacity-50 grayscale cursor-default"
+            )}
+          >
+            {status.status === 'none' && (
+              <>
+                <UserPlus className="h-3.5 w-3.5" />
+                Connect
+              </>
+            )}
+            {status.status === 'pending' && (
+              <>
+                <Clock className="h-3.5 w-3.5" />
+                Pending
+              </>
+            )}
+            {status.status === 'incoming' && (
+              <>
+                <UserPlus className="h-3.5 w-3.5" />
+                Accept
+              </>
+            )}
+            {status.status === 'accepted' && (
+              <>
+                <Check className="h-3.5 w-3.5" />
+                Connected
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }

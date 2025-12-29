@@ -28,18 +28,18 @@ export function Header() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+
       // Show navbar at top of page
       if (currentScrollY < 10) {
         setIsVisible(true);
-      } 
+      }
       // Hide when scrolling down, show when scrolling up
       else if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsVisible(false);
       } else if (currentScrollY < lastScrollY) {
         setIsVisible(true);
       }
-      
+
       setLastScrollY(currentScrollY);
     };
 
@@ -73,7 +73,7 @@ export function Header() {
   ];
 
   return (
-    <header 
+    <header
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
         "border-b border-border/50 shadow-sm",
@@ -196,16 +196,11 @@ export function Header() {
                 </DropdownMenu>
               </>
             ) : (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-4">
                 <ThemeToggle />
                 <Link to="/auth">
-                  <Button variant="ghost" size="sm">
-                    Sign in
-                  </Button>
-                </Link>
-                <Link to="/auth">
-                  <Button size="sm">
-                    Get started
+                  <Button size="sm" className="h-9 px-5 font-bold tracking-tight shadow-lg shadow-primary/10 transition-all hover:scale-105 active:scale-95">
+                    Continue your journey
                   </Button>
                 </Link>
               </div>

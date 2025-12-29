@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { H1 } from "@/components/ui/typography";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserLogs } from "@/lib/db";
 import { Loader2, Film } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ActivityHeatmap } from "@/components/diary/ActivityHeatmap";
+import { format } from "date-fns";
 
 export default function Diary() {
   const { user } = useAuth();
@@ -17,7 +19,8 @@ export default function Diary() {
     async function loadLogs() {
       if (!user) return;
       try {
-        const fetchedLogs = await getUserLogs(user.uid, { limitCount: 100 });
+        // Fetch more logs to populate the heatmap meaningfully
+        const fetchedLogs = await getUserLogs(user.uid, { limitCount: 500 });
         setLogs(fetchedLogs);
       } catch (error) {
         console.error("Failed to fetch diary logs:", error);
@@ -27,6 +30,16 @@ export default function Diary() {
     }
     loadLogs();
   }, [user]);
+
+  // Aggregate daily activity for heatmap
+  const activityData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    logs.forEach(log => {
+      const dateStr = format(new Date(log.watchedDate), "yyyy-MM-dd");
+      counts[dateStr] = (counts[dateStr] || 0) + 1;
+    });
+    return Object.entries(counts).map(([date, count]) => ({ date, count }));
+  }, [logs]);
 
   // Group logs by month
   const groupedLogs = logs.reduce((acc, log) => {
@@ -60,7 +73,11 @@ export default function Diary() {
   return (
     <Layout>
       <div className="container mx-auto px-6 py-8 max-w-3xl">
-        <H1 className="mb-8 tracking-tight">Diary</H1>
+        <H1 className="mb-4 tracking-tight">Diary</H1>
+
+        {logs.length > 0 && (
+          <ActivityHeatmap logs={activityData} className="mb-12" />
+        )}
 
         {logs.length > 0 ? (
           sortedMonths.map((monthKey) => (

@@ -47,7 +47,7 @@ const HorizontalScroll = ({ children, title }: { children: React.ReactNode; titl
         {canScrollLeft && (
           <button
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background active:scale-95"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background active:scale-95"
           >
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
@@ -55,7 +55,7 @@ const HorizontalScroll = ({ children, title }: { children: React.ReactNode; titl
         {canScrollRight && (
           <button
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background active:scale-95"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 sm:p-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background active:scale-95"
           >
             <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
@@ -162,7 +162,7 @@ export default function NetworkDetail() {
             )}
             <div className="flex-1">
               <H1 className="text-3xl sm:text-4xl lg:text-5xl mb-4 tracking-tight">{network.name}</H1>
-              
+
               {network.headquarters && (
                 <div className="flex items-center gap-2 text-sm sm:text-base text-muted-foreground mb-2">
                   <span className="font-medium">Headquarters:</span>

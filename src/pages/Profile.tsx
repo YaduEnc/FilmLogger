@@ -22,10 +22,12 @@ import {
   acceptConnectionRequest,
   getUserData,
   getUserLists,
-  updateUserData
+  updateUserData,
+  getUserActivityData
 } from "@/lib/db";
 import { toast } from "sonner";
 import { Top5MoviesModal } from "@/components/movies/Top5MoviesModal";
+import { ActivityHeatmap } from "@/components/diary/ActivityHeatmap";
 
 export default function Profile() {
   const { username } = useParams();
@@ -40,6 +42,7 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isTop5ModalOpen, setIsTop5ModalOpen] = useState(false);
+  const [activityData, setActivityData] = useState<{ date: string; count: number }[]>([]);
 
   const isOwnProfile = !username || (targetUser && targetUser.uid === currentUser?.uid);
 
@@ -83,14 +86,15 @@ export default function Profile() {
             ? await getConnectionStatus(currentUser.uid, profileUser.uid)
             : { status: 'none' as const };
 
-          const [fetchedLogs, fetchedFavs, fetchedWatchlist, fetchedLists] = await Promise.all([
+          const [fetchedLogs, fetchedFavs, fetchedWatchlist, fetchedLists, fetchedActivityData] = await Promise.all([
             getUserLogs(profileUser.uid, {
               currentUserId: currentUser?.uid,
               isConnection: (connStatus as any).status === 'accepted'
             }),
             getFavoriteMovies(profileUser.uid),
             getWatchlist(profileUser.uid),
-            getUserLists(profileUser.uid)
+            getUserLists(profileUser.uid),
+            getUserActivityData(profileUser.uid)
           ]);
 
           setTargetUser(profileUser as UserProfile);
@@ -98,6 +102,7 @@ export default function Profile() {
           setFavorites(fetchedFavs);
           setWatchlist(fetchedWatchlist);
           setConnection(connStatus as ConnectionStatus);
+          setActivityData(fetchedActivityData);
 
           const calculatedStats = await getUserStats(fetchedLogs, fetchedLists.length);
           setStats(calculatedStats);
@@ -292,6 +297,12 @@ export default function Profile() {
           </div>
         ) : (
           <>
+            {/* Activity Heatmap */}
+            <ActivityHeatmap
+              logs={activityData}
+              className="mb-12"
+            />
+
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-20">
               {[
@@ -340,8 +351,8 @@ export default function Profile() {
                   <div className="col-span-full py-16 text-center border border-dashed border-border/50 rounded-2xl opacity-50">
                     <Star className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-30" />
                     <p className="text-sm italic font-serif">
-                      {isOwnProfile 
-                        ? "Share your top 5 movies with the community" 
+                      {isOwnProfile
+                        ? "Share your top 5 movies with the community"
                         : "This archivist hasn't shared their top 5 yet."}
                     </p>
                     {isOwnProfile && (

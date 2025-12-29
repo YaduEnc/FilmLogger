@@ -17,7 +17,7 @@ import { CommunityRatingMeter } from "@/components/movies/CommunityRatingMeter";
 import { GenreTagger } from "@/components/movies/GenreTagger";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getCommunityRating, getUserCommunityInteraction } from "@/lib/db";
+import { getCommunityRating, getUserCommunityInteraction, createLogEntry } from "@/lib/db";
 
 
 export default function TVDetail() {
@@ -30,6 +30,8 @@ export default function TVDetail() {
     const [communityData, setCommunityData] = useState<any>(null);
     const [userInteraction, setUserInteraction] = useState<{ rating: number | null, genres: string[] }>({ rating: null, genres: [] });
     const [isLoading, setIsLoading] = useState(true);
+    const [isHovered, setIsHovered] = useState(false);
+    const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
     const [isWatchlistActionLoading, setIsWatchlistActionLoading] = useState(false);
     const [isFavoriteActionLoading, setIsFavoriteActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -119,6 +121,42 @@ export default function TVDetail() {
         }
     };
 
+    const handleQuickLog = async (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!user || !movie) return toast.error("Sign in to log shows");
+        if (hasWatched) return toast.info("Already logged");
+
+        setIsActionLoading('log');
+        try {
+            await createLogEntry(user.uid, {
+                movieId: movie.id,
+                mediaType: 'tv',
+                rating: 0,
+                reviewShort: "",
+                tags: [],
+                watchedDate: new Date().toISOString(),
+                visibility: "public",
+                isRewatch: false,
+                rewatchCount: 0,
+                movie: movie
+            });
+            // Instant update for this page
+            setUserLogs([{ id: 'temp', watchedDate: new Date().toISOString() } as any]);
+            toast.success(`Logged ${movie.title} as watched`);
+        } catch (err) {
+            toast.error("Failed to log show");
+        } finally {
+            setIsActionLoading(null);
+        }
+    };
+
+    const handleAddToListTrigger = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsAddToListOpen(true);
+    };
+
     if (isLoading) {
         return (
             <Layout>
@@ -200,20 +238,59 @@ export default function TVDetail() {
                 <div className="grid lg:grid-cols-[300px_1fr] gap-6 sm:gap-8 lg:gap-16">
                     {/* Left Column: Poster & Quick Info - Hidden on Mobile */}
                     <aside className="hidden lg:block space-y-8">
-                        <div className="relative group">
-                            <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl">
+                        <div
+                            className="relative group"
+                            onMouseEnter={() => setIsHovered(true)}
+                            onMouseLeave={() => setIsHovered(false)}
+                        >
+                            <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl relative">
                                 {movie.posterUrl ? (
                                     <img
                                         src={movie.posterUrl}
                                         alt={movie.title}
-                                        loading="lazy"
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                        className={cn(
+                                            "w-full h-full object-cover transition-transform duration-500",
+                                            isHovered && "scale-105"
+                                        )}
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-muted-foreground p-8">
                                         <span className="text-sm font-serif italic text-center text-balance">{movie.title}</span>
                                     </div>
                                 )}
+
+                                {/* Hover Overlay */}
+                                <div className={cn(
+                                    "absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-all duration-300 flex flex-col justify-end p-4 z-20",
+                                    isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+                                )}>
+                                    <div className="flex gap-3">
+                                        <button
+                                            onClick={handleToggleFavorite}
+                                            className={cn(
+                                                "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
+                                                inFavorites ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"
+                                            )}
+                                        >
+                                            {isFavoriteActionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className={cn("h-5 w-5", inFavorites && "fill-current")} />}
+                                        </button>
+                                        <button
+                                            onClick={handleQuickLog}
+                                            className={cn(
+                                                "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
+                                                hasWatched ? "bg-green-500 text-white" : "bg-white/10 text-white hover:bg-white/20"
+                                            )}
+                                        >
+                                            {isActionLoading === 'log' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+                                        </button>
+                                        <button
+                                            onClick={handleAddToListTrigger}
+                                            className="p-2.5 rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-all hover:scale-110 active:scale-95"
+                                        >
+                                            <Plus className="h-5 w-5" />
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -266,11 +343,10 @@ export default function TVDetail() {
                                                         <button
                                                             key={index}
                                                             onClick={() => setSelectedBackdropIndex(index)}
-                                                            className={`h-1.5 rounded-full transition-all ${
-                                                                index === selectedBackdropIndex
-                                                                    ? 'w-6 bg-primary'
-                                                                    : 'w-1.5 bg-white/50 hover:bg-white/70'
-                                                            }`}
+                                                            className={`h-1.5 rounded-full transition-all ${index === selectedBackdropIndex
+                                                                ? 'w-6 bg-primary'
+                                                                : 'w-1.5 bg-white/50 hover:bg-white/70'
+                                                                }`}
                                                         />
                                                     ))}
                                                 </div>
@@ -350,12 +426,11 @@ export default function TVDetail() {
                                 {movie.status && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground">Status</span>
-                                        <span className={`font-medium px-2 py-1 rounded ${
-                                            movie.status === 'Returning Series' ? 'bg-green-500/20 text-green-500' :
+                                        <span className={`font-medium px-2 py-1 rounded ${movie.status === 'Returning Series' ? 'bg-green-500/20 text-green-500' :
                                             movie.status === 'Ended' ? 'bg-red-500/20 text-red-500' :
-                                            movie.status === 'In Production' ? 'bg-blue-500/20 text-blue-500' :
-                                            'bg-muted text-foreground'
-                                        }`}>
+                                                movie.status === 'In Production' ? 'bg-blue-500/20 text-blue-500' :
+                                                    'bg-muted text-foreground'
+                                            }`}>
                                             {movie.status}
                                         </span>
                                     </div>
@@ -365,8 +440,8 @@ export default function TVDetail() {
                                         <span className="text-muted-foreground">Network</span>
                                         <div className="flex items-center gap-2">
                                             {movie.networks.map((network) => (
-                                                <Link 
-                                                    key={network.id} 
+                                                <Link
+                                                    key={network.id}
                                                     to={`/network/${network.id}`}
                                                     className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
                                                 >
@@ -608,23 +683,23 @@ export default function TVDetail() {
                                                     }}
                                                     className="w-full flex gap-4 p-4 hover:bg-muted/10 transition-colors text-left"
                                                 >
-                                            <div className="w-16 h-24 bg-muted rounded shrink-0 overflow-hidden">
-                                                {season.poster_path ? (
-                                                    <img src={`https://image.tmdb.org/t/p/w200${season.poster_path}`} loading="lazy" className="w-full h-full object-cover" alt="" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-                                                        <Tv className="h-6 w-6" />
+                                                    <div className="w-16 h-24 bg-muted rounded shrink-0 overflow-hidden">
+                                                        {season.poster_path ? (
+                                                            <img src={`https://image.tmdb.org/t/p/w200${season.poster_path}`} loading="lazy" className="w-full h-full object-cover" alt="" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
+                                                                <Tv className="h-6 w-6" />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center justify-between">
-                                            <div>
-                                                <h4 className="font-medium text-lg">{season.name}</h4>
+                                                            <div>
+                                                                <h4 className="font-medium text-lg">{season.name}</h4>
                                                                 <p className="text-muted-foreground text-sm mb-2">
                                                                     {season.episode_count} Episodes • {season.air_date?.split('-')[0]}
                                                                 </p>
-                                                {season.overview && (
+                                                                {season.overview && (
                                                                     <p className="text-sm text-foreground/80 line-clamp-2">{season.overview}</p>
                                                                 )}
                                                             </div>

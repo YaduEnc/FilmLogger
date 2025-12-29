@@ -95,11 +95,14 @@ export interface TVProgress {
 
 export interface MovieList {
   id: string;
+  userId?: string;
   name: string;
   description?: string;
   visibility: 'private' | 'followers' | 'public';
   movies: Movie[];
   createdAt: string;
+  likeCount?: number;
+  saveCount?: number;
 }
 
 export interface UserStats {
@@ -267,13 +270,13 @@ export interface Message {
 }
 
 // ==================== ACTIVITY FEED ====================
-export type ActivityType = 
-  | 'log' 
-  | 'review' 
-  | 'list_created' 
-  | 'favorite' 
-  | 'connection' 
-  | 'poll_created' 
+export type ActivityType =
+  | 'log'
+  | 'review'
+  | 'list_created'
+  | 'favorite'
+  | 'connection'
+  | 'poll_created'
   | 'debate_created'
   | 'list_comment'
   | 'debate_comment';
@@ -285,7 +288,7 @@ export interface UserActivity {
   userPhoto?: string;
   type: ActivityType;
   createdAt: string;
-  
+
   // Activity-specific data
   movieId?: number;
   movieTitle?: string;
@@ -310,18 +313,18 @@ export interface MovieStats {
   mediaType: 'movie' | 'tv';
   title: string;
   posterUrl?: string;
-  
+
   // Engagement metrics
   logCount: number; // How many times logged
   favoriteCount: number; // How many favorites
   reviewCount: number; // How many reviews
   avgRating: number; // Average rating
   watchlistCount: number; // How many in watchlists
-  
+
   // Time-based metrics
   weeklyLogs: number;
   monthlyLogs: number;
-  
+
   lastUpdated: string;
 }
 
@@ -332,17 +335,17 @@ export interface UserRecommendation {
   displayName: string;
   photoURL?: string;
   bio?: string;
-  
+
   // Recommendation score factors
   commonMovies: number; // Number of movies in common
   commonGenres: string[]; // Shared favorite genres
   activityScore: number; // How active they are
   isNewUser: boolean; // Joined recently
-  
+
   // Display stats
   totalWatched: number;
   reviewCount: number;
-  
+
   recommendationScore: number; // Overall score
 }
 
@@ -355,7 +358,7 @@ export interface AdminStats {
   newUsersThisMonth: number;
   activeUsersToday: number;
   activeUsersThisWeek: number;
-  
+
   // Content Metrics
   totalLogs: number;
   newLogsToday: number;
@@ -367,7 +370,7 @@ export interface AdminStats {
   newListsToday: number;
   totalComments: number;
   newCommentsToday: number;
-  
+
   // Engagement Metrics
   totalConnections: number;
   newConnectionsToday: number;
@@ -377,15 +380,15 @@ export interface AdminStats {
   newDebatesToday: number;
   totalMessages: number;
   newMessagesToday: number;
-  
+
   // Growth Trends
   userGrowth: { date: string; count: number }[];
   activityGrowth: { date: string; logs: number; reviews: number; comments: number }[];
-  
+
   // Top Content
   topMovies: { movieId: number; title: string; logCount: number; favoriteCount: number }[];
   topUsers: { uid: string; username: string; displayName: string; activityCount: number }[];
-  
+
   // Time-based breakdowns
   hourlyActivity: { hour: number; count: number }[];
   dailyActivity: { date: string; count: number }[];
@@ -408,4 +411,35 @@ export interface Announcement {
   createdAt: string;
   updatedAt: string;
   expiresAt?: string;
+}
+
+// ==================== NOTIFICATIONS ====================
+export type NotificationType =
+  | 'like_list'
+  | 'save_list'
+  | 'comment_list'
+  | 'like_review'
+  | 'comment_review'
+  | 'like_comment'
+  | 'follow'
+  | 'connection_request';
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto?: string;
+  type: NotificationType;
+  read: boolean;
+  createdAt: string;
+
+  // Action context
+  listId?: string;
+  listName?: string;
+  movieId?: number;
+  movieTitle?: string;
+  reviewId?: string;
+  commentId?: string;
+  text?: string; // e.g., the comment text
 }

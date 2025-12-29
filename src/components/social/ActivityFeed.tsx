@@ -149,8 +149,8 @@ export function ActivityFeed() {
     }
   };
 
-  const filteredActivities = filter === 'all' 
-    ? activities 
+  const filteredActivities = filter === 'all'
+    ? activities
     : activities.filter(a => a.type === filter);
 
   if (isLoading) {
@@ -165,14 +165,14 @@ export function ActivityFeed() {
     <div className="space-y-4">
       {/* Filter Buttons */}
       <div className="flex flex-wrap gap-2">
-        <Badge 
+        <Badge
           variant={filter === 'all' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setFilter('all')}
         >
           All Activity
         </Badge>
-        <Badge 
+        <Badge
           variant={filter === 'log' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setFilter('log')}
@@ -180,7 +180,7 @@ export function ActivityFeed() {
           <Film className="h-3 w-3 mr-1" />
           Watched
         </Badge>
-        <Badge 
+        <Badge
           variant={filter === 'review' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setFilter('review')}
@@ -188,7 +188,7 @@ export function ActivityFeed() {
           <MessageSquare className="h-3 w-3 mr-1" />
           Reviews
         </Badge>
-        <Badge 
+        <Badge
           variant={filter === 'list_created' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setFilter('list_created')}
@@ -196,7 +196,7 @@ export function ActivityFeed() {
           <List className="h-3 w-3 mr-1" />
           Lists
         </Badge>
-        <Badge 
+        <Badge
           variant={filter === 'favorite' ? 'default' : 'outline'}
           className="cursor-pointer"
           onClick={() => setFilter('favorite')}
@@ -207,55 +207,59 @@ export function ActivityFeed() {
       </div>
 
       {/* Activity List */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         {filteredActivities.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">
+          <Card className="p-8 text-center text-muted-foreground bg-muted/5 border-dashed">
             <p>No activities yet</p>
             <p className="text-sm mt-1">Start watching movies and connecting with people!</p>
           </Card>
         ) : (
           filteredActivities.map((activity) => (
-            <Card key={activity.id} className="p-4 hover:bg-muted/30 transition-colors">
-              <div className="flex items-start gap-3">
-                {/* User Avatar */}
-                <Link to={`/profile/${activity.userName}`}>
-                  <Avatar className="h-10 w-10">
+            <Card key={activity.id} className="p-3 hover:bg-muted/30 transition-colors border-border/40 group relative">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                {/* User Avatar - Slightly smaller */}
+                <Link to={`/profile/${activity.userName}`} className="shrink-0 pt-0.5 sm:pt-0">
+                  <Avatar className="h-8 w-8 border border-border/50">
                     <AvatarImage src={activity.userPhoto} />
-                    <AvatarFallback>{activity.userName?.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="text-[10px]">{activity.userName?.charAt(0)}</AvatarFallback>
                   </Avatar>
                 </Link>
 
-                {/* Activity Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1">
-                      <div className="text-sm">
-                        <Link to={`/profile/${activity.userName}`} className="font-medium hover:underline">
+                {/* Activity Content - Flex-1 to push poster to right */}
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-sm leading-snug">
+                        <Link to={`/profile/${activity.userName}`} className="font-semibold hover:underline">
                           {activity.userName}
                         </Link>{' '}
-                        {getActivityText(activity)}
+                        <span className="text-foreground/90">{getActivityText(activity)}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight font-medium">
+                          {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                        </p>
+                        <div className="h-1 w-1 rounded-full bg-border" />
+                        <div className="text-muted-foreground opacity-60">
+                          {getActivityIcon(activity.type)}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Activity Icon */}
-                    <div className="text-muted-foreground">
-                      {getActivityIcon(activity.type)}
-                    </div>
+                    {/* Compact Poster on the right */}
+                    {activity.moviePoster && (
+                      <Link
+                        to={`/${activity.mediaType}/${activity.movieId}`}
+                        className="shrink-0 transition-transform group-hover:scale-105"
+                      >
+                        <img
+                          src={activity.moviePoster}
+                          alt={activity.movieTitle}
+                          className="w-10 h-14 object-cover rounded shadow-sm border border-border/50"
+                        />
+                      </Link>
+                    )}
                   </div>
-
-                  {/* Movie Poster (if applicable) */}
-                  {activity.moviePoster && (
-                    <Link to={`/${activity.mediaType}/${activity.movieId}`} className="mt-2 block">
-                      <img
-                        src={activity.moviePoster}
-                        alt={activity.movieTitle}
-                        className="w-16 h-24 object-cover rounded"
-                      />
-                    </Link>
-                  )}
                 </div>
               </div>
             </Card>

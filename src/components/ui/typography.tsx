@@ -22,6 +22,22 @@ export function H2({ children, className }: TypographyProps) {
   );
 }
 
+export function DisplayH2({ children, className }: TypographyProps) {
+  return (
+    <h2 className={cn("font-serif text-3xl md:text-4xl font-black tracking-tighter uppercase italic leading-none", className)}>
+      {children}
+    </h2>
+  );
+}
+
+export function DisplayH3({ children, className }: TypographyProps) {
+  return (
+    <h3 className={cn("font-serif text-xl md:text-2xl font-bold tracking-tight", className)}>
+      {children}
+    </h3>
+  );
+}
+
 export function H3({ children, className }: TypographyProps) {
   return (
     <h3 className={cn("font-medium text-lg", className)}>

@@ -3,8 +3,9 @@ import { Movie } from "@/types/movie";
 import { getUpcomingMovies, getUpcomingTV } from "@/lib/tmdb";
 import { MovieCard } from "./MovieCard";
 import { Button } from "@/components/ui/button";
-import { Calendar, Grid, Film, Tv, Loader2 } from "lucide-react";
+import { Calendar, Grid, Film, Tv, Loader2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DisplayH3 } from "@/components/ui/typography";
 
 interface UpcomingReleasesProps {
   viewMode?: 'grid' | 'calendar';
@@ -42,16 +43,16 @@ export function UpcomingReleases({ viewMode: initialViewMode = 'grid' }: Upcomin
     return (dateA || '').localeCompare(dateB || '');
   });
 
-  const displayItems = activeTab === 'all' ? allUpcoming : 
-                      activeTab === 'movies' ? upcomingMovies : 
-                      upcomingTV;
+  const displayItems = activeTab === 'all' ? allUpcoming :
+    activeTab === 'movies' ? upcomingMovies :
+      upcomingTV;
 
   // Group by release date for calendar view
   const groupedByDate = displayItems.reduce((acc, item) => {
-    const releaseDate = item.mediaType === 'tv' 
-      ? item.firstAirDate?.split('T')[0] 
+    const releaseDate = item.mediaType === 'tv'
+      ? item.firstAirDate?.split('T')[0]
       : item.year?.toString() ? `${item.year}-01-01` : 'TBA';
-    
+
     if (!acc[releaseDate]) {
       acc[releaseDate] = [];
     }
@@ -72,15 +73,22 @@ export function UpcomingReleases({ viewMode: initialViewMode = 'grid' }: Upcomin
   return (
     <div className="space-y-4">
       {/* Header with View Toggle */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-serif font-bold">Upcoming Releases</h2>
-          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-8 px-1">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="h-1 w-8 bg-primary rounded-full mb-1 opacity-50" />
+            <DisplayH3 className="text-xl sm:text-2xl lg:text-3xl">Upcoming Releases</DisplayH3>
+          </div>
+
+          <div className="flex items-center gap-1 bg-white/5 backdrop-blur-md rounded-xl p-1 border border-white/10 w-fit">
             <Button
               variant={activeTab === 'all' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('all')}
-              className="h-7 px-3 text-xs"
+              className={cn(
+                "h-8 px-4 text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === 'all' ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-white"
+              )}
             >
               All
             </Button>
@@ -88,18 +96,24 @@ export function UpcomingReleases({ viewMode: initialViewMode = 'grid' }: Upcomin
               variant={activeTab === 'movies' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('movies')}
-              className="h-7 px-3 text-xs"
+              className={cn(
+                "h-8 px-4 text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === 'movies' ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-white"
+              )}
             >
-              <Film className="h-3 w-3 mr-1" />
+              <Film className="h-3 w-3 mr-2" />
               Movies
             </Button>
             <Button
               variant={activeTab === 'tv' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('tv')}
-              className="h-7 px-3 text-xs"
+              className={cn(
+                "h-8 px-4 text-[10px] font-black uppercase tracking-widest transition-all",
+                activeTab === 'tv' ? "bg-primary text-primary-foreground shadow-lg" : "text-muted-foreground hover:text-white"
+              )}
             >
-              <Tv className="h-3 w-3 mr-1" />
+              <Tv className="h-3 w-3 mr-2" />
               TV
             </Button>
           </div>
@@ -135,14 +149,14 @@ export function UpcomingReleases({ viewMode: initialViewMode = 'grid' }: Upcomin
         <div className="space-y-6">
           {sortedDates.map((date) => {
             const items = groupedByDate[date];
-            const formattedDate = date === 'TBA' 
-              ? 'TBA' 
-              : new Date(date).toLocaleDateString('en-US', { 
-                  month: 'long', 
-                  day: 'numeric', 
-                  year: 'numeric' 
-                });
-            
+            const formattedDate = date === 'TBA'
+              ? 'TBA'
+              : new Date(date).toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              });
+
             return (
               <div key={date} className="space-y-3">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">

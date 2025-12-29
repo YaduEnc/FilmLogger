@@ -7,25 +7,29 @@ import { MovieCard } from "@/components/movies/MovieCard";
 import { Plus, Clock, Loader2, Bookmark, FolderHeart } from "lucide-react";
 import { MovieList, Movie } from "@/types/movie";
 import { useAuth } from "@/hooks/useAuth";
-import { getWatchlist, getUserLists } from "@/lib/db";
+import { getWatchlist, getUserLists, getSavedLists } from "@/lib/db";
 import { CreateListModal } from "@/components/movies/CreateListModal";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export default function Lists() {
   const { user } = useAuth();
   const [watchlist, setWatchlist] = useState<Movie[]>([]);
   const [customLists, setCustomLists] = useState<MovieList[]>([]);
+  const [savedLists, setSavedLists] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   async function loadData() {
     if (!user) return;
     try {
-      const [watchlistData, listsData] = await Promise.all([
+      const [watchlistData, listsData, savedData] = await Promise.all([
         getWatchlist(user.uid),
-        getUserLists(user.uid)
+        getUserLists(user.uid),
+        getSavedLists(user.uid)
       ]);
       setWatchlist(watchlistData);
       setCustomLists(listsData);
+      setSavedLists(savedData);
     } catch (error) {
       console.error("Failed to load lists:", error);
     } finally {
@@ -156,6 +160,65 @@ export default function Lists() {
             </div>
           )}
         </section>
+
+        {/* Saved lists */}
+        {savedLists.length > 0 && (
+          <section className="mt-16">
+            <div className="flex items-center gap-2 mb-6 pb-2 border-b border-border/50">
+              <Bookmark className="h-4 w-4 text-muted-foreground" />
+              <H3 className="text-xl">Saved collections</H3>
+              <span className="text-sm font-medium text-muted-foreground ml-1">
+                {savedLists.length} {savedLists.length === 1 ? "list" : "lists"}
+              </span>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {savedLists.map((list) => (
+                <Link
+                  key={list.id}
+                  to={`/list/${list.userId}/${list.id}`}
+                  className="group block p-5 border border-border rounded-xl hover:bg-muted/50 transition-all hover:shadow-lg hover:shadow-black/5"
+                >
+                  <div className="flex gap-2 mb-4 min-h-[110px] bg-muted/20 rounded-lg p-2 overflow-hidden">
+                    {list.movies && list.movies.length > 0 ? (
+                      list.movies.slice(0, 4).map((movie: Movie) => (
+                        <div
+                          key={movie.id}
+                          className="w-16 aspect-[2/3] bg-muted rounded-md overflow-hidden border border-border/30 shadow-sm shrink-0"
+                        >
+                          {movie.posterUrl && (
+                            <img
+                              src={movie.posterUrl}
+                              alt={movie.title}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="w-full h-24 flex items-center justify-center text-muted-foreground/30 italic text-xs">
+                        Empty collection
+                      </div>
+                    )}
+                  </div>
+                  <h4 className="font-serif text-lg group-hover:text-primary transition-colors">
+                    {list.name}
+                  </h4>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={list.userPhoto} />
+                      <AvatarFallback className="text-[8px]">{list.userName?.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-xs text-muted-foreground">by {list.userName}</span>
+                  </div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mt-4">
+                    {list.movies ? list.movies.length : 0} films
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       <CreateListModal

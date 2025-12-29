@@ -17,7 +17,8 @@ import { ReviewSection } from "@/components/reviews/ReviewSection";
 import { CommunityRatingMeter } from "@/components/movies/CommunityRatingMeter";
 import { GenreTagger } from "@/components/movies/GenreTagger";
 import { toast } from "sonner";
-import { getCommunityRating, getUserCommunityInteraction } from "@/lib/db";
+import { cn } from "@/lib/utils";
+import { getCommunityRating, getUserCommunityInteraction, createLogEntry } from "@/lib/db";
 
 
 export default function MovieDetail() {
@@ -31,6 +32,8 @@ export default function MovieDetail() {
   const [userInteraction, setUserInteraction] = useState<{ rating: number | null, genres: string[] }>({ rating: null, genres: [] });
   const [similarMovies, setSimilarMovies] = useState<Movie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState<string | null>(null);
   const [isWatchlistActionLoading, setIsWatchlistActionLoading] = useState(false);
   const [isFavoriteActionLoading, setIsFavoriteActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export default function MovieDetail() {
 
         // Load similar movies
         try {
-          const similar = movieData.mediaType === 'tv' 
+          const similar = movieData.mediaType === 'tv'
             ? await getSimilarTV(parseInt(id))
             : await getSimilarMovies(parseInt(id));
           setSimilarMovies(similar.movies.slice(0, 16));
@@ -131,18 +134,30 @@ export default function MovieDetail() {
     try {
       const added = await toggleWatchlist(user.uid, movie);
       setInWatchlist(added);
-      
+
       if (added) {
-        // Update stats when adding to watchlist
-        await updateMovieStats(
-          movie.id,
-          movie.mediaType || 'movie',
-          movie.title,
-          movie.posterUrl,
-          'watchlist'
-        );
+        // Update stats and log activity when adding to watchlist
+        await Promise.all([
+          updateMovieStats(
+            movie.id,
+            movie.mediaType || 'movie',
+            movie.title,
+            movie.posterUrl,
+            'watchlist'
+          ),
+          logActivity({
+            userId: user.uid,
+            userName: user.displayName || 'Anonymous',
+            userPhoto: user.photoURL,
+            type: 'watchlist',
+            movieId: movie.id,
+            movieTitle: movie.title,
+            moviePoster: movie.posterUrl,
+            mediaType: movie.mediaType || 'movie'
+          })
+        ]);
       }
-      
+
       toast.success(added ? `${movie.title} added to watchlist` : `${movie.title} removed from watchlist`);
     } catch (error) {
       console.error("Watchlist error:", error);
@@ -162,7 +177,7 @@ export default function MovieDetail() {
     try {
       const added = await toggleFavorite(user.uid, movie);
       setInFavorites(added);
-      
+
       if (added) {
         // Log activity and update stats when adding to favorites
         await Promise.all([
@@ -185,7 +200,7 @@ export default function MovieDetail() {
           )
         ]);
       }
-      
+
       toast.success(added ? `${movie.title} added to favorites` : `${movie.title} removed from favorites`);
     } catch (error) {
       console.error("Favorite error:", error);
@@ -193,6 +208,42 @@ export default function MovieDetail() {
     } finally {
       setIsFavoriteActionLoading(false);
     }
+  };
+
+  const handleQuickLog = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user || !movie) return toast.error("Sign in to log films");
+    if (hasWatched) return toast.info("Already logged");
+
+    setIsActionLoading('log');
+    try {
+      await createLogEntry(user.uid, {
+        movieId: movie.id,
+        mediaType: movie.mediaType || 'movie',
+        rating: 0,
+        reviewShort: "",
+        tags: [],
+        watchedDate: new Date().toISOString(),
+        visibility: "public",
+        isRewatch: false,
+        rewatchCount: 0,
+        movie: movie
+      });
+      // Instant update for this page
+      setUserLogs([{ id: 'temp', watchedDate: new Date().toISOString() } as any]);
+      toast.success(`Logged ${movie.title} as watched`);
+    } catch (err) {
+      toast.error("Failed to log film");
+    } finally {
+      setIsActionLoading(null);
+    }
+  };
+
+  const handleAddToListTrigger = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsAddToListOpen(true);
   };
 
   if (isLoading) {
@@ -225,18 +276,18 @@ export default function MovieDetail() {
       {/* Hero Backdrop Section with Parallax - Small on Mobile */}
       {movie.backdropUrl && (
         <div className="relative w-full h-[120px] sm:h-[200px] lg:h-[450px] overflow-hidden">
-          <div 
+          <div
             ref={backdropRef}
             className="absolute inset-0 w-full h-[120%] -top-[10%]"
             style={{ willChange: 'transform' }}
           >
-          <img
-            src={movie.backdropUrl}
-            alt=""
-            loading="lazy"
-            className="w-full h-full object-cover opacity-60 grayscale-[0.15]"
-            style={{ filter: 'blur(0.5px)' }}
-          />
+            <img
+              src={movie.backdropUrl}
+              alt=""
+              loading="lazy"
+              className="w-full h-full object-cover opacity-60 grayscale-[0.15]"
+              style={{ filter: 'blur(0.5px)' }}
+            />
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10" />
         </div>
@@ -281,34 +332,76 @@ export default function MovieDetail() {
         <div className="grid lg:grid-cols-[300px_1fr] gap-6 sm:gap-8 lg:gap-16">
           {/* Left Column: Poster & Quick Info - Hidden on Mobile */}
           <aside className="hidden lg:block space-y-8">
-            <div className="relative group">
-              <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl transition-transform duration-300 group-hover:scale-105 group-hover:shadow-3xl">
+            <div
+              className="relative group"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
+              <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl relative">
                 {movie.posterUrl ? (
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
-                    loading="lazy"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className={cn(
+                      "w-full h-full object-cover transition-transform duration-500",
+                      isHovered && "scale-105"
+                    )}
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground p-8">
                     <span className="text-sm font-serif italic text-center text-balance">{movie.title}</span>
                   </div>
                 )}
-              </div>
 
-              {movie.trailerUrl && (
-                <a
-                  href={movie.trailerUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                    <Play className="h-8 w-8 text-white fill-current translate-x-0.5" />
+                {/* Hover Overlay */}
+                <div className={cn(
+                  "absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-all duration-300 flex flex-col justify-end p-4 z-20",
+                  isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+                )}>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleToggleFavorite}
+                      className={cn(
+                        "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
+                        inFavorites ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"
+                      )}
+                    >
+                      {isFavoriteActionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className={cn("h-5 w-5", inFavorites && "fill-current")} />}
+                    </button>
+                    <button
+                      onClick={handleQuickLog}
+                      className={cn(
+                        "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
+                        hasWatched ? "bg-green-500 text-white" : "bg-white/10 text-white hover:bg-white/20"
+                      )}
+                    >
+                      {isActionLoading === 'log' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
+                    </button>
+                    <button
+                      onClick={handleAddToListTrigger}
+                      className="p-2.5 rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-all hover:scale-110 active:scale-95"
+                    >
+                      <Plus className="h-5 w-5" />
+                    </button>
                   </div>
-                </a>
-              )}
+                </div>
+
+                {movie.trailerUrl && (
+                  <a
+                    href={movie.trailerUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      "absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity cursor-pointer z-10",
+                      isHovered ? "opacity-100" : "opacity-0"
+                    )}
+                  >
+                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                      <Play className="h-8 w-8 text-white fill-current translate-x-0.5" />
+                    </div>
+                  </a>
+                )}
+              </div>
             </div>
 
             {/* Minor Metadata */}
@@ -360,11 +453,10 @@ export default function MovieDetail() {
                             <button
                               key={index}
                               onClick={() => setSelectedBackdropIndex(index)}
-                              className={`h-1.5 rounded-full transition-all ${
-                                index === selectedBackdropIndex
-                                  ? 'w-6 bg-primary'
-                                  : 'w-1.5 bg-white/50 hover:bg-white/70'
-                              }`}
+                              className={`h-1.5 rounded-full transition-all ${index === selectedBackdropIndex
+                                ? 'w-6 bg-primary'
+                                : 'w-1.5 bg-white/50 hover:bg-white/70'
+                                }`}
                             />
                           ))}
                         </div>
@@ -713,9 +805,7 @@ export default function MovieDetail() {
   );
 }
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(" ");
-}
+
 
 // Horizontal Scroll Component for Similar Movies
 function SimilarMoviesSection({ title, movies }: { title: string; movies: Movie[] }) {
@@ -755,7 +845,7 @@ function SimilarMoviesSection({ title, movies }: { title: string; movies: Movie[
         {canScrollLeft && (
           <button
             onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-40 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -763,7 +853,7 @@ function SimilarMoviesSection({ title, movies }: { title: string; movies: Movie[
         {canScrollRight && (
           <button
             onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-40 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
