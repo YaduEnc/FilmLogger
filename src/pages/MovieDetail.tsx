@@ -233,8 +233,9 @@ export default function MovieDetail() {
           <img
             src={movie.backdropUrl}
             alt=""
-              className="w-full h-full object-cover opacity-60 grayscale-[0.15]"
-              style={{ filter: 'blur(0.5px)' }}
+            loading="lazy"
+            className="w-full h-full object-cover opacity-60 grayscale-[0.15]"
+            style={{ filter: 'blur(0.5px)' }}
           />
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10" />
@@ -251,6 +252,7 @@ export default function MovieDetail() {
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
+                    loading="lazy"
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -285,6 +287,7 @@ export default function MovieDetail() {
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   />
                 ) : (
@@ -333,6 +336,7 @@ export default function MovieDetail() {
                     <img
                       src={movie.backdrops[selectedBackdropIndex].url}
                       alt={`${movie.title} backdrop ${selectedBackdropIndex + 1}`}
+                      loading="lazy"
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
@@ -382,6 +386,7 @@ export default function MovieDetail() {
                         <img
                           src={company.logoUrl}
                           alt={company.name}
+                          loading="lazy"
                           className="h-8 object-contain filter brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
@@ -602,6 +607,7 @@ export default function MovieDetail() {
                       <img
                         src={`https://img.youtube.com/vi/${video.key}/maxresdefault.jpg`}
                         alt={video.name}
+                        loading="lazy"
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.key}/hqdefault.jpg`;

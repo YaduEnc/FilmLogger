@@ -152,6 +152,7 @@ export default function TVDetail() {
                     <img
                         src={movie.backdropUrl}
                         alt=""
+                        loading="lazy"
                         className="w-full h-full object-cover opacity-30 grayscale-[0.5]"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
@@ -168,6 +169,7 @@ export default function TVDetail() {
                                     <img
                                         src={movie.posterUrl}
                                         alt={movie.title}
+                                        loading="lazy"
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
@@ -204,6 +206,7 @@ export default function TVDetail() {
                                     <img
                                         src={movie.posterUrl}
                                         alt={movie.title}
+                                        loading="lazy"
                                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                                     />
                                 ) : (
@@ -239,6 +242,7 @@ export default function TVDetail() {
                                         <img
                                             src={movie.backdrops[selectedBackdropIndex].url}
                                             alt={`${movie.title} backdrop ${selectedBackdropIndex + 1}`}
+                                            loading="lazy"
                                             className="w-full h-full object-cover"
                                         />
                                         <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
@@ -288,6 +292,7 @@ export default function TVDetail() {
                                                 <img
                                                     src={company.logoUrl}
                                                     alt={company.name}
+                                                    loading="lazy"
                                                     className="h-8 object-contain filter brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).style.display = 'none';
@@ -369,6 +374,7 @@ export default function TVDetail() {
                                                         <img
                                                             src={network.logoUrl}
                                                             alt={network.name}
+                                                            loading="lazy"
                                                             className="h-6 object-contain filter brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
                                                             onError={(e) => {
                                                                 (e.target as HTMLImageElement).style.display = 'none';
@@ -550,6 +556,7 @@ export default function TVDetail() {
                                             <img
                                                 src={`https://img.youtube.com/vi/${video.key}/maxresdefault.jpg`}
                                                 alt={video.name}
+                                                loading="lazy"
                                                 className="w-full h-full object-cover"
                                                 onError={(e) => {
                                                     (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.key}/hqdefault.jpg`;
@@ -603,7 +610,7 @@ export default function TVDetail() {
                                                 >
                                             <div className="w-16 h-24 bg-muted rounded shrink-0 overflow-hidden">
                                                 {season.poster_path ? (
-                                                    <img src={`https://image.tmdb.org/t/p/w200${season.poster_path}`} className="w-full h-full object-cover" alt="" />
+                                                    <img src={`https://image.tmdb.org/t/p/w200${season.poster_path}`} loading="lazy" className="w-full h-full object-cover" alt="" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
                                                         <Tv className="h-6 w-6" />
@@ -633,6 +640,7 @@ export default function TVDetail() {
                                                                     <img
                                                                         src={episode.still_path}
                                                                         alt={episode.name}
+                                                                        loading="lazy"
                                                                         className="w-32 h-20 object-cover rounded shrink-0"
                                                                     />
                                                                 )}

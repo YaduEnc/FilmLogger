@@ -152,6 +152,7 @@ export default function NetworkDetail() {
                 <img
                   src={network.logoPath}
                   alt={network.name}
+                  loading="lazy"
                   className="w-full h-full object-contain filter brightness-0 invert opacity-90"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = 'none';

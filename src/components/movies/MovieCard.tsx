@@ -44,6 +44,7 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
             <img
               src={movie.posterUrl}
               alt={movie.title}
+              loading="lazy"
               className={cn(
                 "w-full h-full object-cover transition-transform duration-300",
                 isHovered && "scale-105"

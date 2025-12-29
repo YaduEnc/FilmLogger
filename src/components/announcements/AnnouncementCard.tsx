@@ -52,6 +52,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
               <img 
                 src={youtubeThumbnail} 
                 alt="" 
+                loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
                   if (youtubeThumbnailFallback) {
@@ -83,6 +84,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
               <img 
                 src={announcement.imageUrl} 
                 alt="" 
+                loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
@@ -133,6 +135,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
                 <img 
                   src={youtubeThumbnail} 
                   alt="" 
+                  loading="lazy"
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                   onError={(e) => {
                     if (youtubeThumbnailFallback) {
@@ -151,6 +154,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
                 <img 
                   src={announcement.imageUrl} 
                   alt="" 
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -226,6 +230,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
             <img 
               src={youtubeThumbnail} 
               alt="" 
+              loading="lazy"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
                 if (youtubeThumbnailFallback) {
@@ -260,6 +265,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
             <img 
               src={announcement.imageUrl} 
               alt="" 
+              loading="lazy"
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />

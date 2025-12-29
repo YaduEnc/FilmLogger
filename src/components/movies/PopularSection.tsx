@@ -69,6 +69,7 @@ export function PopularSection() {
                 <img
                   src={movie.posterUrl}
                   alt={movie.title}
+                  loading="lazy"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (

@@ -79,6 +79,7 @@ export default function PersonDetail() {
                                     <img
                                         src={person.profile_path}
                                         alt={person.name}
+                                        loading="lazy"
                                         className="w-full h-full object-cover"
                                     />
                                 ) : (
