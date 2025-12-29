@@ -21,6 +21,7 @@ import Community from "./pages/Community";
 import Notifications from "./pages/Notifications";
 import Profile from "./pages/Profile";
 import PersonDetail from "./pages/PersonDetail";
+import NetworkDetail from "./pages/NetworkDetail";
 import Settings from "./pages/Settings";
 import Messages from "./pages/Messages";
 import Directors from "./pages/Directors";
@@ -31,37 +32,39 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
+import Announcements from "./pages/Announcements";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
         <OnboardingProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                <Route path="/" element={<Landing />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/movie/:id" element={<MovieDetail />} />
-                <Route path="/tv/:id" element={<TVDetail />} />
-                <Route path="/person/:id" element={<PersonDetail />} />
-                <Route path="/log" element={<Log />} />
-                <Route path="/diary" element={<Diary />} />
-                <Route path="/lists" element={<Lists />} />
-                <Route path="/lists/:id" element={<Lists />} />
-                <Route path="/stats" element={<Stats />} />
-                <Route path="/community" element={<Community />} />
-                <Route path="/notifications" element={<Notifications />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/profile/:username" element={<Profile />} />
-                <Route path="/settings" element={<Settings />} />
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/movie/:id" element={<MovieDetail />} />
+            <Route path="/tv/:id" element={<TVDetail />} />
+            <Route path="/person/:id" element={<PersonDetail />} />
+            <Route path="/network/:id" element={<NetworkDetail />} />
+            <Route path="/log" element={<Log />} />
+            <Route path="/diary" element={<Diary />} />
+            <Route path="/lists" element={<Lists />} />
+            <Route path="/lists/:id" element={<Lists />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route path="/community" element={<Community />} />
+            <Route path="/notifications" element={<Notifications />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:username" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/directors" element={<Directors />} />
                 <Route path="/actors" element={<Actors />} />
@@ -71,14 +74,15 @@ const App = () => (
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/contact" element={<Contact />} />
                 <Route path="/admin" element={<Admin />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                <Route path="/announcements" element={<Announcements />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
               <OnboardingTour />
-            </BrowserRouter>
-          </TooltipProvider>
+        </BrowserRouter>
+      </TooltipProvider>
         </OnboardingProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    </AuthProvider>
+  </QueryClientProvider>
   </ThemeProvider>
 );
 

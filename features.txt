@@ -1,0 +1,443 @@
+CINELUNATIC - COMPLETE FEATURES LIST
+=====================================
+
+AUTHENTICATION & USER MANAGEMENT
+---------------------------------
+- Google OAuth authentication
+- User profile creation and management
+- Unique username system with availability checking
+- Display name customization
+- Bio/description field
+- Profile photo support
+- Public/Private profile toggle
+- Account deletion with confirmation
+- Admin role detection and access
+
+HOME PAGE
+---------
+- Personalized greeting based on time of day
+- Featured movies carousel with backdrop images
+- Carousel navigation (prev/next arrows)
+- Carousel indicators (dot navigation)
+- Trending on CineLunatic section (unified trending algorithm)
+- Horizontal scrolling movie sections with hover controls
+- Trending Films section
+- Popular Films section
+- Top Rated Films section
+- Trending Series section
+- Popular Series section
+- Top Rated Series section
+- Currently Airing TV shows
+- Upcoming Releases
+- Recent Activity feed (last 5 diary entries)
+- Empty state messaging
+- Loading states with spinners
+- Responsive grid layouts
+
+MOVIE/TV LOGGING
+----------------
+- Search movies and TV shows (unified search)
+- Movie/TV show selection from search results
+- Date picker for watched date
+- Star rating system (0-5 stars, 0.5 increments)
+- Rewatch toggle
+- Rewatch count tracking
+- Short review field (500 character limit)
+- Long diary entry (markdown supported)
+- Tags system (comma-separated)
+- Mood selection (Euphoric, Thoughtful, Melancholic, Nostalgic, Unsettled, Inspired)
+- Location tracking (Cinema, Home, Plane, Festival, Other)
+- Visibility settings (Public, Followers only, Private)
+- TV show completion percentage slider (0-100%, 10% increments)
+- TV progress tracking (season/episode calculation from percentage)
+- TV progress saving to user profile
+- Activity logging on log creation
+- Movie stats updating on log creation
+
+DIARY PAGE
+----------
+- Chronological view of all logged entries
+- Grouping by month and year
+- Log entry cards with full details
+- Empty state with call-to-action
+- Link to search for new films
+
+LISTS & COLLECTIONS
+-------------------
+- Watchlist management
+- Add/remove movies from watchlist
+- Custom list creation
+- List naming and description
+- List visibility settings (public/private)
+- Add movies to custom lists
+- Remove movies from lists
+- List preview with movie posters
+- List detail pages
+- List count display
+- Empty state messaging
+
+SEARCH & DISCOVERY
+------------------
+- Unified search for movies and TV shows
+- Toggle between Films and Series tabs
+- Search by title
+- Genre filtering (19 genres)
+- Decade filtering (2020s, 2010s, 2000s, 1990s, 1980s, 1970s, 1960s, Earlier)
+- Filter clearing
+- Trending content display
+- Popular content display
+- Search results pagination
+- Filtered results display
+- Empty search state
+- URL parameter support for search queries
+
+MOVIE/TV DETAIL PAGES
+---------------------
+- Hero section with backdrop image
+- Parallax scroll effect on backdrop
+- Movie poster display with hover effects
+- Trailer link (if available)
+- Movie metadata (year, runtime, language, rating)
+- Director information with link to person page
+- Cast members display with links
+- Genre tags with search links
+- Community rating meter
+- Community genre tagging system
+- User's personal rating display
+- Similar movies/TV shows recommendations
+- Add to watchlist button
+- Add to favorites button
+- Add to list modal
+- Log this film button
+- Log rewatch button
+- Personal diary entries section
+- Community reviews section
+- Review submission form
+- Review rating system (1-10 scale)
+- Spoiler flag for reviews
+- Review visibility settings
+- Review like system
+- Review comments
+- Movie stats display (rating, votes)
+
+PROFILE PAGES
+-------------
+- User avatar display
+- Display name and username
+- Bio display
+- Public/Private indicator
+- Profile stats grid (total films, this year, avg rating, watchlist count)
+- Top 5 Movies section
+- Top 5 Movies editing modal
+- Top 5 Movies reordering (up/down buttons)
+- Favorites display (8 movies)
+- Watchlist tab
+- Recent Diary tab
+- Connection status display
+- Connect/Request/Accept buttons
+- Privacy-restricted content messaging
+- Empty state messaging for sections
+
+SETTINGS PAGE
+-------------
+- Profile identity section
+- Username editing with real-time availability check
+- Display name editing
+- Bio editing
+- Privacy settings (Public/Private toggle)
+- Archive Management section
+- Data export as CSV (separate files for logs, lists, favorites, watchlist, reviews)
+- Data export as JSON (single file with all data)
+- Export loading states
+- Admin dashboard link (for admins)
+- Account deletion with confirmation dialog
+- DELETE confirmation requirement
+- Account deletion warning with data list
+
+STATS PAGE
+----------
+- All-time overview cards (total films, avg rating, total hours, lists)
+- This year overview cards (films this year, avg rating, hours)
+- Films per month bar chart
+- Genre breakdown pie chart
+- Top genres list with counts
+- Top directors list with film counts
+- World Cinema section (countries with film counts)
+- Empty state for new users
+- Responsive chart layouts
+
+COMMUNITY PAGE
+--------------
+- Activity Feed tab
+- Activity filtering (All, Watched, Reviews, Lists, Favorites)
+- Polls tab
+- Poll creation
+- Poll types (Custom, Movie, Actor, Director)
+- Poll voting
+- Poll results with percentages
+- Movie search in poll creation
+- Debates tab
+- Debate creation
+- Debate voting (side 1 or side 2)
+- Debate results with percentages
+- Debate comments
+- Public Lists tab
+- List comments
+- People tab
+- User search by username or display name
+- Recommended users section
+- Most active users section
+- New users section
+- Connection request sending
+- Connection request acceptance
+- User result cards with stats
+
+NOTIFICATIONS PAGE
+------------------
+- Incoming connection requests list
+- Request sender information (avatar, name, username)
+- Request timestamp (relative time)
+- Accept connection button
+- Reject/Ignore request button
+- Empty state messaging
+- Link to community page
+
+MESSAGES PAGE
+-------------
+- Conversations list sidebar
+- New conversation dialog
+- Friends list for starting conversations
+- Conversation selection
+- Message display with avatars
+- Message timestamps
+- Unread message count badges
+- Message input field
+- Send message button
+- Movie sharing in messages (poster and link)
+- Auto-scroll to latest message
+- Mark messages as read
+- Empty state messaging
+
+REVIEWS SYSTEM
+--------------
+- Review submission form
+- Rating input (1-10 scale with visual indicators)
+- Review text input
+- Spoiler flag toggle
+- Review visibility settings
+- Review display cards
+- Review like button
+- Review comment system
+- Review author information
+- Review timestamps
+- Spoiler protection (blurred content)
+- Review count display
+
+COMMUNITY FEATURES
+------------------
+- Community rating calculation (average from all user ratings)
+- Community genre tagging (users vote on genres)
+- Genre tag suggestions (Noir, Slow Cinema, Mind-bending, etc.)
+- Custom genre input
+- Top genres display
+- User genre votes (up to 5 genres)
+- Trending algorithm (combines logs, favorites, ratings, comments)
+- Activity feed with all user actions
+- Activity filtering
+- Activity timestamps (relative time)
+
+TRENDING ALGORITHM
+------------------
+- Unified trending score calculation
+- Weekly log count weighting
+- Monthly log count weighting
+- Favorite count weighting
+- Average rating weighting
+- Comment count weighting
+- Total log count weighting
+- Ranked display with badges
+
+TOP 5 MOVIES FEATURE
+--------------------
+- Top 5 movies selection modal
+- Movie/TV show search in modal
+- Add movies to top 5 (max 5)
+- Remove movies from top 5
+- Reorder movies (up/down buttons)
+- Rank badges (#1, #2, etc.)
+- Display on profile page
+- Edit button for profile owner
+
+TV SHOW FEATURES
+----------------
+- TV show logging
+- Completion percentage tracking
+- Season/episode calculation from percentage
+- TV progress saving
+- TV show detail pages
+- TV show metadata (seasons, episodes, creators, networks)
+- TV show search
+- TV show filtering
+- TV show trending sections
+- TV show in activity feed
+
+DATA EXPORT
+-----------
+- Export all user data function
+- CSV export (separate files per data type)
+- JSON export (single comprehensive file)
+- Logs export (all fields)
+- Lists export
+- Favorites export
+- Watchlist export
+- Reviews export
+- TV progress export
+- Export date timestamp
+- Download file generation
+
+UI/UX FEATURES
+--------------
+- Responsive design (mobile-first)
+- Dark theme support
+- Loading states throughout
+- Empty states with helpful messaging
+- Toast notifications for actions
+- Smooth animations and transitions
+- Hover effects on interactive elements
+- Parallax scrolling effects
+- Horizontal scrolling sections
+- Modal dialogs
+- Popover components
+- Dropdown menus
+- Tabs navigation
+- Badge components
+- Avatar components
+- Card components
+- Button variants
+- Form inputs with validation
+- Calendar date picker
+- Slider components
+- Switch toggles
+- Star rating component
+- Progress bars
+- Charts (bar charts, pie charts)
+- Responsive grids
+- Scroll indicators
+- Back navigation
+- Breadcrumbs
+- Divider components
+- Typography system
+
+NAVIGATION & ROUTING
+--------------------
+- React Router navigation
+- Protected routes
+- URL parameter handling
+- Search parameter support
+- Link components throughout
+- Back button functionality
+- Navigation menu
+- Header with user menu
+- Logo component
+- Mobile-responsive navigation
+
+FIREBASE INTEGRATION
+--------------------
+- Firebase Authentication
+- Firestore database
+- Real-time data updates
+- User data management
+- Movie stats tracking
+- Activity logging
+- Connection management
+- Message system
+- Review system
+- Poll system
+- Debate system
+- List management
+- Watchlist management
+- Favorites management
+- TV progress tracking
+
+TMDB API INTEGRATION
+--------------------
+- Movie search
+- TV show search
+- Movie details fetching
+- TV show details fetching
+- Trending movies
+- Popular movies
+- Trending TV shows
+- Popular TV shows
+- Top rated TV shows
+- On the air TV shows
+- Upcoming movies
+- Similar movies
+- Similar TV shows
+- Movie poster images
+- Backdrop images
+- Cast information
+- Director information
+- Creator information (TV)
+- Genre information
+- Rating information
+
+MINOR FEATURES & POLISH
+------------------------
+- Character count for review fields
+- Username validation (alphanumeric + underscore)
+- Username lowercase conversion
+- Real-time username availability checking
+- Loading spinners for async operations
+- Error handling with user-friendly messages
+- Form validation
+- Disabled states for buttons
+- Hover tooltips
+- Image lazy loading
+- Responsive image sizing
+- Aspect ratio maintenance
+- Truncated text with ellipsis
+- Line clamping for long text
+- Smooth scrolling
+- Scroll position management
+- Keyboard navigation support
+- Enter key submission
+- Escape key to close modals
+- Click outside to close
+- Focus management
+- Accessibility attributes
+- Semantic HTML
+- SEO-friendly structure
+- Meta tags support
+- Favicon
+- Robots.txt
+- Sitemap support (via vercel.json)
+
+ADMIN FEATURES
+--------------
+- Admin role detection
+- Admin dashboard link
+- Admin access control
+
+PERFORMANCE OPTIMIZATIONS
+-------------------------
+- Parallel data fetching
+- Lazy loading
+- Image optimization
+- Code splitting
+- Memoization where appropriate
+- Efficient Firestore queries
+- Client-side filtering when needed
+- Debounced search inputs
+- Optimistic UI updates
+
+ERROR HANDLING
+--------------
+- Try-catch blocks throughout
+- Error logging
+- User-friendly error messages
+- Fallback UI states
+- Network error handling
+- Authentication error handling
+- Firestore error handling
+- TMDB API error handling

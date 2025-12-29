@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
-import { H1, H2 } from "@/components/ui/typography";
+import { H1, H2, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
-import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart } from "lucide-react";
+import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart, ChevronLeft, X } from "lucide-react";
 import { Movie, LogEntry } from "@/types/movie";
 import { getMovieDetails, getSimilarMovies, getSimilarTV } from "@/lib/tmdb";
 import { MovieCard } from "@/components/movies/MovieCard";
@@ -37,7 +37,11 @@ export default function MovieDetail() {
 
   const [isAddToListOpen, setIsAddToListOpen] = useState(false);
   const [isCreateListOpen, setIsCreateListOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [selectedBackdropIndex, setSelectedBackdropIndex] = useState(0);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const carouselIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Parallax scroll effect
   useEffect(() => {
@@ -52,6 +56,21 @@ export default function MovieDetail() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Auto-play carousel
+  useEffect(() => {
+    if (movie?.backdrops && movie.backdrops.length > 1) {
+      carouselIntervalRef.current = setInterval(() => {
+        setSelectedBackdropIndex((prev) => (prev < movie.backdrops!.length - 1 ? prev + 1 : 0));
+      }, 4000); // Change every 4 seconds
+    }
+
+    return () => {
+      if (carouselIntervalRef.current) {
+        clearInterval(carouselIntervalRef.current);
+      }
+    };
+  }, [movie?.backdrops]);
 
   useEffect(() => {
     async function loadData() {
@@ -69,9 +88,10 @@ export default function MovieDetail() {
           const similar = movieData.mediaType === 'tv' 
             ? await getSimilarTV(parseInt(id))
             : await getSimilarMovies(parseInt(id));
-          setSimilarMovies(similar.movies.slice(0, 12));
+          setSimilarMovies(similar.movies.slice(0, 16));
         } catch (error) {
           console.error("Failed to load similar movies:", error);
+          setSimilarMovies([]); // Set empty array on error
         }
 
         if (user) {
@@ -202,29 +222,63 @@ export default function MovieDetail() {
 
   return (
     <Layout>
-      {/* Hero Backdrop Section with Parallax */}
+      {/* Hero Backdrop Section with Parallax - Small on Mobile */}
       {movie.backdropUrl && (
-        <div className="relative w-full h-[300px] lg:h-[450px] overflow-hidden">
+        <div className="relative w-full h-[120px] sm:h-[200px] lg:h-[450px] overflow-hidden">
           <div 
             ref={backdropRef}
             className="absolute inset-0 w-full h-[120%] -top-[10%]"
             style={{ willChange: 'transform' }}
           >
-            <img
-              src={movie.backdropUrl}
-              alt=""
+          <img
+            src={movie.backdropUrl}
+            alt=""
               className="w-full h-full object-cover opacity-60 grayscale-[0.15]"
               style={{ filter: 'blur(0.5px)' }}
-            />
+          />
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent z-10" />
         </div>
       )}
 
-      <div className={`container mx-auto px-6 ${movie.backdropUrl ? "-mt-40 lg:-mt-60" : "py-12"} relative z-20`}>
-        <div className="grid lg:grid-cols-[300px_1fr] gap-8 lg:gap-16">
-          {/* Left Column: Poster & Quick Info */}
-          <aside className="space-y-8">
+      <div className={`container mx-auto px-4 sm:px-6 ${movie.backdropUrl ? "-mt-16 sm:-mt-24 lg:-mt-60" : "py-6 sm:py-12"} relative z-20`}>
+        {/* Mobile: Compact Top Layout with Small Poster */}
+        <div className="lg:hidden mb-6">
+          <div className="flex gap-3 items-start">
+            <div className="relative group shrink-0">
+              <div className="w-20 h-[120px] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-lg">
+                {movie.posterUrl ? (
+                  <img
+                    src={movie.posterUrl}
+                    alt={movie.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground p-2">
+                    <span className="text-[10px] font-serif italic text-center">{movie.title}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex-1 min-w-0 pt-1">
+              <H1 className="text-xl sm:text-2xl mb-2 leading-tight line-clamp-2">{movie.title}</H1>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="text-foreground font-medium">{movie.year}</span>
+                {movie.runtime && <span>{movie.runtime} min</span>}
+                {movie.rating && (
+                  <div className="flex items-center gap-1">
+                    <Star className="h-3 w-3 fill-primary text-primary" />
+                    <span className="text-foreground font-medium">{movie.rating.toFixed(1)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[300px_1fr] gap-6 sm:gap-8 lg:gap-16">
+          {/* Left Column: Poster & Quick Info - Hidden on Mobile */}
+          <aside className="hidden lg:block space-y-8">
             <div className="relative group">
               <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl transition-transform duration-300 group-hover:scale-105 group-hover:shadow-3xl">
                 {movie.posterUrl ? (
@@ -270,12 +324,90 @@ export default function MovieDetail() {
                 </div>
               </div>
             </div>
+
+            {/* Backdrop Carousel - Below Poster */}
+            {movie.backdrops && movie.backdrops.length > 0 && (
+              <div className="mt-8">
+                <div className="relative">
+                  <div className="relative h-[250px] rounded-lg overflow-hidden border border-border/50">
+                    <img
+                      src={movie.backdrops[selectedBackdropIndex].url}
+                      alt={`${movie.title} backdrop ${selectedBackdropIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+
+                    {movie.backdrops.length > 1 && (
+                      <>
+                        <button
+                          onClick={() => setSelectedBackdropIndex((prev) => (prev > 0 ? prev - 1 : movie.backdrops!.length - 1))}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 hover:bg-background transition-colors shadow-lg"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setSelectedBackdropIndex((prev) => (prev < movie.backdrops!.length - 1 ? prev + 1 : 0))}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 hover:bg-background transition-colors shadow-lg"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+                          {movie.backdrops.map((_, index) => (
+                            <button
+                              key={index}
+                              onClick={() => setSelectedBackdropIndex(index)}
+                              className={`h-1.5 rounded-full transition-all ${
+                                index === selectedBackdropIndex
+                                  ? 'w-6 bg-primary'
+                                  : 'w-1.5 bg-white/50 hover:bg-white/70'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Production Companies - Below Carousel */}
+            {movie.productionCompanies && movie.productionCompanies.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Production Companies</p>
+                <div className="flex flex-wrap gap-3 items-center">
+                  {movie.productionCompanies.map((company) => (
+                    <div key={company.id} className="flex items-center">
+                      {company.logoUrl ? (
+                        <img
+                          src={company.logoUrl}
+                          alt={company.name}
+                          className="h-8 object-contain filter brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) {
+                              const textDiv = document.createElement('div');
+                              textDiv.className = 'text-xs text-muted-foreground';
+                              textDiv.textContent = company.name;
+                              parent.appendChild(textDiv);
+                            }
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">{company.name}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </aside>
 
           {/* Right Column: Narrative & Credits */}
-          <main className="max-w-4xl pt-4">
-            {/* Header Identity */}
-            <div className="mb-8">
+          <main className="max-w-4xl pt-0 lg:pt-4">
+            {/* Header Identity - Hidden on Mobile (shown in compact top layout) */}
+            <div className="hidden lg:block mb-8">
               <H1 className="text-4xl lg:text-5xl mb-4 tracking-tight">{movie.title}</H1>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm md:text-base text-muted-foreground font-medium">
                 <span className="text-foreground">{movie.year}</span>
@@ -443,6 +575,44 @@ export default function MovieDetail() {
               </div>
             )}
 
+            {/* Videos Section */}
+            {movie.videos && movie.videos.length > 0 && (
+              <div className="mb-16">
+                <H3 className="text-xl mb-4">Videos & Trailers</H3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {movie.videos.slice(0, 6).map((video) => (
+                    <button
+                      key={video.key}
+                      onClick={() => {
+                        setSelectedVideo(video.key);
+                        setIsVideoModalOpen(true);
+                      }}
+                      className="relative group aspect-video bg-muted rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-all"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
+                      <div className="absolute inset-0 flex items-center justify-center z-20">
+                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:bg-white/30 transition-colors">
+                          <Play className="h-6 w-6 text-white fill-current translate-x-0.5" />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
+                        <p className="text-sm font-medium text-white line-clamp-2">{video.name}</p>
+                        <p className="text-xs text-white/70 mt-1">{video.type}</p>
+                      </div>
+                      <img
+                        src={`https://img.youtube.com/vi/${video.key}/maxresdefault.jpg`}
+                        alt={video.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.key}/hqdefault.jpg`;
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <Divider className="my-12 opacity-50" />
 
             {/* Community Reviews Section */}
@@ -491,12 +661,7 @@ export default function MovieDetail() {
             {/* Similar Movies */}
             {similarMovies.length > 0 && (
               <section className="mt-12">
-                <H2 className="mb-6">Similar to {movie.title}</H2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
-                  {similarMovies.map((item) => (
-                    <MovieCard key={item.id} movie={item} size="md" />
-                  ))}
-                </div>
+                <SimilarMoviesSection title={`Similar to ${movie.title}`} movies={similarMovies} />
               </section>
             )}
           </main>
@@ -518,10 +683,97 @@ export default function MovieDetail() {
           setIsAddToListOpen(true);
         }}
       />
+
+      {/* Video Modal */}
+      {isVideoModalOpen && selectedVideo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsVideoModalOpen(false)}>
+          <div className="relative w-full max-w-5xl mx-4 aspect-video bg-black rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setIsVideoModalOpen(false)}
+              className="absolute top-4 right-4 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 hover:bg-background transition-colors shadow-lg"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <iframe
+              src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
 
 function cn(...classes: any[]) {
   return classes.filter(Boolean).join(" ");
+}
+
+// Horizontal Scroll Component for Similar Movies
+function SimilarMoviesSection({ title, movies }: { title: string; movies: Movie[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const scrollAmount = direction === 'left' ? -400 : 400;
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+      setTimeout(checkScroll, 300);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const ref = scrollRef.current;
+    if (ref) {
+      ref.addEventListener('scroll', checkScroll);
+      return () => ref.removeEventListener('scroll', checkScroll);
+    }
+  }, [movies]);
+
+  return (
+    <div>
+      <H2 className="mb-6">{title}</H2>
+      <div className="relative group">
+        {canScrollLeft && (
+          <button
+            onClick={() => scroll('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        {canScrollRight && (
+          <button
+            onClick={() => scroll('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-background"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto scrollbar-hide scroll-smooth"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          {movies.map((item) => (
+            <div key={item.id} className="flex-none w-[144px]">
+              <MovieCard movie={item} size="md" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }

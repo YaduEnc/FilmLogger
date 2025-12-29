@@ -1,20 +1,34 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { H1, H2, H3 } from '@/components/ui/typography';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { getAdminStats, isAdmin } from '@/lib/db';
+import { 
+  getAdminStats, isAdmin, 
+  createAnnouncement, getAllAnnouncements, updateAnnouncement, 
+  deleteAnnouncement, toggleAnnouncementStatus, toggleAnnouncementPinned 
+} from '@/lib/db';
+import { Announcement } from '@/types/movie';
 import { 
   Users, Film, MessageSquare, List, Heart, UserPlus, 
   BarChart3, MessageCircle, TrendingUp, Activity, 
-  Loader2, RefreshCw, ArrowUp, ArrowDown, Shield
+  Loader2, RefreshCw, ArrowUp, ArrowDown, Shield,
+  Megaphone, Plus, Edit2, Trash2, Pin, Eye, EyeOff,
+  ExternalLink, Youtube, Newspaper, PartyPopper, Bell, Sparkles
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
 
 interface AdminStats {
   totalUsers: number;
@@ -58,6 +72,14 @@ interface AdminStats {
   avgListsPerUser: number;
 }
 
+const categoryConfig = {
+  news: { icon: Newspaper, label: 'News', color: 'bg-blue-500/10 text-blue-500' },
+  trailer: { icon: Film, label: 'Trailer', color: 'bg-red-500/10 text-red-500' },
+  release: { icon: PartyPopper, label: 'Release', color: 'bg-green-500/10 text-green-500' },
+  update: { icon: Bell, label: 'Update', color: 'bg-yellow-500/10 text-yellow-500' },
+  event: { icon: Sparkles, label: 'Event', color: 'bg-purple-500/10 text-purple-500' }
+};
+
 export default function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -68,6 +90,25 @@ export default function Admin() {
   const [hasAccess, setHasAccess] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<{ title: string; data: any[]; type: 'line' | 'bar' } | null>(null);
   const [isGraphOpen, setIsGraphOpen] = useState(false);
+  
+  // Announcements state
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [isAnnouncementsLoading, setIsAnnouncementsLoading] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    youtubeUrl: '',
+    articleUrl: '',
+    imageUrl: '',
+    category: 'news' as 'news' | 'trailer' | 'release' | 'update' | 'event',
+    isPinned: false
+  });
 
   useEffect(() => {
     checkAccess();
@@ -197,6 +238,135 @@ export default function Admin() {
     setIsRefreshing(true);
     await loadStats();
   };
+
+  // Load announcements
+  const loadAnnouncements = async () => {
+    setIsAnnouncementsLoading(true);
+    try {
+      const data = await getAllAnnouncements();
+      setAnnouncements(data as Announcement[]);
+    } catch (error) {
+      console.error('Error loading announcements:', error);
+      toast.error('Failed to load announcements');
+    } finally {
+      setIsAnnouncementsLoading(false);
+    }
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      content: '',
+      youtubeUrl: '',
+      articleUrl: '',
+      imageUrl: '',
+      category: 'news',
+      isPinned: false
+    });
+  };
+
+  // Open edit modal
+  const openEditModal = (announcement: Announcement) => {
+    setEditingAnnouncement(announcement);
+    setFormData({
+      title: announcement.title,
+      content: announcement.content,
+      youtubeUrl: announcement.youtubeUrl || '',
+      articleUrl: announcement.articleUrl || '',
+      imageUrl: announcement.imageUrl || '',
+      category: announcement.category,
+      isPinned: announcement.isPinned
+    });
+    setIsEditOpen(true);
+  };
+
+  // Create announcement
+  const handleCreate = async () => {
+    if (!user || !formData.title.trim() || !formData.content.trim()) {
+      toast.error('Please fill in title and content');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await createAnnouncement({
+        ...formData,
+        authorUid: user.uid,
+        authorName: user.displayName || 'Admin'
+      });
+      toast.success('Announcement created');
+      setIsCreateOpen(false);
+      resetForm();
+      loadAnnouncements();
+    } catch (error) {
+      console.error('Error creating announcement:', error);
+      toast.error('Failed to create announcement');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Update announcement
+  const handleUpdate = async () => {
+    if (!editingAnnouncement) return;
+
+    setIsSubmitting(true);
+    try {
+      await updateAnnouncement(editingAnnouncement.id, formData);
+      toast.success('Announcement updated');
+      setIsEditOpen(false);
+      setEditingAnnouncement(null);
+      resetForm();
+      loadAnnouncements();
+    } catch (error) {
+      console.error('Error updating announcement:', error);
+      toast.error('Failed to update announcement');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Delete announcement
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteAnnouncement(id);
+      toast.success('Announcement deleted');
+      loadAnnouncements();
+    } catch (error) {
+      console.error('Error deleting announcement:', error);
+      toast.error('Failed to delete announcement');
+    }
+  };
+
+  // Toggle active status
+  const handleToggleActive = async (id: string, isActive: boolean) => {
+    try {
+      await toggleAnnouncementStatus(id, !isActive);
+      toast.success(isActive ? 'Announcement hidden' : 'Announcement published');
+      loadAnnouncements();
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  // Toggle pinned status
+  const handleTogglePinned = async (id: string, isPinned: boolean) => {
+    try {
+      await toggleAnnouncementPinned(id, !isPinned);
+      toast.success(isPinned ? 'Unpinned' : 'Pinned to top');
+      loadAnnouncements();
+    } catch (error) {
+      toast.error('Failed to update pin status');
+    }
+  };
+
+  // Load announcements on mount
+  useEffect(() => {
+    if (hasAccess) {
+      loadAnnouncements();
+    }
+  }, [hasAccess]);
 
   if (!hasAccess) {
     return null;
@@ -624,7 +794,190 @@ export default function Admin() {
             </Card>
           </div>
         </section>
+
+        {/* Announcements Management */}
+        <section className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <H2 className="text-xl flex items-center gap-2">
+              <Megaphone className="h-5 w-5" />
+              Announcements
+            </H2>
+            <div className="flex items-center gap-2">
+              <Link to="/announcements">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  View Public Page
+                </Button>
+              </Link>
+              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" className="gap-2" onClick={resetForm}>
+                    <Plus className="h-4 w-4" />
+                    New Announcement
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Create Announcement</DialogTitle>
+                  </DialogHeader>
+                  <AnnouncementForm 
+                    formData={formData}
+                    setFormData={setFormData}
+                    onSubmit={handleCreate}
+                    isSubmitting={isSubmitting}
+                    submitLabel="Create"
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
+          {isAnnouncementsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {announcements.length === 0 ? (
+                <Card className="p-8 text-center text-muted-foreground">
+                  <Megaphone className="h-12 w-12 mx-auto mb-4 opacity-30" />
+                  <p>No announcements yet</p>
+                  <p className="text-sm mt-1">Create your first announcement to share news with users.</p>
+                </Card>
+              ) : (
+                announcements.map((announcement) => {
+                  const CategoryIcon = categoryConfig[announcement.category]?.icon || Newspaper;
+                  const categoryColor = categoryConfig[announcement.category]?.color || 'bg-muted';
+                  
+                  return (
+                    <Card key={announcement.id} className={`p-4 ${!announcement.isActive ? 'opacity-60' : ''}`}>
+                      <div className="flex items-start gap-4">
+                        {/* Thumbnail */}
+                        {announcement.youtubeVideoId && (
+                          <div className="w-24 h-14 rounded overflow-hidden bg-muted shrink-0 relative">
+                            <img 
+                              src={`https://img.youtube.com/vi/${announcement.youtubeVideoId}/mqdefault.jpg`}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <Youtube className="h-4 w-4 text-white" />
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline" className={`text-[10px] ${categoryColor}`}>
+                              <CategoryIcon className="h-3 w-3 mr-1" />
+                              {categoryConfig[announcement.category]?.label}
+                            </Badge>
+                            {announcement.isPinned && (
+                              <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Pin className="h-3 w-3" />
+                                Pinned
+                              </Badge>
+                            )}
+                            {!announcement.isActive && (
+                              <Badge variant="destructive" className="text-[10px]">
+                                Hidden
+                              </Badge>
+                            )}
+                          </div>
+                          <h3 className="font-medium truncate">{announcement.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{announcement.content}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                        
+                        {/* Actions */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleTogglePinned(announcement.id, announcement.isPinned)}
+                            title={announcement.isPinned ? 'Unpin' : 'Pin to top'}
+                          >
+                            <Pin className={`h-4 w-4 ${announcement.isPinned ? 'text-primary fill-primary' : ''}`} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleToggleActive(announcement.id, announcement.isActive)}
+                            title={announcement.isActive ? 'Hide' : 'Publish'}
+                          >
+                            {announcement.isActive ? (
+                              <Eye className="h-4 w-4" />
+                            ) : (
+                              <EyeOff className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => openEditModal(announcement)}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Announcement</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{announcement.title}"? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(announcement.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </section>
       </div>
+
+      {/* Edit Announcement Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Announcement</DialogTitle>
+          </DialogHeader>
+          <AnnouncementForm 
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleUpdate}
+            isSubmitting={isSubmitting}
+            submitLabel="Save Changes"
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Graph Dialog */}
       <Dialog open={isGraphOpen} onOpenChange={setIsGraphOpen}>
@@ -666,5 +1019,174 @@ export default function Admin() {
         </DialogContent>
       </Dialog>
     </Layout>
+  );
+}
+
+// Announcement Form Component
+function AnnouncementForm({
+  formData,
+  setFormData,
+  onSubmit,
+  isSubmitting,
+  submitLabel
+}: {
+  formData: {
+    title: string;
+    content: string;
+    youtubeUrl: string;
+    articleUrl: string;
+    imageUrl: string;
+    category: 'news' | 'trailer' | 'release' | 'update' | 'event';
+    isPinned: boolean;
+  };
+  setFormData: React.Dispatch<React.SetStateAction<typeof formData>>;
+  onSubmit: () => void;
+  isSubmitting: boolean;
+  submitLabel: string;
+}) {
+  // Extract video ID for preview
+  const extractVideoId = (url: string) => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
+    return match ? match[1] : null;
+  };
+  
+  const videoId = extractVideoId(formData.youtubeUrl);
+
+  return (
+    <div className="space-y-6 mt-4">
+      {/* Title */}
+      <div className="space-y-2">
+        <Label htmlFor="title">Title *</Label>
+        <Input
+          id="title"
+          value={formData.title}
+          onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+          placeholder="Breaking: New Marvel Movie Announced..."
+        />
+      </div>
+
+      {/* Content */}
+      <div className="space-y-2">
+        <Label htmlFor="content">Content *</Label>
+        <Textarea
+          id="content"
+          value={formData.content}
+          onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+          placeholder="Share the latest news about cinema..."
+          rows={4}
+        />
+      </div>
+
+      {/* Category */}
+      <div className="space-y-2">
+        <Label>Category</Label>
+        <Select
+          value={formData.category}
+          onValueChange={(v) => setFormData(prev => ({ ...prev, category: v as typeof formData.category }))}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="news">📰 News</SelectItem>
+            <SelectItem value="trailer">🎬 Trailer</SelectItem>
+            <SelectItem value="release">🎉 Release</SelectItem>
+            <SelectItem value="update">🔔 Platform Update</SelectItem>
+            <SelectItem value="event">✨ Event</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* YouTube URL */}
+      <div className="space-y-2">
+        <Label htmlFor="youtube">YouTube URL (for trailer/video)</Label>
+        <Input
+          id="youtube"
+          value={formData.youtubeUrl}
+          onChange={(e) => setFormData(prev => ({ ...prev, youtubeUrl: e.target.value }))}
+          placeholder="https://youtube.com/watch?v=..."
+        />
+        {/* YouTube Preview */}
+        {videoId && (
+          <div className="mt-2 rounded-lg overflow-hidden bg-muted aspect-video relative">
+            <img 
+              src={`https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
+              alt="YouTube thumbnail"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+              }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+              <div className="w-16 h-16 rounded-full bg-red-600 flex items-center justify-center">
+                <div className="w-0 h-0 border-l-[24px] border-l-white border-t-[14px] border-t-transparent border-b-[14px] border-b-transparent ml-1" />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Article URL */}
+      <div className="space-y-2">
+        <Label htmlFor="article">Article URL (optional)</Label>
+        <Input
+          id="article"
+          value={formData.articleUrl}
+          onChange={(e) => setFormData(prev => ({ ...prev, articleUrl: e.target.value }))}
+          placeholder="https://variety.com/article..."
+        />
+      </div>
+
+      {/* Image URL (if no YouTube) */}
+      {!formData.youtubeUrl && (
+        <div className="space-y-2">
+          <Label htmlFor="image">Image URL (optional)</Label>
+          <Input
+            id="image"
+            value={formData.imageUrl}
+            onChange={(e) => setFormData(prev => ({ ...prev, imageUrl: e.target.value }))}
+            placeholder="https://example.com/image.jpg"
+          />
+          {formData.imageUrl && (
+            <div className="mt-2 rounded-lg overflow-hidden bg-muted aspect-video">
+              <img 
+                src={formData.imageUrl}
+                alt="Preview"
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pin Option */}
+      <div className="flex items-center justify-between py-2">
+        <div>
+          <Label htmlFor="pinned">Pin to top</Label>
+          <p className="text-xs text-muted-foreground">Featured announcements appear first</p>
+        </div>
+        <Switch
+          id="pinned"
+          checked={formData.isPinned}
+          onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPinned: checked }))}
+        />
+      </div>
+
+      {/* Submit */}
+      <Button 
+        onClick={onSubmit} 
+        disabled={isSubmitting || !formData.title.trim() || !formData.content.trim()}
+        className="w-full"
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Processing...
+          </>
+        ) : (
+          submitLabel
+        )}
+      </Button>
+    </div>
   );
 }

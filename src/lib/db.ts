@@ -2280,3 +2280,201 @@ export const getAllUserDataForExport = async (userId: string) => {
         throw error;
     }
 };
+
+// ==================== ANNOUNCEMENTS ====================
+
+// Helper: Extract YouTube video ID from URL
+export const extractYouTubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+        /youtube\.com\/shorts\/([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match && match[1]) {
+            return match[1];
+        }
+    }
+    
+    return null;
+};
+
+// Create a new announcement
+export const createAnnouncement = async (data: {
+    title: string;
+    content: string;
+    youtubeUrl?: string;
+    articleUrl?: string;
+    imageUrl?: string;
+    category: 'news' | 'trailer' | 'release' | 'update' | 'event';
+    isPinned?: boolean;
+    expiresAt?: string;
+    authorUid: string;
+    authorName: string;
+}): Promise<string> => {
+    try {
+        const youtubeVideoId = data.youtubeUrl ? extractYouTubeVideoId(data.youtubeUrl) : null;
+        
+        const announcementData = {
+            title: data.title,
+            content: data.content,
+            youtubeUrl: data.youtubeUrl || null,
+            youtubeVideoId,
+            articleUrl: data.articleUrl || null,
+            imageUrl: data.imageUrl || null,
+            category: data.category,
+            isActive: true,
+            isPinned: data.isPinned || false,
+            authorUid: data.authorUid,
+            authorName: data.authorName,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            expiresAt: data.expiresAt || null
+        };
+        
+        const docRef = await addDoc(collection(db, "announcements"), announcementData);
+        return docRef.id;
+    } catch (error) {
+        console.error("Error creating announcement:", error);
+        throw error;
+    }
+};
+
+// Get active announcements (for public display)
+export const getActiveAnnouncements = async (limitCount: number = 10): Promise<any[]> => {
+    try {
+        const now = new Date();
+        
+        // Get all active announcements
+        const q = query(
+            collection(db, "announcements"),
+            where("isActive", "==", true),
+            orderBy("createdAt", "desc"),
+            limit(limitCount * 2) // Fetch more to filter expired ones
+        );
+        
+        const snapshot = await getDocs(q);
+        
+        const announcements: any[] = snapshot.docs
+            .map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt),
+                updatedAt: safeTimestampToISO(doc.data().updatedAt),
+                expiresAt: doc.data().expiresAt ? safeTimestampToISO(doc.data().expiresAt) : null
+            }))
+            .filter(a => {
+                // Filter out expired announcements
+                if (a.expiresAt) {
+                    return new Date(a.expiresAt) > now;
+                }
+                return true;
+            })
+            .slice(0, limitCount);
+        
+        // Sort: pinned first, then by date
+        return announcements.sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+    } catch (error) {
+        console.error("Error getting active announcements:", error);
+        return [];
+    }
+};
+
+// Get all announcements (for admin)
+export const getAllAnnouncements = async (): Promise<any[]> => {
+    try {
+        const q = query(
+            collection(db, "announcements"),
+            orderBy("createdAt", "desc")
+        );
+        
+        const snapshot = await getDocs(q);
+        
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt),
+            updatedAt: safeTimestampToISO(doc.data().updatedAt),
+            expiresAt: doc.data().expiresAt ? safeTimestampToISO(doc.data().expiresAt) : null
+        }));
+    } catch (error) {
+        console.error("Error getting all announcements:", error);
+        return [];
+    }
+};
+
+// Update announcement
+export const updateAnnouncement = async (
+    announcementId: string,
+    data: Partial<{
+        title: string;
+        content: string;
+        youtubeUrl: string;
+        articleUrl: string;
+        imageUrl: string;
+        category: 'news' | 'trailer' | 'release' | 'update' | 'event';
+        isActive: boolean;
+        isPinned: boolean;
+        expiresAt: string | null;
+    }>
+): Promise<void> => {
+    try {
+        const updateData: any = {
+            ...data,
+            updatedAt: serverTimestamp()
+        };
+        
+        // If youtubeUrl is being updated, extract the video ID
+        if (data.youtubeUrl !== undefined) {
+            updateData.youtubeVideoId = data.youtubeUrl ? extractYouTubeVideoId(data.youtubeUrl) : null;
+        }
+        
+        await updateDoc(doc(db, "announcements", announcementId), updateData);
+    } catch (error) {
+        console.error("Error updating announcement:", error);
+        throw error;
+    }
+};
+
+// Delete announcement
+export const deleteAnnouncement = async (announcementId: string): Promise<void> => {
+    try {
+        await deleteDoc(doc(db, "announcements", announcementId));
+    } catch (error) {
+        console.error("Error deleting announcement:", error);
+        throw error;
+    }
+};
+
+// Toggle announcement active status
+export const toggleAnnouncementStatus = async (announcementId: string, isActive: boolean): Promise<void> => {
+    try {
+        await updateDoc(doc(db, "announcements", announcementId), {
+            isActive,
+            updatedAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error toggling announcement status:", error);
+        throw error;
+    }
+};
+
+// Toggle announcement pinned status
+export const toggleAnnouncementPinned = async (announcementId: string, isPinned: boolean): Promise<void> => {
+    try {
+        await updateDoc(doc(db, "announcements", announcementId), {
+            isPinned,
+            updatedAt: serverTimestamp()
+        });
+    } catch (error) {
+        console.error("Error toggling announcement pinned status:", error);
+        throw error;
+    }
+};

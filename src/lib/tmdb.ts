@@ -17,6 +17,7 @@ interface TMDBMovie {
   episode_run_time?: number[]; // For TV
   genres?: { id: number; name: string }[];
   production_countries?: { iso_3166_1: string; name: string }[];
+  production_companies?: { id: number; name: string; logo_path?: string; origin_country?: string }[];
   overview?: string;
   original_language?: string;
   vote_average?: number;
@@ -31,13 +32,27 @@ interface TMDBMovie {
     season_number: number;
     episode_count: number;
     air_date: string;
+    episodes?: {
+      id: number;
+      name: string;
+      overview: string;
+      still_path?: string;
+      episode_number: number;
+      air_date: string;
+      runtime?: number;
+      vote_average?: number;
+    }[];
   }[];
   credits?: {
     crew?: { id: number; job: string; name: string; profile_path?: string }[];
     cast?: { id: number; name: string; character: string; order: number; profile_path?: string }[];
   };
   videos?: {
-    results: { key: string; site: string; type: string }[];
+    results: { key: string; site: string; type: string; name: string; official?: boolean }[];
+  };
+  images?: {
+    backdrops?: { file_path: string; width: number; height: number }[];
+    posters?: { file_path: string; width: number; height: number }[];
   };
   created_by?: { id: number; name: string; profile_path?: string }[];
   networks?: { id: number; name: string; logo_path?: string }[];
@@ -75,6 +90,30 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
   const date = tmdbMovie.release_date || tmdbMovie.first_air_date;
   const year = date ? parseInt(date.split("-")[0]) : 0;
 
+  // Extract all videos (trailers, teasers, clips, etc.)
+  const videos = tmdbMovie.videos?.results?.filter(v => v.site === "YouTube") || [];
+
+  // Extract backdrops and posters
+  const backdrops = tmdbMovie.images?.backdrops?.map(b => ({
+    url: `${TMDB_IMAGE_BASE}/original${b.file_path}`,
+    width: b.width,
+    height: b.height
+  })) || [];
+
+  const posters = tmdbMovie.images?.posters?.map(p => ({
+    url: `${TMDB_IMAGE_BASE}/w500${p.file_path}`,
+    width: p.width,
+    height: p.height
+  })) || [];
+
+  // Production companies with logos
+  const productionCompanies = tmdbMovie.production_companies?.map(company => ({
+    id: company.id,
+    name: company.name,
+    logoUrl: company.logo_path ? `${TMDB_IMAGE_BASE}/w92${company.logo_path}` : undefined,
+    originCountry: company.origin_country
+  })) || [];
+
   return {
     id: tmdbMovie.id,
     title,
@@ -97,13 +136,25 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     rating: tmdbMovie.vote_average,
     voteCount: tmdbMovie.vote_count,
     trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : undefined,
+    videos: videos.map(v => ({
+      key: v.key,
+      name: v.name,
+      type: v.type,
+      official: v.official || false
+    })),
+    backdrops,
+    posters,
+    productionCompanies,
 
     // TV Specific
     mediaType: isTV ? 'tv' : 'movie',
     firstAirDate: tmdbMovie.first_air_date,
     numberOfSeasons: tmdbMovie.number_of_seasons,
     numberOfEpisodes: tmdbMovie.number_of_episodes,
-    seasons: tmdbMovie.seasons,
+    seasons: tmdbMovie.seasons?.map(season => ({
+      ...season,
+      episodes: season.episodes || []
+    })),
     createdBy: tmdbMovie.created_by?.map(c => ({
       id: c.id,
       name: c.name,
@@ -142,7 +193,7 @@ async function fetchTMDB(endpoint: string): Promise<any> {
 
 export async function searchMovies(query: string, page = 1): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
   try {
-    const data = await fetchTMDB(`/search/movie?query=${encodeURIComponent(query)}&page=${page}&include_adult=false`);
+    const data = await fetchTMDB(`/search/movie?query=${encodeURIComponent(query)}&page=${page}&include_adult=false&region=IN`);
 
     return {
       movies: data.results.map(transformMovie),
@@ -157,7 +208,7 @@ export async function searchMovies(query: string, page = 1): Promise<{ movies: M
 
 export async function getMovieDetails(movieId: number): Promise<Movie> {
   try {
-    const data = await fetchTMDB(`/movie/${movieId}?append_to_response=credits,videos`);
+    const data = await fetchTMDB(`/movie/${movieId}?append_to_response=credits,videos,images&region=IN`);
     return transformMovie(data);
   } catch (error) {
     console.error("TMDB movie error:", error);
@@ -167,7 +218,7 @@ export async function getMovieDetails(movieId: number): Promise<Movie> {
 
 export async function getPopularMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/movie/popular?page=${page}`);
+    const data = await fetchTMDB(`/movie/popular?page=${page}&region=IN`);
 
     return {
       movies: data.results.map(transformMovie),
@@ -181,7 +232,8 @@ export async function getPopularMovies(page = 1): Promise<{ movies: Movie[]; tot
 
 export async function getTrendingMovies(page = 1, timeWindow: 'day' | 'week' = 'week'): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/trending/movie/${timeWindow}?page=${page}`);
+    // Note: Trending endpoint doesn't support append_to_response, so we'll fetch credits separately if needed
+    const data = await fetchTMDB(`/trending/movie/${timeWindow}?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -194,7 +246,7 @@ export async function getTrendingMovies(page = 1, timeWindow: 'day' | 'week' = '
 
 export async function getUpcomingMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/movie/upcoming?page=${page}`);
+    const data = await fetchTMDB(`/movie/upcoming?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -207,7 +259,7 @@ export async function getUpcomingMovies(page = 1): Promise<{ movies: Movie[]; to
 
 export async function getSimilarMovies(movieId: number, page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/movie/${movieId}/similar?page=${page}`);
+    const data = await fetchTMDB(`/movie/${movieId}/similar?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -220,7 +272,7 @@ export async function getSimilarMovies(movieId: number, page = 1): Promise<{ mov
 
 export async function getSimilarTV(tvId: number, page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/tv/${tvId}/similar?page=${page}`);
+    const data = await fetchTMDB(`/tv/${tvId}/similar?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -235,7 +287,7 @@ export async function getSimilarTV(tvId: number, page = 1): Promise<{ movies: Mo
 
 export async function searchTV(query: string, page = 1): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
   try {
-    const data = await fetchTMDB(`/search/tv?query=${encodeURIComponent(query)}&page=${page}&include_adult=false`);
+    const data = await fetchTMDB(`/search/tv?query=${encodeURIComponent(query)}&page=${page}&include_adult=false&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -249,7 +301,7 @@ export async function searchTV(query: string, page = 1): Promise<{ movies: Movie
 
 export async function getTVDetails(tvId: number): Promise<Movie> {
   try {
-    const data = await fetchTMDB(`/tv/${tvId}?append_to_response=credits,videos`);
+    const data = await fetchTMDB(`/tv/${tvId}?append_to_response=credits,videos,images&region=IN`);
     return transformMovie(data);
   } catch (error) {
     console.error("TMDB tv details error:", error);
@@ -259,7 +311,7 @@ export async function getTVDetails(tvId: number): Promise<Movie> {
 
 export async function getPopularTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/tv/popular?page=${page}`);
+    const data = await fetchTMDB(`/tv/popular?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -272,7 +324,7 @@ export async function getPopularTV(page = 1): Promise<{ movies: Movie[]; totalPa
 
 export async function getTrendingTV(page = 1, timeWindow: 'day' | 'week' = 'week'): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/trending/tv/${timeWindow}?page=${page}`);
+    const data = await fetchTMDB(`/trending/tv/${timeWindow}?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -285,7 +337,7 @@ export async function getTrendingTV(page = 1, timeWindow: 'day' | 'week' = 'week
 
 export async function getTopRatedTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/tv/top_rated?page=${page}`);
+    const data = await fetchTMDB(`/tv/top_rated?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -298,7 +350,7 @@ export async function getTopRatedTV(page = 1): Promise<{ movies: Movie[]; totalP
 
 export async function getOnTheAirTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
-    const data = await fetchTMDB(`/tv/on_the_air?page=${page}`);
+    const data = await fetchTMDB(`/tv/on_the_air?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -313,7 +365,7 @@ export async function getOnTheAirTV(page = 1): Promise<{ movies: Movie[]; totalP
 export async function getUpcomingTV(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
   try {
     // Get TV shows that are premiering soon
-    const data = await fetchTMDB(`/tv/on_the_air?page=${page}`);
+    const data = await fetchTMDB(`/tv/on_the_air?page=${page}&region=IN`);
     return {
       movies: data.results.map(transformMovie),
       totalPages: data.total_pages,
@@ -321,6 +373,34 @@ export async function getUpcomingTV(page = 1): Promise<{ movies: Movie[]; totalP
   } catch (error) {
     console.error("TMDB upcoming tv error:", error);
     throw new Error("Failed to fetch upcoming tv shows");
+  }
+}
+
+export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<any> {
+  try {
+    const data = await fetchTMDB(`/tv/${tvId}/season/${seasonNumber}?region=IN`);
+    return {
+      id: data.id,
+      name: data.name,
+      overview: data.overview,
+      poster_path: data.poster_path,
+      season_number: data.season_number,
+      episodes: data.episodes?.map((ep: any) => ({
+        id: ep.id,
+        name: ep.name,
+        overview: ep.overview,
+        still_path: ep.still_path ? `${TMDB_IMAGE_BASE}/w500${ep.still_path}` : undefined,
+        episode_number: ep.episode_number,
+        air_date: ep.air_date,
+        runtime: ep.runtime,
+        vote_average: ep.vote_average,
+        crew: ep.crew || [],
+        guest_stars: ep.guest_stars || []
+      })) || []
+    };
+  } catch (error) {
+    console.error("TMDB season details error:", error);
+    throw new Error("Failed to fetch season details");
   }
 }
 
@@ -370,5 +450,36 @@ export async function getPersonCredits(personId: number): Promise<Movie[]> {
   } catch (error) {
     console.error("TMDB person credits error:", error);
     throw new Error("Failed to fetch person credits");
+  }
+}
+
+// Network API Methods
+export async function getNetworkDetails(networkId: number): Promise<any> {
+  try {
+    const data = await fetchTMDB(`/network/${networkId}`);
+    return {
+      id: data.id,
+      name: data.name,
+      headquarters: data.headquarters,
+      homepage: data.homepage,
+      logoPath: data.logo_path ? `${TMDB_IMAGE_BASE}/original${data.logo_path}` : undefined,
+      originCountry: data.origin_country
+    };
+  } catch (error) {
+    console.error("TMDB network details error:", error);
+    throw new Error("Failed to fetch network details");
+  }
+}
+
+export async function getNetworkTVShows(networkId: number, page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/discover/tv?with_networks=${networkId}&page=${page}&region=IN&sort_by=popularity.desc`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB network TV shows error:", error);
+    throw new Error("Failed to fetch network TV shows");
   }
 }

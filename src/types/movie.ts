@@ -16,6 +16,11 @@ export interface Movie {
   voteCount?: number;
   backdropUrl?: string;
   trailerUrl?: string;
+  // Enhanced Media
+  videos?: { key: string; name: string; type: string; official?: boolean }[];
+  backdrops?: { url: string; width: number; height: number }[];
+  posters?: { url: string; width: number; height: number }[];
+  productionCompanies?: { id: number; name: string; logoUrl?: string; originCountry?: string }[];
   // TV Specific
   mediaType?: 'movie' | 'tv';
   firstAirDate?: string;
@@ -29,6 +34,16 @@ export interface Movie {
     season_number: number;
     episode_count: number;
     air_date: string;
+    episodes?: {
+      id: number;
+      name: string;
+      overview: string;
+      still_path?: string;
+      episode_number: number;
+      air_date: string;
+      runtime?: number;
+      vote_average?: number;
+    }[];
   }[];
   createdBy?: { id: number; name: string; profileUrl?: string }[];
   networks?: { id: number; name: string; logoUrl?: string }[];
@@ -376,3 +391,21 @@ export interface AdminStats {
   dailyActivity: { date: string; count: number }[];
 }
 
+// ==================== ANNOUNCEMENTS ====================
+export interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  youtubeUrl?: string;
+  youtubeVideoId?: string;
+  articleUrl?: string;
+  imageUrl?: string;
+  category: 'news' | 'trailer' | 'release' | 'update' | 'event';
+  isActive: boolean;
+  isPinned: boolean;
+  authorUid: string;
+  authorName: string;
+  createdAt: string;
+  updatedAt: string;
+  expiresAt?: string;
+}

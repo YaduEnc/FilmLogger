@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "@/components/layout/Layout";
 import { H1, H2, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
-import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart, Tv } from "lucide-react";
+import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart, Tv, X, ChevronLeft } from "lucide-react";
 import { Movie, LogEntry } from "@/types/movie";
-import { getTVDetails } from "@/lib/tmdb";
+import { getTVDetails, getTVSeasonDetails } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
 import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite } from "@/lib/db";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
@@ -36,6 +36,12 @@ export default function TVDetail() {
 
     const [isAddToListOpen, setIsAddToListOpen] = useState(false);
     const [isCreateListOpen, setIsCreateListOpen] = useState(false);
+    const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+    const [selectedBackdropIndex, setSelectedBackdropIndex] = useState(0);
+    const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+    const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
+    const [seasonDetails, setSeasonDetails] = useState<{ [key: number]: any }>({});
+    const carouselIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         async function loadData() {
@@ -140,9 +146,9 @@ export default function TVDetail() {
 
     return (
         <Layout>
-            {/* Hero Backdrop Section */}
+            {/* Hero Backdrop Section - Small on Mobile */}
             {movie.backdropUrl && (
-                <div className="relative w-full h-[300px] lg:h-[450px] overflow-hidden">
+                <div className="relative w-full h-[120px] sm:h-[200px] lg:h-[450px] overflow-hidden">
                     <img
                         src={movie.backdropUrl}
                         alt=""
@@ -152,10 +158,46 @@ export default function TVDetail() {
                 </div>
             )}
 
-            <div className={`container mx-auto px-6 ${movie.backdropUrl ? "-mt-40 lg:-mt-60" : "py-12"} relative z-10`}>
-                <div className="grid lg:grid-cols-[300px_1fr] gap-8 lg:gap-16">
-                    {/* Left Column: Poster & Quick Info */}
-                    <aside className="space-y-8">
+            <div className={`container mx-auto px-4 sm:px-6 ${movie.backdropUrl ? "-mt-16 sm:-mt-24 lg:-mt-60" : "py-6 sm:py-12"} relative z-10`}>
+                {/* Mobile: Compact Top Layout with Small Poster */}
+                <div className="lg:hidden mb-6">
+                    <div className="flex gap-3 items-start">
+                        <div className="relative group shrink-0">
+                            <div className="w-20 h-[120px] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-lg">
+                                {movie.posterUrl ? (
+                                    <img
+                                        src={movie.posterUrl}
+                                        alt={movie.title}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-muted-foreground p-2">
+                                        <span className="text-[10px] font-serif italic text-center">{movie.title}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex-1 min-w-0 pt-1">
+                            <H1 className="text-xl sm:text-2xl mb-2 leading-tight line-clamp-2">{movie.title}</H1>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                                <span className="text-foreground font-medium">{movie.year}</span>
+                                {movie.numberOfSeasons && (
+                                    <span>{movie.numberOfSeasons} {movie.numberOfSeasons === 1 ? 'Season' : 'Seasons'}</span>
+                                )}
+                                {movie.rating && (
+                                    <div className="flex items-center gap-1">
+                                        <Star className="h-3 w-3 fill-primary text-primary" />
+                                        <span className="text-foreground font-medium">{movie.rating.toFixed(1)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid lg:grid-cols-[300px_1fr] gap-6 sm:gap-8 lg:gap-16">
+                    {/* Left Column: Poster & Quick Info - Hidden on Mobile */}
+                    <aside className="hidden lg:block space-y-8">
                         <div className="relative group">
                             <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl">
                                 {movie.posterUrl ? (
@@ -188,12 +230,90 @@ export default function TVDetail() {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Backdrop Carousel - Below Poster */}
+                        {movie.backdrops && movie.backdrops.length > 0 && (
+                            <div className="mt-8">
+                                <div className="relative">
+                                    <div className="relative h-[250px] rounded-lg overflow-hidden border border-border/50">
+                                        <img
+                                            src={movie.backdrops[selectedBackdropIndex].url}
+                                            alt={`${movie.title} backdrop ${selectedBackdropIndex + 1}`}
+                                            className="w-full h-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+
+                                        {movie.backdrops.length > 1 && (
+                                            <>
+                                                <button
+                                                    onClick={() => setSelectedBackdropIndex((prev) => (prev > 0 ? prev - 1 : movie.backdrops!.length - 1))}
+                                                    className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 hover:bg-background transition-colors shadow-lg"
+                                                >
+                                                    <ChevronLeft className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedBackdropIndex((prev) => (prev < movie.backdrops!.length - 1 ? prev + 1 : 0))}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-background/90 backdrop-blur-sm border border-border rounded-full p-1.5 hover:bg-background transition-colors shadow-lg"
+                                                >
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </button>
+                                                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+                                                    {movie.backdrops.map((_, index) => (
+                                                        <button
+                                                            key={index}
+                                                            onClick={() => setSelectedBackdropIndex(index)}
+                                                            className={`h-1.5 rounded-full transition-all ${
+                                                                index === selectedBackdropIndex
+                                                                    ? 'w-6 bg-primary'
+                                                                    : 'w-1.5 bg-white/50 hover:bg-white/70'
+                                                            }`}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Production Companies - Below Carousel */}
+                        {movie.productionCompanies && movie.productionCompanies.length > 0 && (
+                            <div className="mt-4">
+                                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">Production Companies</p>
+                                <div className="flex flex-wrap gap-3 items-center">
+                                    {movie.productionCompanies.map((company) => (
+                                        <div key={company.id} className="flex items-center">
+                                            {company.logoUrl ? (
+                                                <img
+                                                    src={company.logoUrl}
+                                                    alt={company.name}
+                                                    className="h-8 object-contain filter brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
+                                                    onError={(e) => {
+                                                        (e.target as HTMLImageElement).style.display = 'none';
+                                                        const parent = (e.target as HTMLImageElement).parentElement;
+                                                        if (parent) {
+                                                            const textDiv = document.createElement('div');
+                                                            textDiv.className = 'text-xs text-muted-foreground';
+                                                            textDiv.textContent = company.name;
+                                                            parent.appendChild(textDiv);
+                                                        }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground">{company.name}</span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </aside>
 
                     {/* Right Column: Narrative & Credits */}
-                    <main className="max-w-4xl pt-4">
-                        {/* Header Identity */}
-                        <div className="mb-8">
+                    <main className="max-w-4xl pt-0 lg:pt-4">
+                        {/* Header Identity - Hidden on Mobile (shown in compact top layout) */}
+                        <div className="hidden lg:block mb-8">
                             <H1 className="text-4xl lg:text-5xl mb-4 tracking-tight">{movie.title}</H1>
                             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm md:text-base text-muted-foreground font-medium">
                                 <span className="text-foreground">{movie.year}</span>
@@ -225,19 +345,47 @@ export default function TVDetail() {
                                 {movie.status && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground">Status</span>
-                                        <span className="font-medium text-foreground">{movie.status}</span>
+                                        <span className={`font-medium px-2 py-1 rounded ${
+                                            movie.status === 'Returning Series' ? 'bg-green-500/20 text-green-500' :
+                                            movie.status === 'Ended' ? 'bg-red-500/20 text-red-500' :
+                                            movie.status === 'In Production' ? 'bg-blue-500/20 text-blue-500' :
+                                            'bg-muted text-foreground'
+                                        }`}>
+                                            {movie.status}
+                                        </span>
                                     </div>
                                 )}
                                 {movie.networks && movie.networks.length > 0 && (
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-3">
                                         <span className="text-muted-foreground">Network</span>
-                                        <span className="font-medium text-foreground">{movie.networks.map(n => n.name).join(", ")}</span>
+                                        <div className="flex items-center gap-2">
+                                            {movie.networks.map((network) => (
+                                                <Link 
+                                                    key={network.id} 
+                                                    to={`/network/${network.id}`}
+                                                    className="flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer"
+                                                >
+                                                    {network.logoUrl ? (
+                                                        <img
+                                                            src={network.logoUrl}
+                                                            alt={network.name}
+                                                            className="h-6 object-contain filter brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
+                                                            onError={(e) => {
+                                                                (e.target as HTMLImageElement).style.display = 'none';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">{network.name}</span>
+                                                    )}
+                                                </Link>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                                 {movie.lastAirDate && (
                                     <div className="flex items-center gap-2">
                                         <span className="text-muted-foreground">Last Air Date</span>
-                                        <span className="font-medium text-foreground">{movie.lastAirDate}</span>
+                                        <span className="font-medium text-foreground">{new Date(movie.lastAirDate).toLocaleDateString()}</span>
                                     </div>
                                 )}
                             </div>
@@ -375,15 +523,84 @@ export default function TVDetail() {
                             </div>
                         )}
 
+                        {/* Videos Section */}
+                        {movie.videos && movie.videos.length > 0 && (
+                            <div className="mb-16">
+                                <H3 className="text-xl mb-4">Videos & Trailers</H3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {movie.videos.slice(0, 6).map((video) => (
+                                        <button
+                                            key={video.key}
+                                            onClick={() => {
+                                                setSelectedVideo(video.key);
+                                                setIsVideoModalOpen(true);
+                                            }}
+                                            className="relative group aspect-video bg-muted rounded-lg overflow-hidden border border-border/50 hover:border-primary/50 transition-all"
+                                        >
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
+                                            <div className="absolute inset-0 flex items-center justify-center z-20">
+                                                <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30 group-hover:bg-white/30 transition-colors">
+                                                    <Play className="h-6 w-6 text-white fill-current translate-x-0.5" />
+                                                </div>
+                                            </div>
+                                            <div className="absolute bottom-0 left-0 right-0 p-3 z-20">
+                                                <p className="text-sm font-medium text-white line-clamp-2">{video.name}</p>
+                                                <p className="text-xs text-white/70 mt-1">{video.type}</p>
+                                            </div>
+                                            <img
+                                                src={`https://img.youtube.com/vi/${video.key}/maxresdefault.jpg`}
+                                                alt={video.name}
+                                                className="w-full h-full object-cover"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.key}/hqdefault.jpg`;
+                                                }}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+
+
                         <Divider className="my-12 opacity-50" />
 
-                        {/* Seasons Section */}
+                        {/* Seasons & Episodes Section */}
                         {movie.seasons && movie.seasons.length > 0 && (
                             <section className="mb-16">
-                                <H2 className="mb-6">Seasons</H2>
+                                <H2 className="mb-6">Seasons & Episodes</H2>
                                 <div className="space-y-4">
-                                    {movie.seasons.map((season) => (
-                                        <div key={season.id} className="flex gap-4 p-4 rounded-xl border border-border/40 bg-muted/5">
+                                    {movie.seasons.map((season) => {
+                                        const isExpanded = expandedSeasons.has(season.season_number);
+                                        const hasEpisodes = seasonDetails[season.season_number]?.episodes?.length > 0;
+
+                                        const loadSeasonDetails = async () => {
+                                            if (!id || seasonDetails[season.season_number]) return;
+                                            try {
+                                                const details = await getTVSeasonDetails(parseInt(id), season.season_number);
+                                                setSeasonDetails(prev => ({ ...prev, [season.season_number]: details }));
+                                            } catch (error) {
+                                                console.error("Failed to load season details:", error);
+                                            }
+                                        };
+
+                                        return (
+                                            <div key={season.id} className="border border-border/40 bg-muted/5 rounded-xl overflow-hidden">
+                                                <button
+                                                    onClick={() => {
+                                                        if (!isExpanded) {
+                                                            loadSeasonDetails();
+                                                            setExpandedSeasons(prev => new Set(prev).add(season.season_number));
+                                                        } else {
+                                                            setExpandedSeasons(prev => {
+                                                                const newSet = new Set(prev);
+                                                                newSet.delete(season.season_number);
+                                                                return newSet;
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="w-full flex gap-4 p-4 hover:bg-muted/10 transition-colors text-left"
+                                                >
                                             <div className="w-16 h-24 bg-muted rounded shrink-0 overflow-hidden">
                                                 {season.poster_path ? (
                                                     <img src={`https://image.tmdb.org/t/p/w200${season.poster_path}`} className="w-full h-full object-cover" alt="" />
@@ -393,15 +610,65 @@ export default function TVDetail() {
                                                     </div>
                                                 )}
                                             </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center justify-between">
                                             <div>
                                                 <h4 className="font-medium text-lg">{season.name}</h4>
-                                                <p className="text-muted-foreground text-sm mb-2">{season.episode_count} Episodes • {season.air_date?.split('-')[0]}</p>
+                                                                <p className="text-muted-foreground text-sm mb-2">
+                                                                    {season.episode_count} Episodes • {season.air_date?.split('-')[0]}
+                                                                </p>
                                                 {season.overview && (
-                                                    <p className="text-sm text-foreground/80 line-clamp-2 md:line-clamp-none">{season.overview}</p>
+                                                                    <p className="text-sm text-foreground/80 line-clamp-2">{season.overview}</p>
+                                                                )}
+                                                            </div>
+                                                            <ChevronRight className={`h-5 w-5 text-muted-foreground transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                                {isExpanded && hasEpisodes && (
+                                                    <div className="border-t border-border/40 p-4 space-y-3 max-h-[600px] overflow-y-auto">
+                                                        {seasonDetails[season.season_number].episodes.map((episode: any) => (
+                                                            <div key={episode.id} className="flex gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                                                                {episode.still_path && (
+                                                                    <img
+                                                                        src={episode.still_path}
+                                                                        alt={episode.name}
+                                                                        className="w-32 h-20 object-cover rounded shrink-0"
+                                                                    />
+                                                                )}
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                                                        <div>
+                                                                            <p className="font-medium text-sm">
+                                                                                Episode {episode.episode_number}: {episode.name}
+                                                                            </p>
+                                                                            {episode.air_date && (
+                                                                                <p className="text-xs text-muted-foreground">
+                                                                                    {new Date(episode.air_date).toLocaleDateString()}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                        {episode.vote_average && (
+                                                                            <div className="flex items-center gap-1 shrink-0">
+                                                                                <Star className="h-3 w-3 fill-primary text-primary" />
+                                                                                <span className="text-xs font-medium">{episode.vote_average.toFixed(1)}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                    {episode.overview && (
+                                                                        <p className="text-xs text-foreground/70 line-clamp-2">{episode.overview}</p>
+                                                                    )}
+                                                                    {episode.runtime && (
+                                                                        <p className="text-xs text-muted-foreground mt-1">{episode.runtime} min</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </section>
                         )}
@@ -430,6 +697,26 @@ export default function TVDetail() {
                     setIsAddToListOpen(true);
                 }}
             />
+
+            {/* Video Modal */}
+            {isVideoModalOpen && selectedVideo && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsVideoModalOpen(false)}>
+                    <div className="relative w-full max-w-5xl mx-4 aspect-video bg-black rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        <button
+                            onClick={() => setIsVideoModalOpen(false)}
+                            className="absolute top-4 right-4 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 hover:bg-background transition-colors shadow-lg"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                        <iframe
+                            src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                        />
+                    </div>
+                </div>
+            )}
         </Layout>
     );
 }

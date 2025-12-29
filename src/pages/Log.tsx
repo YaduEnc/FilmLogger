@@ -297,7 +297,7 @@ export default function Log() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium truncate">{result.title}</p>
                         <div className="flex items-center gap-2">
-                          <p className="text-sm text-muted-foreground">{result.year}</p>
+                        <p className="text-sm text-muted-foreground">{result.year}</p>
                           {result.mediaType === 'tv' && (
                             <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">TV</span>
                           )}
