@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Search, Plus, User, Film, LogOut, Bell, MessageCircle } from "lucide-react";
+import { Search, Plus, User, Film, LogOut, Bell, MessageCircle, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
 import { Button } from "@/components/ui/button";
@@ -139,6 +139,11 @@ export function Header() {
                 <Link to="/search" data-onboarding="search-button">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Search className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link to="/community" className="md:hidden">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Users className="h-4 w-4" />
                   </Button>
                 </Link>
                 <Link to="/messages">
