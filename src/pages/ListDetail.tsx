@@ -255,6 +255,29 @@ export default function ListDetail() {
                                     </p>
                                 )}
 
+                                {/* Tags */}
+                                {list.tags && list.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 pt-2">
+                                        {list.tags.map((tag: string) => (
+                                            <Link
+                                                key={tag}
+                                                to={`/lists/community?tag=${encodeURIComponent(tag)}`}
+                                                className="px-3 py-1 text-xs font-medium bg-muted rounded-full text-muted-foreground hover:bg-amber-500/20 hover:text-amber-500 transition-colors"
+                                            >
+                                                {tag}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Ranked List Indicator */}
+                                {list.isRanked && (
+                                    <div className="flex items-center gap-2 text-sm text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-full w-fit">
+                                        <span className="font-bold">🏆</span>
+                                        <span className="font-medium">Ranked List</span>
+                                    </div>
+                                )}
+
                                 <div className="flex gap-4 pt-4">
                                     <Button
                                         onClick={handleToggleSave}
@@ -291,8 +314,22 @@ export default function ListDetail() {
 
                             {list.movies && list.movies.length > 0 ? (
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-x-6 gap-y-12">
-                                    {list.movies.map((movie: Movie) => (
-                                        <MovieCard key={movie.id} movie={movie} />
+                                    {list.movies.map((movie: Movie, index: number) => (
+                                        <div key={movie.id} className="relative">
+                                            {/* Ranked Position Badge */}
+                                            {list.isRanked && (
+                                                <div className={cn(
+                                                    "absolute -top-4 -left-2 z-10 w-8 h-8 rounded-full flex items-center justify-center font-black text-sm shadow-lg",
+                                                    index === 0 ? "bg-amber-500 text-black" :
+                                                        index === 1 ? "bg-gray-300 text-black" :
+                                                            index === 2 ? "bg-amber-700 text-white" :
+                                                                "bg-muted text-foreground"
+                                                )}>
+                                                    {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
+                                                </div>
+                                            )}
+                                            <MovieCard movie={movie} />
+                                        </div>
                                     ))}
                                 </div>
                             ) : (

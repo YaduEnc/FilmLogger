@@ -96,13 +96,26 @@ export interface TVProgress {
 export interface MovieList {
   id: string;
   userId?: string;
+  userName?: string;
+  userPhoto?: string;
   name: string;
   description?: string;
   visibility: 'private' | 'followers' | 'public';
   movies: Movie[];
   createdAt: string;
+  updatedAt?: string;
+  // Engagement metrics
   likeCount?: number;
   saveCount?: number;
+  commentCount?: number;
+  viewCount?: number;
+  // Categorization
+  tags?: string[];
+  listType?: 'standard' | 'ranked' | 'watchlist' | 'collaborative';
+  isRanked?: boolean;
+  // Collaboration
+  collaborators?: string[];
+  collaboratorDetails?: { id: string; name: string; photo?: string }[];
 }
 
 export interface UserStats {

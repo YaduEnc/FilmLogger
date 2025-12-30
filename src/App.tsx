@@ -16,6 +16,7 @@ import TVDetail from "./pages/TVDetail";
 import Log from "./pages/Log";
 import Diary from "./pages/Diary";
 import Lists from "./pages/Lists";
+import CommunityLists from "./pages/CommunityLists";
 import Stats from "./pages/Stats";
 import Community from "./pages/Community";
 import Notifications from "./pages/Notifications";
@@ -59,8 +60,9 @@ const App = () => (
                 <Route path="/log" element={<Log />} />
                 <Route path="/diary" element={<Diary />} />
                 <Route path="/lists" element={<Lists />} />
+                <Route path="/lists/community" element={<CommunityLists />} />
+                <Route path="/lists/:userId/:listId" element={<ListDetail />} />
                 <Route path="/list/:userId/:listId" element={<ListDetail />} />
-                <Route path="/lists/:id" element={<Lists />} />
                 <Route path="/stats" element={<Stats />} />
                 <Route path="/community" element={<Community />} />
                 <Route path="/notifications" element={<Notifications />} />

@@ -56,13 +56,20 @@ export default function Lists() {
       <div className="container mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-10">
           <H1 className="tracking-tight">Lists</H1>
-          <Button
-            className="gap-2 rounded-full px-6"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            New list
-          </Button>
+          <div className="flex items-center gap-3">
+            <Link to="/lists/community">
+              <Button variant="outline" className="gap-2 rounded-full px-5">
+                Explore Community Lists
+              </Button>
+            </Link>
+            <Button
+              className="gap-2 rounded-full px-6"
+              onClick={() => setIsModalOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              New list
+            </Button>
+          </div>
         </div>
 
         {/* Watchlist */}
@@ -103,19 +110,19 @@ export default function Lists() {
           </div>
 
           {customLists.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {customLists.map((list) => (
                 <Link
                   key={list.id}
-                  to={`/lists/${list.id}`}
-                  className="group block p-5 border border-border rounded-xl hover:bg-muted/50 transition-all hover:shadow-lg hover:shadow-black/5"
+                  to={`/lists/${user?.uid}/${list.id}`}
+                  className="group block p-3 border border-border rounded-lg hover:bg-muted/50 transition-all hover:border-primary/30"
                 >
-                  <div className="flex gap-2 mb-4 min-h-[110px] bg-muted/20 rounded-lg p-2 overflow-hidden">
+                  <div className="flex gap-1 mb-3 h-20 bg-muted/20 rounded-md p-1.5 overflow-hidden">
                     {list.movies && list.movies.length > 0 ? (
-                      list.movies.slice(0, 4).map((movie) => (
+                      list.movies.slice(0, 3).map((movie) => (
                         <div
                           key={movie.id}
-                          className="w-16 aspect-[2/3] bg-muted rounded-md overflow-hidden border border-border/30 shadow-sm shrink-0"
+                          className="w-12 aspect-[2/3] bg-muted rounded overflow-hidden shrink-0"
                         >
                           {movie.posterUrl && (
                             <img
@@ -127,20 +134,20 @@ export default function Lists() {
                         </div>
                       ))
                     ) : (
-                      <div className="w-full h-24 flex items-center justify-center text-muted-foreground/30 italic text-xs">
-                        Empty collection
+                      <div className="w-full flex items-center justify-center text-muted-foreground/30 italic text-[10px]">
+                        Empty
                       </div>
                     )}
                   </div>
-                  <h4 className="font-serif text-lg group-hover:text-primary transition-colors">
+                  <h4 className="font-medium text-sm group-hover:text-primary transition-colors truncate">
                     {list.name}
                   </h4>
                   {list.description && (
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-1 opacity-80">
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 opacity-70">
                       {list.description}
                     </p>
                   )}
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mt-4">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mt-2">
                     {list.movies ? list.movies.length : 0} films
                   </p>
                 </Link>
