@@ -7,7 +7,6 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { getIncomingRequests } from "@/lib/db";
-import { OnboardingButton } from "@/components/onboarding/OnboardingButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -137,7 +136,6 @@ export function Header() {
             {user ? (
               <>
                 <ThemeToggle />
-                <OnboardingButton />
                 <Link to="/search" data-onboarding="search-button">
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <Search className="h-4 w-4" />
