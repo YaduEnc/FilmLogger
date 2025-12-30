@@ -256,10 +256,10 @@ export default function Home() {
             }}
           />
 
-          {/* Multi-layered Gradients for Deep Immersion */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent z-10" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-transparent z-10" />
-          <div className="absolute inset-0 bg-black/30 z-0" />
+          {/* Multi-layered Gradients for Adaptive Visibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent z-10" />
+          <div className="absolute inset-0 bg-black/5 dark:bg-black/30 z-0" />
 
 
 
@@ -288,16 +288,16 @@ export default function Home() {
                   <Badge variant="outline" className="bg-primary/10 border-primary/20 text-primary px-3 py-1 text-[10px] font-bold tracking-[0.2em] uppercase rounded-full">
                     {currentFeatured.mediaType === 'tv' ? 'Featured Series' : 'Featured Movie'}
                   </Badge>
-                  <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 backdrop-blur-md rounded-full border border-white/10 shadow-lg">
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-muted/50 backdrop-blur-md rounded-full border border-border shadow-lg">
                     <Star className="h-3 w-3 fill-primary text-primary" />
-                    <span className="text-[10px] font-bold text-white tracking-widest">{currentFeatured.rating?.toFixed(1)}</span>
+                    <span className="text-[10px] font-bold text-foreground tracking-widest">{currentFeatured.rating?.toFixed(1)}</span>
                   </div>
                 </div>
 
                 {/* Cinematic Title */}
                 <h1
                   key={`title-${currentFeatured.id}`}
-                  className="text-5xl sm:text-7xl md:text-8xl font-serif font-black mb-6 leading-[0.95] tracking-tight animate-in fade-in slide-in-from-left-12 duration-1000"
+                  className="text-5xl sm:text-7xl md:text-8xl font-serif font-black mb-6 leading-[0.95] tracking-tight text-foreground animate-in fade-in slide-in-from-left-12 duration-1000"
                 >
                   {currentFeatured.title}
                 </h1>
@@ -305,19 +305,19 @@ export default function Home() {
                 {/* Sub-info Row */}
                 <div className="flex flex-wrap items-center gap-10 mb-8">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-white/30">Release</span>
-                    <span className="text-lg font-bold tracking-tight">{currentFeatured.year}</span>
+                    <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-muted-foreground/60">Release</span>
+                    <span className="text-lg font-bold tracking-tight text-foreground">{currentFeatured.year}</span>
                   </div>
                   {currentFeatured.runtime && (
                     <div className="flex flex-col gap-1">
-                      <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-white/30">Duration</span>
-                      <span className="text-lg font-bold tracking-tight">{currentFeatured.runtime} min</span>
+                      <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-muted-foreground/60">Duration</span>
+                      <span className="text-lg font-bold tracking-tight text-foreground">{currentFeatured.runtime} min</span>
                     </div>
                   )}
 
                   {/* Social Badge - More prominent */}
                   {currentMovieFriends.length > 0 && (
-                    <div className="flex flex-col gap-2 p-3 bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl animate-in zoom-in duration-700">
+                    <div className="flex flex-col gap-2 p-3 bg-muted/50 backdrop-blur-xl border border-border rounded-2xl animate-in zoom-in duration-700">
                       <span className="text-[8px] uppercase tracking-[0.3em] font-bold text-primary/80 px-1">Social Pulse</span>
                       <div className="flex items-center gap-3">
                         <div className="flex -space-x-3">
@@ -330,7 +330,7 @@ export default function Home() {
                             />
                           ))}
                         </div>
-                        <span className="text-xs font-bold text-white/80 pr-2">
+                        <span className="text-xs font-bold text-foreground/80 pr-2">
                           {currentMovieFriends.length === 1
                             ? `${currentMovieFriends[0].displayName?.split(' ')[0]} watched this`
                             : `${currentMovieFriends[0].displayName?.split(' ')[0]} & friends watched`}
@@ -349,7 +349,7 @@ export default function Home() {
                     </Button>
                   </Link>
                   <Link to={`/log?movie=${currentFeatured.id}&type=${currentFeatured.mediaType || 'movie'}`}>
-                    <Button size="lg" variant="outline" className="h-16 px-8 gap-3 text-base font-bold bg-white/5 backdrop-blur-3xl border-white/10 hover:bg-white/10 transition-all rounded-2xl">
+                    <Button size="lg" variant="outline" className="h-16 px-8 gap-3 text-base font-bold bg-muted/30 backdrop-blur-3xl border-border hover:bg-muted/50 transition-all rounded-2xl">
                       <Plus className="h-5 w-5" />
                       Add to Diary
                     </Button>
@@ -375,7 +375,7 @@ export default function Home() {
                       </div>
                     )}
                     <span className="text-[9px] uppercase tracking-[0.4em] font-black text-primary/80 mb-1">Director</span>
-                    <h3 className="text-xl font-serif font-bold text-white leading-tight">{currentFeatured.director}</h3>
+                    <h3 className="text-xl font-serif font-bold text-foreground leading-tight">{currentFeatured.director}</h3>
                   </div>
                 )}
 
@@ -396,8 +396,8 @@ export default function Home() {
                           </div>
                         )}
                         <div className="flex flex-col truncate">
-                          <span className="text-sm font-bold text-white group-hover/actor:text-primary transition-colors">{actor.name}</span>
-                          <span className="text-[10px] text-white/40 truncate italic">{actor.character}</span>
+                          <span className="text-sm font-bold text-foreground group-hover/actor:text-primary transition-colors">{actor.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate italic">{actor.character}</span>
                         </div>
                       </div>
                     ))}
