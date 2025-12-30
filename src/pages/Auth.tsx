@@ -9,13 +9,18 @@ import { cn } from "@/lib/utils";
 import { getTrendingMovies } from "@/lib/tmdb";
 import { Movie } from "@/types/movie";
 import { Logo } from "@/components/layout/Logo";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, isLoading: authLoading, signInWithGoogle } = useAuth();
+  const { user, isLoading: authLoading, signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
   const [backdropMovie, setBackdropMovie] = useState<Movie | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
     if (user && !authLoading) {
@@ -53,6 +58,45 @@ export default function Auth() {
       toast({
         title: "Authentication failed",
         description: error.message || "Could not sign in with Google.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || (authMode === 'signup' && !displayName)) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSigningIn(true);
+    try {
+      if (authMode === 'signup') {
+        await signUpWithEmail(email, password, displayName);
+        toast({
+          title: "Welcome to the Archive!",
+          description: "Your account has been created successfully.",
+        });
+      } else {
+        await signInWithEmail(email, password);
+        toast({
+          title: "Welcome back!",
+          description: "Successfully signed in.",
+        });
+      }
+      navigate("/home");
+    } catch (error: any) {
+      console.error(error);
+      toast({
+        title: authMode === 'signup' ? "Signup failed" : "Login failed",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -126,12 +170,72 @@ export default function Auth() {
                 : "The archive is waiting. Sign in to continue your cinema journey."}
             </p>
 
+            {/* Email/Password Form */}
+            <form onSubmit={handleEmailAuth} className="space-y-5 mb-8">
+              {authMode === 'signup' && (
+                <div className="space-y-2.5 animate-in fade-in slide-in-from-top-2 duration-500">
+                  <Label className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Display Name</Label>
+                  <Input
+                    required
+                    placeholder="Enter your name"
+                    className="h-12 bg-foreground/5 border-foreground/10 rounded-xl focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className="space-y-2.5">
+                <Label className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Email Address</Label>
+                <Input
+                  required
+                  type="email"
+                  placeholder="name@example.com"
+                  className="h-12 bg-foreground/5 border-foreground/10 rounded-xl focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2.5">
+                <Label className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground/60 ml-1">Password</Label>
+                <Input
+                  required
+                  type="password"
+                  placeholder="••••••••"
+                  className="h-12 bg-foreground/5 border-foreground/10 rounded-xl focus:ring-primary/20 transition-all placeholder:text-muted-foreground/30"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                disabled={isSigningIn}
+              >
+                {isSigningIn ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <span className="tracking-tight">{authMode === 'signup' ? "Create Account" : "Sign In"}</span>
+                )}
+              </Button>
+            </form>
+
+            <div className="relative mb-8">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-foreground/5" />
+              </div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-[0.3em] text-muted-foreground/40">
+                <span className="bg-background px-4">Or continue with</span>
+              </div>
+            </div>
+
             {/* Google OAuth */}
             <Button
               variant="outline"
-              className="w-full py-7 flex items-center justify-center gap-4 border-foreground/10 hover:bg-foreground/5 hover:border-foreground/20 transition-all rounded-2xl group active:scale-[0.98]"
+              className="w-full h-12 flex items-center justify-center gap-3 border-foreground/10 hover:bg-foreground/5 hover:border-foreground/20 transition-all rounded-xl group active:scale-[0.98]"
               onClick={handleGoogleSignIn}
               disabled={isSigningIn}
+              type="button"
             >
               {isSigningIn ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -158,13 +262,13 @@ export default function Auth() {
                   />
                 </svg>
               )}
-              <span className="font-bold text-base tracking-tight">Continue with Google</span>
+              <span className="font-bold text-sm tracking-tight text-foreground/80">Google</span>
             </Button>
 
-            <div className="mt-10 flex flex-col items-center gap-4">
+            <div className="mt-8 flex flex-col items-center gap-4">
               <div className="h-px w-full bg-gradient-to-r from-transparent via-foreground/5 to-transparent" />
-              <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground/40 text-center leading-relaxed max-w-[240px]">
-                Secure authentication via Google Cloud Identity
+              <p className="text-[9px] uppercase tracking-[0.2em] font-bold text-muted-foreground/30 text-center leading-relaxed max-w-[240px]">
+                Secure authentication via Firebase Identity
               </p>
             </div>
           </div>

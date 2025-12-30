@@ -2,11 +2,14 @@ import { Check, Star, Sparkles, ShieldCheck, Palette, BarChart3, Zap } from "luc
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 export function PricingSection() {
+    const navigate = useNavigate();
     const tiers = [
         {
+            id: "free",
             name: "Free",
             price: "₹0",
             description: "Fundamental tools for casual movie fans.",
@@ -22,6 +25,7 @@ export function PricingSection() {
             color: "border-border/40"
         },
         {
+            id: "pro",
             name: "Pro Archivist",
             price: "₹199",
             period: "/month",
@@ -39,6 +43,7 @@ export function PricingSection() {
             color: "border-primary/50 bg-primary/5 shadow-primary/20"
         },
         {
+            id: "legend",
             name: "Cinema Legend",
             price: "₹499",
             period: "/month",
@@ -147,6 +152,13 @@ export function PricingSection() {
                                     tier.popular && "bg-primary hover:bg-primary/90 border-none",
                                     tier.isLegend && "bg-amber-500 hover:bg-amber-600 text-white border-none shadow-amber-500/20"
                                 )}
+                                onClick={() => {
+                                    if (tier.id === "free") {
+                                        navigate("/home");
+                                    } else {
+                                        navigate(`/checkout/${tier.id}`);
+                                    }
+                                }}
                             >
                                 {tier.cta}
                             </Button>

@@ -122,12 +122,12 @@ export default function Settings() {
         return String(value).replace(/"/g, '""');
       });
     });
-    
+
     const csvContent = [
       headers.map(h => `"${h}"`).join(','),
       ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
-    
+
     return csvContent;
   };
 
@@ -146,11 +146,11 @@ export default function Settings() {
 
   const handleExport = async (format: "csv" | "json") => {
     if (!user) return;
-    
+
     setIsExporting(true);
     try {
       const userData = await getAllUserDataForExport(user.uid);
-      
+
       if (format === "json") {
         const jsonContent = JSON.stringify(userData, null, 2);
         const filename = `cinelunatic-export-${user.uid}-${new Date().toISOString().split('T')[0]}.json`;
@@ -160,7 +160,7 @@ export default function Settings() {
         // CSV export - create separate files for each data type
         const timestamp = new Date().toISOString().split('T')[0];
         const prefix = `cinelunatic-export-${user.uid}-${timestamp}`;
-        
+
         // Export logs
         if (userData.logs.length > 0) {
           const logHeaders = ['id', 'movieId', 'movieTitle', 'mediaType', 'watchedDate', 'rating', 'reviewShort', 'tags', 'mood', 'location', 'visibility', 'isRewatch', 'rewatchCount', 'createdAt'];
@@ -182,7 +182,7 @@ export default function Settings() {
           })), logHeaders);
           downloadFile(logCSV, `${prefix}-logs.csv`, 'text/csv');
         }
-        
+
         // Export lists
         if (userData.lists.length > 0) {
           const listHeaders = ['id', 'name', 'description', 'visibility', 'movieCount', 'createdAt'];
@@ -196,7 +196,7 @@ export default function Settings() {
           })), listHeaders);
           downloadFile(listCSV, `${prefix}-lists.csv`, 'text/csv');
         }
-        
+
         // Export favorites
         if (userData.favorites.length > 0) {
           const favHeaders = ['movieId', 'title', 'year', 'mediaType', 'rating', 'director', 'genres'];
@@ -211,7 +211,7 @@ export default function Settings() {
           })), favHeaders);
           downloadFile(favCSV, `${prefix}-favorites.csv`, 'text/csv');
         }
-        
+
         // Export watchlist
         if (userData.watchlist.length > 0) {
           const watchHeaders = ['movieId', 'title', 'year', 'mediaType', 'rating', 'director', 'genres'];
@@ -226,7 +226,7 @@ export default function Settings() {
           })), watchHeaders);
           downloadFile(watchCSV, `${prefix}-watchlist.csv`, 'text/csv');
         }
-        
+
         // Export reviews
         if (userData.reviews.length > 0) {
           const reviewHeaders = ['id', 'movieId', 'movieTitle', 'mediaType', 'rating', 'text', 'spoilerFlag', 'visibility', 'likeCount', 'commentCount', 'createdAt'];
@@ -245,7 +245,7 @@ export default function Settings() {
           })), reviewHeaders);
           downloadFile(reviewCSV, `${prefix}-reviews.csv`, 'text/csv');
         }
-        
+
         toast.success("Data exported as CSV files");
       }
     } catch (error) {
@@ -275,7 +275,7 @@ export default function Settings() {
       navigate("/");
     } catch (error: any) {
       console.error("Error deleting account:", error);
-      
+
       // Handle specific Firebase Auth errors
       if (error.code === "auth/requires-recent-login") {
         toast.error("Please sign in again to confirm account deletion");
@@ -434,29 +434,29 @@ export default function Settings() {
               Download your personal data including all logs, ratings, and custom collections.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => handleExport("csv")} 
+              <Button
+                variant="outline"
+                onClick={() => handleExport("csv")}
                 disabled={isExporting}
                 className="gap-2 rounded-full h-10 px-5 transition-all hover:bg-muted"
               >
                 {isExporting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                <Download className="h-4 w-4" />
+                  <Download className="h-4 w-4" />
                 )}
                 Export as CSV
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleExport("json")} 
+              <Button
+                variant="outline"
+                onClick={() => handleExport("json")}
                 disabled={isExporting}
                 className="gap-2 rounded-full h-10 px-5 transition-all hover:bg-muted"
               >
                 {isExporting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                <Download className="h-4 w-4" />
+                  <Download className="h-4 w-4" />
                 )}
                 Export as JSON
               </Button>
@@ -480,11 +480,11 @@ export default function Settings() {
             </p>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-            <Button
-              variant="outline"
+                <Button
+                  variant="outline"
                   disabled={isDeleting}
-              className="gap-2 text-destructive border-destructive/30 hover:bg-destructive hover:text-white rounded-full transition-all"
-            >
+                  className="gap-2 text-destructive border-destructive/30 hover:bg-destructive hover:text-white rounded-full transition-all"
+                >
                   {isDeleting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -492,11 +492,11 @@ export default function Settings() {
                     </>
                   ) : (
                     <>
-              <Trash2 className="h-4 w-4" />
-              Delete account
+                      <Trash2 className="h-4 w-4" />
+                      Delete account
                     </>
                   )}
-            </Button>
+                </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>

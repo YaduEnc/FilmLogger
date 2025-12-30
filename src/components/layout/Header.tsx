@@ -190,6 +190,11 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
+                      <Link to="/membership" className="cursor-pointer">
+                        Membership
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
                       <Link to="/directors" className="cursor-pointer">
                         Directors
                       </Link>

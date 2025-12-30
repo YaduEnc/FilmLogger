@@ -33,8 +33,11 @@ import Blog from "./pages/Blog";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
+import Refunds from "./pages/Refunds";
+import Membership from "./pages/Membership";
 import Admin from "./pages/Admin";
 import Announcements from "./pages/Announcements";
+import Checkout from "./pages/Checkout";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,8 +80,11 @@ const App = () => (
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/refunds" element={<Refunds />} />
+                <Route path="/membership" element={<Membership />} />
                 <Route path="/admin" element={<Admin />} />
                 <Route path="/announcements" element={<Announcements />} />
+                <Route path="/checkout/:planId" element={<Checkout />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <OnboardingTour />
