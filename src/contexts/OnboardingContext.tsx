@@ -23,6 +23,7 @@ interface OnboardingContextType {
   skipOnboarding: () => void;
   completeOnboarding: () => void;
   isStepActive: (stepId: string) => boolean;
+  hasCompletedOnboarding: boolean;
 }
 
 const OnboardingContext = createContext<OnboardingContextType | undefined>(undefined);
@@ -36,7 +37,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'center',
     page: 'home'
   },
-  
+
   // Home Page - Hero Section
   {
     id: 'hero-featured',
@@ -46,7 +47,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'bottom',
     page: 'home'
   },
-  
+
   // Home Page - Stats
   {
     id: 'quick-stats',
@@ -56,7 +57,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'bottom',
     page: 'home'
   },
-  
+
   // Home Page - Discovery
   {
     id: 'discovery-sections',
@@ -66,7 +67,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'top',
     page: 'home'
   },
-  
+
   // Header - Log Button
   {
     id: 'log-button',
@@ -76,7 +77,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'bottom',
     page: 'home'
   },
-  
+
   // Header - Search
   {
     id: 'search-explore',
@@ -86,7 +87,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'bottom',
     page: 'home'
   },
-  
+
   // Diary Feature
   {
     id: 'diary-intro',
@@ -95,7 +96,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'center',
     page: 'home'
   },
-  
+
   // Lists Feature
   {
     id: 'lists-intro',
@@ -104,7 +105,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'center',
     page: 'home'
   },
-  
+
   // Profile
   {
     id: 'profile-intro',
@@ -114,7 +115,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'bottom',
     page: 'home'
   },
-  
+
   // Community
   {
     id: 'community-intro',
@@ -123,7 +124,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'center',
     page: 'home'
   },
-  
+
   // Watchlist & Favorites
   {
     id: 'watchlist-favorites',
@@ -132,7 +133,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'center',
     page: 'home'
   },
-  
+
   // Social Features
   {
     id: 'social-features',
@@ -141,7 +142,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     position: 'center',
     page: 'home'
   },
-  
+
   // Complete
   {
     id: 'complete',
@@ -166,13 +167,23 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       try {
         const onboardingDoc = await getDoc(doc(db, 'users', user.uid, 'settings', 'onboarding'));
         if (onboardingDoc.exists()) {
-          setHasCompletedOnboarding(onboardingDoc.data().completed || false);
-        } else {
+          const data = onboardingDoc.data();
+          if (data.completed || data.skipped) {
+            setHasCompletedOnboarding(true);
+            setIsOnboarding(false); // Ensure it's off
+            return;
+          }
+        }
+
+        // Only start if explicitly not completed
+        if (!hasCompletedOnboarding) {
           // First time user - start onboarding after a short delay
-          setTimeout(() => {
+          const timer = setTimeout(() => {
             setIsOnboarding(true);
           }, 1000);
+          return () => clearTimeout(timer);
         }
+
       } catch (error) {
         console.error('Error checking onboarding status:', error);
       }
@@ -246,7 +257,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         prevStep,
         skipOnboarding,
         completeOnboarding,
-        isStepActive
+        isStepActive,
+        hasCompletedOnboarding
       }}
     >
       {children}

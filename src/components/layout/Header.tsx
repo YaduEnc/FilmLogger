@@ -72,6 +72,8 @@ export function Header() {
     { href: "/stats", label: "Stats" },
   ];
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <header
       className={cn(
@@ -87,15 +89,30 @@ export function Header() {
     >
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-14">
-          {/* Logo */}
-          <Link to={user ? "/home" : "/"} className="flex items-center gap-2 group">
-            <Logo className="h-7 w-7 text-foreground transition-opacity group-hover:opacity-70" />
-            <span className="font-serif text-lg font-medium tracking-tight">
-              CineLunatic
-            </span>
-          </Link>
+          <div className="flex items-center gap-4">
+            {/* Mobile Menu Trigger */}
+            {user && (
+              <div className="md:hidden">
+                <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+                  <div className="flex flex-col gap-1.5">
+                    <span className={cn("block w-5 h-0.5 bg-current transition-transform origin-center", isMobileMenuOpen && "rotate-45 translate-y-2")} />
+                    <span className={cn("block w-5 h-0.5 bg-current transition-opacity", isMobileMenuOpen && "opacity-0")} />
+                    <span className={cn("block w-5 h-0.5 bg-current transition-transform origin-center", isMobileMenuOpen && "-rotate-45 -translate-y-2")} />
+                  </div>
+                </Button>
+              </div>
+            )}
 
-          {/* Navigation */}
+            {/* Logo */}
+            <Link to={user ? "/home" : "/"} className="flex items-center gap-2 group">
+              <Logo className="h-7 w-7 text-foreground transition-opacity group-hover:opacity-70" />
+              <span className="font-serif text-lg font-medium tracking-tight hidden sm:inline-block">
+                CineLunatic
+              </span>
+            </Link>
+          </div>
+
+          {/* Navigation - Desktop */}
           {user && (
             <nav className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => (
@@ -207,6 +224,29 @@ export function Header() {
             )}
           </div>
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {user && isMobileMenuOpen && (
+          <div className="md:hidden py-4 border-t border-border/50 animate-in slide-in-from-top-2">
+            <nav className="flex flex-col gap-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={cn(
+                    "px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                    location.pathname === link.href
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+        )}
       </div>
     </header>
   );

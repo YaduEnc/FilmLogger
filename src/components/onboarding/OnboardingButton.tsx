@@ -3,7 +3,9 @@ import { Button } from '@/components/ui/button';
 import { HelpCircle } from 'lucide-react';
 
 export function OnboardingButton() {
-  const { startOnboarding } = useOnboarding();
+  const { startOnboarding, hasCompletedOnboarding } = useOnboarding();
+
+  if (hasCompletedOnboarding) return null;
 
   return (
     <Button
