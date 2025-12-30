@@ -676,7 +676,7 @@ export default function MovieDetail() {
             {movie.videos && movie.videos.length > 0 && (
               <div className="mb-16">
                 <H3 className="text-xl mb-4">Videos & Trailers</H3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                   {movie.videos.slice(0, 6).map((video) => (
                     <button
                       key={video.key}
