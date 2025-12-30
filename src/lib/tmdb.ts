@@ -483,3 +483,51 @@ export async function getNetworkTVShows(networkId: number, page = 1): Promise<{ 
     throw new Error("Failed to fetch network TV shows");
   }
 }
+
+export async function discoverMedia(
+  type: 'movie' | 'tv',
+  params: {
+    with_genres?: string;
+    with_original_language?: string;
+    with_origin_country?: string;
+    sort_by?: string;
+    page?: number;
+    'primary_release_date.gte'?: string;
+    'primary_release_date.lte'?: string;
+    'first_air_date.gte'?: string;
+    'first_air_date.lte'?: string;
+  }
+): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
+  try {
+    const queryParams = new URLSearchParams({
+      page: (params.page || 1).toString(),
+      include_adult: 'false',
+      'vote_count.gte': '100',
+      sort_by: params.sort_by || 'popularity.desc',
+      region: 'IN'
+    });
+
+    if (params.with_genres) queryParams.append('with_genres', params.with_genres);
+    if (params.with_original_language) queryParams.append('with_original_language', params.with_original_language);
+    if (params.with_origin_country) queryParams.append('with_origin_country', params.with_origin_country);
+
+    // Date ranges for Movies
+    if (params['primary_release_date.gte']) queryParams.append('primary_release_date.gte', params['primary_release_date.gte']);
+    if (params['primary_release_date.lte']) queryParams.append('primary_release_date.lte', params['primary_release_date.lte']);
+
+    // Date ranges for TV
+    if (params['first_air_date.gte']) queryParams.append('first_air_date.gte', params['first_air_date.gte']);
+    if (params['first_air_date.lte']) queryParams.append('first_air_date.lte', params['first_air_date.lte']);
+
+    const data = await fetchTMDB(`/discover/${type}?${queryParams.toString()}`);
+
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+      totalResults: data.total_results,
+    };
+  } catch (error) {
+    console.error(`TMDB discover ${type} error:`, error);
+    throw new Error(`Failed to discover ${type}`);
+  }
+}
