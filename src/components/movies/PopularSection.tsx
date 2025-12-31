@@ -138,32 +138,29 @@ export function PopularSection() {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-1 px-1">
-        <div className="flex items-center gap-3">
-          <TrendingUp className="h-6 w-6 text-primary animate-pulse" />
-          <DisplayH2 className="text-2xl sm:text-3xl lg:text-4xl uppercase tracking-tighter">Trending on CineLunatic</DisplayH2>
-        </div>
+    <div className="space-y-12">
+      <div className="flex flex-col gap-3 border-l-2 border-primary/20 pl-6 mb-12">
+        <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Trending on CineLunatic</h2>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 sm:gap-4 md:gap-6">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-x-8 gap-y-12">
         {trendingMovies.map((movie, index) => (
           <Link
             key={movie.id}
             to={`/${movie.mediaType}/${movie.movieId}`}
             className="group/rank relative"
           >
-            {/* Rank Badge - Archival Style */}
-            <div className="absolute -top-3 -left-3 z-30 transition-transform duration-500 group-hover/rank:-translate-y-1 group-hover/rank:-translate-x-1">
-              <div className="bg-primary text-primary-foreground font-black italic text-xl px-3 py-1 rounded-sm shadow-2xl border border-white/20 transform -rotate-12">
-                #{index + 1}
+            {/* Rank Badge - Archival Mono Style */}
+            <div className="absolute -top-4 -left-4 z-30">
+              <div className="bg-primary text-primary-foreground font-mono text-sm font-bold px-3 py-1 rounded-none shadow-2xl border border-white/10">
+                RANK / {String(index + 1).padStart(2, '0')}
               </div>
             </div>
 
             {/* Poster Container with Premium Treatment */}
-            <div className="relative aspect-[2/3] rounded-xl overflow-hidden transition-all duration-700 bg-muted group-hover/rank:scale-[1.02] group-hover/rank:shadow-[0_15px_40px_rgba(0,0,0,0.2)] dark:group-hover/rank:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-10 transform-gpu">
+            <div className="relative aspect-[2/3] rounded-none overflow-hidden transition-all duration-700 bg-muted group-hover/rank:scale-[1.02] group-hover/rank:shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-10 transform-gpu">
               {/* Persistent Border Overlay */}
-              <div className="absolute inset-0 border border-border/50 rounded-xl pointer-events-none z-50" />
+              <div className="absolute inset-0 border border-white/5 rounded-none pointer-events-none z-50" />
               {/* Subtle Reflection Overlay on Hover */}
               <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-700 pointer-events-none z-10 group-hover/rank:opacity-100" />
 
@@ -172,7 +169,7 @@ export function PopularSection() {
                   src={movie.posterUrl}
                   alt={movie.title}
                   loading="lazy"
-                  className="w-full h-full object-cover transition-transform duration-[1.5s] ease-out group-hover/rank:scale-105"
+                  className="w-full h-full object-cover transition-all duration-[1.5s] ease-out group-hover/rank:scale-110 grayscale-[0.4] group-hover/rank:grayscale-0"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-white/5">
@@ -181,24 +178,18 @@ export function PopularSection() {
               )}
 
               {/* Kinetic Stats Overlay - Theme Aware */}
-              <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-background/10 to-transparent opacity-0 group-hover/rank:opacity-100 transition-all duration-500 flex flex-col justify-end p-4 z-20 translate-y-3 group-hover/rank:translate-y-0">
-                <div className="flex flex-wrap gap-x-3 gap-y-2 text-foreground">
+              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent opacity-0 group-hover/rank:opacity-100 transition-all duration-500 flex flex-col justify-end p-4 z-20 translate-y-3 group-hover/rank:translate-y-0">
+                <div className="flex flex-wrap gap-2 text-foreground">
                   {movie.weeklyLogs > 0 && (
-                    <div className="flex items-center gap-1 bg-muted/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-border">
+                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-none border border-white/10">
                       <TrendingUp className="h-2.5 w-2.5 text-primary" />
-                      <span className="text-[10px] font-black">{movie.weeklyLogs}</span>
-                    </div>
-                  )}
-                  {movie.favoriteCount > 0 && (
-                    <div className="flex items-center gap-1 bg-muted/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-border">
-                      <Heart className="h-2.5 w-2.5 fill-primary text-primary" />
-                      <span className="text-[10px] font-black">{movie.favoriteCount}</span>
+                      <span className="font-mono text-[9px] font-bold tracking-widest">{movie.weeklyLogs}</span>
                     </div>
                   )}
                   {movie.avgRating > 0 && (
-                    <div className="flex items-center gap-1 bg-muted/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-border">
-                      <Star className="h-2.5 w-2.5 fill-yellow-500 text-yellow-500" />
-                      <span className="text-[10px] font-black">{movie.avgRating.toFixed(1)}</span>
+                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-none border border-white/10">
+                      <Star className="h-2.5 w-2.5 fill-primary text-primary" />
+                      <span className="font-mono text-[9px] font-bold tracking-widest">{movie.avgRating.toFixed(1)}</span>
                     </div>
                   )}
                 </div>
@@ -206,12 +197,12 @@ export function PopularSection() {
             </div>
 
             {/* Meta Data */}
-            <div className="mt-4 px-1 opacity-80 group-hover/rank:opacity-100 transition-opacity">
-              <p className="text-[13px] font-bold leading-tight truncate tracking-tight text-foreground group-hover/rank:text-primary">
+            <div className="mt-4 px-1 group-hover/rank:translate-y-1 transition-transform duration-500">
+              <p className="font-serif text-[12px] font-bold leading-tight truncate tracking-tight text-foreground group-hover/rank:text-primary uppercase">
                 {movie.title}
               </p>
-              <div className="flex items-center gap-2 mt-1">
-                <div className="h-px w-3 bg-border" />
+              <div className="flex items-center gap-3 mt-1.5">
+                <div className="h-px w-4 bg-primary/30" />
               </div>
             </div>
           </Link>

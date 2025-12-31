@@ -20,6 +20,7 @@ import { createLogEntry, logActivity, updateMovieStats, saveTVProgress } from "@
 import { cn } from "@/lib/utils";
 import { Movie } from "@/types/movie";
 import { searchMovies, searchTV, getMovieDetails, getTVDetails } from "@/lib/tmdb";
+import { AnimatedNoise } from "@/components/landing/AnimatedNoise";
 
 const moods = ["", "Euphoric", "Thoughtful", "Melancholic", "Nostalgic", "Unsettled", "Inspired"];
 const locations = ["", "Cinema", "Home", "Plane", "Festival", "Other"];
@@ -165,210 +166,225 @@ export default function Log() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-2xl min-h-[80vh]">
-        <div className="mb-8 flex items-center justify-between">
-          <Link to="/home" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2 text-sm font-medium">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Archive
-          </Link>
-          <H2 className="text-2xl font-bold tracking-tight">New Log Entry</H2>
-        </div>
+      <div className="relative min-h-screen">
+        <AnimatedNoise opacity={0.02} />
 
-        <div className="bg-card border rounded-2xl p-6 sm:p-8 shadow-sm">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Search or Selected Movie */}
-            {!movie ? (
-              <div className="space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search for a film or series..."
-                    value={movieSearch}
-                    onChange={(e) => setMovieSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleMovieSearch())}
-                    className="pl-10 h-10 rounded-xl"
-                  />
-                  {movieSearch && (
-                    <Button
-                      type="button"
-                      onClick={handleMovieSearch}
-                      disabled={isSearching}
-                      className="absolute right-1 top-1 bottom-1 h-8 rounded-lg"
-                      size="sm"
-                    >
-                      {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
-                    </Button>
+        <div className="container mx-auto px-4 py-8 max-w-2xl min-h-[80vh] relative z-10">
+          <div className="mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-l-2 border-primary/20 pl-6">
+            <Link to="/home" className="font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground/60 hover:text-foreground transition-all flex items-center gap-3 group/back">
+              <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover/back:-translate-x-1" />
+              Archive
+            </Link>
+            <h1 className="font-serif text-5xl font-bold tracking-tight uppercase">New Log Entry</h1>
+          </div>
+
+          <div className="bg-white/[0.02] border border-white/10 p-6 sm:p-8 relative z-10 backdrop-blur-sm">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Search or Selected Movie */}
+              {!movie ? (
+                <div className="space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/40" />
+                    <Input
+                      placeholder="SEARCH FOR A FILM OR SERIES..."
+                      value={movieSearch}
+                      onChange={(e) => setMovieSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleMovieSearch())}
+                      className="pl-12 h-14 bg-white/[0.02] border-white/10 rounded-none font-mono text-xs uppercase tracking-[0.2em] focus-visible:ring-primary/20 focus-visible:border-primary/40 transition-all"
+                    />
+                    {movieSearch && (
+                      <Button
+                        type="button"
+                        onClick={handleMovieSearch}
+                        disabled={isSearching}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 h-10 border-white/10 text-xs font-mono tracking-widest uppercase hover:bg-white/5 bg-transparent"
+                        size="sm"
+                        variant="outline"
+                      >
+                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "FIND"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <div className="border border-white/10 rounded-none overflow-hidden divide-y divide-white/5 bg-black/40 backdrop-blur-md">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          type="button"
+                          onClick={() => selectMovie(result)}
+                          className="w-full flex items-center gap-4 p-4 hover:bg-white/5 transition-all text-left group"
+                        >
+                          <div className="w-12 aspect-[2/3] bg-muted/20 border border-white/5 overflow-hidden shrink-0">
+                            {result.posterUrl && <img src={result.posterUrl} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-serif text-base font-bold uppercase tracking-tight truncate group-hover:text-primary transition-colors">{result.title}</p>
+                            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 mt-1">{result.year} • {result.mediaType === 'tv' ? 'Series' : 'Film'}</p>
+                          </div>
+                          <Plus className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-all" />
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
-
-                {searchResults.length > 0 && (
-                  <div className="border rounded-xl overflow-hidden divide-y bg-muted/20">
-                    {searchResults.map((result) => (
-                      <button
-                        key={result.id}
-                        type="button"
-                        onClick={() => selectMovie(result)}
-                        className="w-full flex items-center gap-3 p-3 hover:bg-accent transition-colors text-left group"
-                      >
-                        <div className="w-10 aspect-[2/3] bg-muted rounded overflow-hidden">
-                          {result.posterUrl && <img src={result.posterUrl} alt="" className="w-full h-full object-cover" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm truncate">{result.title}</p>
-                          <p className="text-xs text-muted-foreground">{result.year} • {result.mediaType === 'tv' ? 'Series' : 'Film'}</p>
-                        </div>
-                        <Plus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </button>
-                    ))}
+              ) : (
+                <div className="flex items-center gap-6 p-6 bg-white/[0.02] border border-white/5 relative group transition-all hover:bg-white/[0.04]">
+                  <div className="w-20 aspect-[2/3] border border-white/10 overflow-hidden shadow-2xl shrink-0">
+                    {movie.posterUrl && <img src={movie.posterUrl} alt="" className="w-full h-full object-cover transition-all duration-[1.5s] grayscale group-hover:grayscale-0" />}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-dashed relative group">
-                <div className="w-16 aspect-[2/3] rounded-lg overflow-hidden shadow-sm">
-                  {movie.posterUrl && <img src={movie.posterUrl} alt="" className="w-full h-full object-cover" />}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-serif text-2xl font-bold uppercase tracking-tighter leading-none mb-2">{movie.title}</h3>
+                    <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-primary font-bold">{movie.year} • {movie.mediaType === 'tv' ? 'Series' : 'Film'}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setMovie(null)}
+                    className="rounded-none h-10 w-10 hover:bg-primary/10 hover:text-primary transition-all border border-transparent hover:border-primary/20"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-lg leading-none mb-1">{movie.title}</h3>
-                  <p className="text-sm text-muted-foreground">{movie.year} • {movie.mediaType === 'tv' ? 'Series' : 'Film'}</p>
+              )}
+
+              {/* Core Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                <div className="space-y-4">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-primary/60 font-bold block">Date Watched</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-mono text-[11px] uppercase tracking-widest border-white/10 bg-white/[0.01] hover:bg-white/5 rounded-none h-14 transition-all">
+                        <CalendarIcon className="mr-3 h-4 w-4 text-primary/40" />
+                        {date ? format(date, "PPP") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-black/95 border-white/10 rounded-none shadow-2xl" align="start">
+                      <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus className="rounded-none border-0" />
+                    </PopoverContent>
+                  </Popover>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setMovie(null)}
-                  className="rounded-full h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
 
-            {/* Core Inputs */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Date Watched</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left font-medium rounded-xl h-11">
-                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                      {date ? format(date, "PPP") : "Select date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar mode="single" selected={date} onSelect={(d) => d && setDate(d)} initialFocus />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Rating</Label>
-                <div className="flex items-center justify-center bg-muted/30 rounded-xl h-11 px-4">
-                  <StarRating rating={rating} onChange={setRating} size="md" />
+                <div className="space-y-4">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-primary/60 font-bold block">Rating</Label>
+                  <div className="flex items-center justify-center bg-white/[0.01] border border-white/10 rounded-none h-14 px-6">
+                    <StarRating rating={rating} onChange={setRating} size="md" />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* TV Progress */}
-            {movie?.mediaType === 'tv' && (
-              <div className="p-4 bg-muted/30 rounded-xl space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                    <Tv className="h-3 w-3" /> Progress
-                  </Label>
-                  <span className="text-xs font-bold">{completionPercentage[0]}% Complete</span>
+              {/* TV Progress */}
+              {movie?.mediaType === 'tv' && (
+                <div className="p-6 bg-white/[0.02] border border-white/5 rounded-none space-y-5">
+                  <div className="flex items-center justify-between">
+                    <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-primary font-bold flex items-center gap-3">
+                      <Tv className="h-3.5 w-3.5" /> Progress
+                    </Label>
+                    <span className="font-mono text-[10px] font-bold tracking-widest text-primary">{completionPercentage[0]}% COMPLETE</span>
+                  </div>
+                  <Slider value={completionPercentage} onValueChange={setCompletionPercentage} min={0} max={100} step={1} className="py-2" />
                 </div>
-                <Slider value={completionPercentage} onValueChange={setCompletionPercentage} min={0} max={100} step={5} />
-              </div>
-            )}
+              )}
 
-            {/* Analysis */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Short Review</Label>
-                <Input
-                  placeholder="One sentence summary..."
-                  value={reviewShort}
-                  onChange={(e) => setReviewShort(e.target.value)}
-                  className="rounded-xl"
-                />
-              </div>
+              {/* Analysis */}
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground/40 font-bold block">Short Review</Label>
+                  <Input
+                    placeholder="ONE SENTENCE SUMMARY..."
+                    value={reviewShort}
+                    onChange={(e) => setReviewShort(e.target.value)}
+                    className="h-14 bg-white/[0.01] border-white/10 rounded-none font-serif italic text-base tracking-tight focus-visible:ring-primary/20 focus-visible:border-primary/40 transition-all"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Log Entry</Label>
-                <Textarea
-                  placeholder="Your thoughts, analysis, or memories..."
-                  value={diaryLong}
-                  onChange={(e) => setDiaryLong(e.target.value)}
-                  className="min-h-[120px] rounded-xl resize-none"
-                />
-              </div>
-            </div>
-
-            {/* Tags & Metadata */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="col-span-1 sm:col-span-2 space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Tags</Label>
-                <Input
-                  placeholder="masterpiece, noir, period piece..."
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  className="rounded-xl"
-                />
+                <div className="space-y-3">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground/40 font-bold block">Log Entry</Label>
+                  <Textarea
+                    placeholder="YOUR THOUGHTS, ANALYSIS, OR MEMORIES..."
+                    value={diaryLong}
+                    onChange={(e) => setDiaryLong(e.target.value)}
+                    className="min-h-[160px] bg-white/[0.01] border-white/10 rounded-none font-serif text-lg leading-relaxed tracking-tight p-6 focus-visible:ring-primary/20 focus-visible:border-primary/40 transition-all resize-none"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Mood</Label>
-                <Select value={mood} onValueChange={setMood}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Select mood" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {moods.map(m => <SelectItem key={m || 'none'} value={m || 'none'}>{m || 'None'}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+              {/* Tags & Metadata */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="col-span-1 sm:col-span-2 space-y-3">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground/40 font-bold block">Tags</Label>
+                  <Input
+                    placeholder="MASTERPIECE, NOIR, PERIOD PIECE..."
+                    value={tags}
+                    onChange={(e) => setTags(e.target.value)}
+                    className="h-12 bg-white/[0.01] border-white/10 rounded-none font-mono text-[10px] uppercase tracking-widest focus-visible:ring-primary/20 focus-visible:border-primary/40 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground/40 font-bold block">Mood</Label>
+                  <Select value={mood} onValueChange={setMood}>
+                    <SelectTrigger className="h-12 bg-white/[0.01] border-white/10 rounded-none font-mono text-[10px] uppercase tracking-[0.2em] focus:ring-primary/20 focus:border-primary/40">
+                      <SelectValue placeholder="SELECT MOOD" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black/95 border-white/10 rounded-none">
+                      {moods.map(m => (
+                        <SelectItem key={m || 'none'} value={m || 'none'} className="font-mono text-[10px] uppercase tracking-widest focus:bg-primary/20 focus:text-primary rounded-none">
+                          {m || 'NONE'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground/40 font-bold block">Location</Label>
+                  <Select value={location} onValueChange={setLocation}>
+                    <SelectTrigger className="h-12 bg-white/[0.01] border-white/10 rounded-none font-mono text-[10px] uppercase tracking-[0.2em] focus:ring-primary/20 focus:border-primary/40">
+                      <SelectValue placeholder="SELECT LOCATION" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black/95 border-white/10 rounded-none">
+                      {locations.map(l => (
+                        <SelectItem key={l || 'none'} value={l || 'none'} className="font-mono text-[10px] uppercase tracking-widest focus:bg-primary/20 focus:text-primary rounded-none">
+                          {l || 'NONE'}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Location</Label>
-                <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger className="rounded-xl">
-                    <SelectValue placeholder="Select location" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map(l => <SelectItem key={l || 'none'} value={l || 'none'}>{l || 'None'}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+              {/* Footer Actions */}
+              <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-white/10">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3">
+                    <Switch checked={isRewatch} onCheckedChange={setIsRewatch} id="rewatch" className="data-[state=checked]:bg-primary" />
+                    <Label htmlFor="rewatch" className="font-mono text-[10px] uppercase tracking-[0.3em] cursor-pointer text-muted-foreground/60 peer-data-[state=checked]:text-primary">Rewatch</Label>
+                  </div>
+                </div>
 
-            {/* Footer Actions */}
-            <div className="pt-4 flex items-center justify-between border-t gap-4">
-              <div className="flex items-center gap-2">
-                <Switch checked={isRewatch} onCheckedChange={setIsRewatch} id="rewatch" />
-                <Label htmlFor="rewatch" className="text-sm cursor-pointer">Rewatch</Label>
+                <div className="flex gap-4 w-full sm:w-auto">
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="flex-1 sm:flex-none h-14 font-mono text-[10px] uppercase tracking-[0.4em] hover:bg-white/5 rounded-none border border-transparent hover:border-white/10"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting || !movie}
+                    className="flex-1 sm:flex-none h-14 px-12 rounded-none font-mono text-[10px] uppercase tracking-[0.4em] bg-primary text-black font-black hover:bg-primary/90 transition-all duration-500 shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)]"
+                  >
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-3" /> : null}
+                    Save Entry
+                  </Button>
+                </div>
               </div>
-
-              <div className="flex gap-2 flex-1 justify-end">
-                <Button
-                  variant="ghost"
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="hidden sm:inline-flex"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting || !movie}
-                  className="px-8 rounded-xl font-bold bg-primary hover:bg-primary/90"
-                >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Save Entry
-                </Button>
-              </div>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </Layout>
