@@ -38,7 +38,7 @@ export function HeroSection() {
             {/* Left vertical labels */}
             <div className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground -rotate-90 origin-left block whitespace-nowrap">
-                    CINELUNIC
+                    CINELUNATIC
                 </span>
             </div>
 
@@ -46,7 +46,7 @@ export function HeroSection() {
             <div ref={contentRef} className="flex-1 w-full">
                 <SplitFlapAudioProvider>
                     <div className="relative">
-                        <SplitFlapText text="CINELUNIC" speed={80} />
+                        <SplitFlapText text="CINELUNATIC" speed={80} />
                         <div className="mt-4">
                             <SplitFlapMuteToggle />
                         </div>

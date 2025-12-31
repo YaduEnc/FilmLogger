@@ -1,6 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Analytics } from "@vercel/analytics/react";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
@@ -52,7 +51,6 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Analytics />
             <BrowserRouter>
               <ScrollToTop />
               <Routes>
