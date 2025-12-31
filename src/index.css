@@ -1,6 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -12,8 +10,10 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Cinephile palette - calm, archival, typography-first */
-    --background: 50 14% 97%; /* #FAFAF8 off-white */
-    --foreground: 0 0% 7%; /* #111 near-black */
+    --background: 50 14% 97%;
+    /* #FAFAF8 off-white */
+    --foreground: 0 0% 7%;
+    /* #111 near-black */
 
     --card: 50 14% 97%;
     --card-foreground: 0 0% 7%;
@@ -28,7 +28,8 @@ All colors MUST be HSL.
     --secondary-foreground: 0 0% 7%;
 
     --muted: 50 6% 94%;
-    --muted-foreground: 0 0% 40%; /* #666 */
+    --muted-foreground: 0 0% 40%;
+    /* #666 */
 
     --accent: 50 6% 94%;
     --accent-foreground: 0 0% 7%;
@@ -36,7 +37,8 @@ All colors MUST be HSL.
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 50 6% 90%; /* #E5E5E0 */
+    --border: 50 6% 90%;
+    /* #E5E5E0 */
     --input: 50 6% 90%;
     --ring: 0 0% 7%;
 
@@ -59,9 +61,10 @@ All colors MUST be HSL.
 
     --sidebar: 50 14% 97%;
 
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-sans: 'IBM Plex Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-serif: 'Lora', ui-serif, Georgia, serif;
-    --font-mono: 'Space Mono', ui-monospace, monospace;
+    --font-mono: 'IBM Plex Mono', 'Space Mono', ui-monospace, monospace;
+    --font-display: 'Bebas Neue', 'Inter', sans-serif;
 
     --shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.03);
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
@@ -138,11 +141,31 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 
+  /* Custom noise texture overlay */
+  .noise-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+
+  /* Grid background pattern */
+  .grid-bg {
+    background-image: linear-gradient(to right, hsl(var(--border)) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border)) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
   /* Smooth theme transitions */
   html {
     color-scheme: light dark;
   }
-  
+
   html,
   body {
     transition: background-color 0.2s ease, color 0.2s ease;
@@ -150,6 +173,7 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+
   /* Hide scrollbar for Chrome, Safari and Opera */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
@@ -157,16 +181,21 @@ All colors MUST be HSL.
 
   /* Hide scrollbar for IE, Edge and Firefox */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
   }
 }
 
 /* Story Ring Gradient Animation */
 @keyframes story-gradient {
-  0%, 100% {
+
+  0%,
+  100% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
@@ -183,6 +212,7 @@ All colors MUST be HSL.
   from {
     width: 0%;
   }
+
   to {
     width: 100%;
   }
@@ -193,6 +223,7 @@ All colors MUST be HSL.
   0% {
     transform: translateX(-100%);
   }
+
   100% {
     transform: translateX(100%);
   }
@@ -205,12 +236,10 @@ All colors MUST be HSL.
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
+  background: linear-gradient(90deg,
+      transparent,
+      rgba(255, 255, 255, 0.1),
+      transparent);
   animation: shine 2s infinite;
 }
 
@@ -220,9 +249,11 @@ All colors MUST be HSL.
     transform: scale(0);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.2);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -239,6 +270,7 @@ All colors MUST be HSL.
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -254,6 +286,7 @@ All colors MUST be HSL.
   0% {
     transform: scale(1) translate(0, 0);
   }
+
   100% {
     transform: scale(1.1) translate(-1%, -1%);
   }

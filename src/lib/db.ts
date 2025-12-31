@@ -1421,8 +1421,11 @@ export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "li
             userPhoto: review.authorPhoto,
             type: 'review',
             movieId: review.movieId,
-            movieTitle: (review as any).movieTitle || 'Film', // Assuming movieTitle might be passed
-            mediaType: review.mediaType
+            movieTitle: review.movieTitle || 'Film',
+            moviePoster: review.moviePoster,
+            mediaType: review.mediaType,
+            rating: review.rating,
+            reviewText: review.text
         }).catch(console.error);
 
         return docRef.id;
@@ -1445,6 +1448,81 @@ export const getMovieReviews = async (movieId: number) => {
     } catch (error) {
         console.error("Error getting reviews:", error);
         return [];
+    }
+};
+
+export const getGlobalRecentReviews = async (limitCount: number = 10) => {
+    try {
+        const reviewsRef = collection(db, "reviews");
+        // We'll try to use a simple query first. If an index is required, 
+        // it might fail in production until created.
+        const q = query(
+            reviewsRef,
+            where("visibility", "==", "public"),
+            orderBy("createdAt", "desc"),
+            limit(limitCount)
+        );
+        const snapshot = await getDocs(q);
+        let reviews = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: safeTimestampToISO(doc.data().createdAt)
+        } as Review));
+
+        // If we have fewer than limitCount, try to supplement from user_activities
+        if (reviews.length < limitCount) {
+            const activitiesRef = collection(db, "user_activities");
+            const aq = query(
+                activitiesRef,
+                orderBy("createdAt", "desc"),
+                limit(100) // Scan more activities
+            );
+            const aSnapshot = await getDocs(aq);
+            const activityReviews = aSnapshot.docs
+                .map(doc => doc.data())
+                .filter(a => (a.type === 'review' || (a.type === 'log' && a.reviewText)) && a.reviewText)
+                .map(a => ({
+                    id: Math.random().toString(), // Placeholder ID
+                    movieId: a.movieId,
+                    movieTitle: a.movieTitle,
+                    moviePoster: a.moviePoster,
+                    mediaType: a.mediaType || 'movie',
+                    text: a.reviewText,
+                    createdAt: safeTimestampToISO(a.createdAt)
+                } as any));
+
+            // Merge and de-duplicate by movie/text (simple heuristic)
+            const combined = [...reviews];
+            activityReviews.forEach(ar => {
+                if (combined.length < limitCount && !combined.some(r => r.movieId === ar.movieId && r.text === ar.text)) {
+                    combined.push(ar);
+                }
+            });
+            reviews = combined;
+        }
+
+        return reviews;
+    } catch (error) {
+        console.error("Error getting global reviews:", error);
+        // Fallback: fetch all and sort manually if query fails due to index
+        try {
+            const reviewsRef = collection(db, "reviews");
+            // If the composite query failed, we try to get a larger batch 
+            // of recent items and filter them in memory.
+            const q = query(reviewsRef, orderBy("createdAt", "desc"), limit(500));
+            const snapshot = await getDocs(q);
+            return snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: safeTimestampToISO(doc.data().createdAt)
+                } as Review))
+                .filter(r => r.visibility === 'public')
+                .slice(0, limitCount);
+        } catch (innerError) {
+            console.error("Fallback global review fetch failed:", innerError);
+            return [];
+        }
     }
 };
 

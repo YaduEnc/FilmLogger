@@ -257,9 +257,9 @@ export default function Home() {
           />
 
           {/* Multi-layered Gradients for Adaptive Visibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent z-10" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/20 to-transparent z-10" />
-          <div className="absolute inset-0 bg-black/5 dark:bg-black/30 z-0" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/25 to-transparent z-10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/10 to-transparent z-10" />
+          <div className="absolute inset-0 bg-black/2 dark:bg-black/15 z-0" />
 
 
 
