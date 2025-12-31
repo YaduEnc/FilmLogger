@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { Search, Plus, User, Film, LogOut, Bell, MessageCircle, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Logo } from "./Logo";
+import { AnimatedNoise } from "@/components/landing/AnimatedNoise";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
@@ -76,16 +77,13 @@ export function Header() {
   return (
     <header
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out",
-        "border-b border-border/50 shadow-sm",
-        "bg-background/80 dark:bg-background/70 backdrop-blur-xl",
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out",
+        "border-b border-white/[0.03]",
+        "bg-background/80 backdrop-blur-md",
         isVisible ? "translate-y-0" : "-translate-y-full"
       )}
-      style={{
-        backdropFilter: 'blur(16px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-      }}
     >
+      <AnimatedNoise opacity={0.02} />
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-4">
@@ -103,9 +101,9 @@ export function Header() {
             )}
 
             {/* Logo */}
-            <Link to={user ? "/home" : "/"} className="flex items-center gap-2 group">
-              <Logo className="h-7 w-7 text-foreground transition-opacity group-hover:opacity-70" />
-              <span className="font-serif text-lg font-medium tracking-tight hidden sm:inline-block">
+            <Link to={user ? "/home" : "/"} className="flex items-center gap-3 group relative z-10">
+              <Logo className="h-6 w-6 text-foreground/80 transition-all duration-300 group-hover:text-primary group-hover:scale-110" />
+              <span className="font-serif text-xl tracking-tight hidden sm:inline-block uppercase">
                 CineLunatic
               </span>
             </Link>
@@ -113,26 +111,30 @@ export function Header() {
 
           {/* Navigation - Desktop */}
           {user && (
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex items-center gap-2 relative z-10">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   to={link.href}
                   className={cn(
-                    "px-3 py-1.5 text-sm transition-colors",
+                    "px-4 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] transition-all duration-300 relative group",
                     location.pathname === link.href
                       ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground/60 hover:text-foreground"
                   )}
                 >
                   {link.label}
+                  <span className={cn(
+                    "absolute bottom-0 left-4 right-4 h-[1px] bg-primary transition-transform duration-500 origin-left",
+                    location.pathname === link.href ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
+                  )} />
                 </Link>
               ))}
             </nav>
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 relative z-10">
             {user ? (
               <>
                 <ThemeToggle />
@@ -221,10 +223,14 @@ export function Header() {
                 </DropdownMenu>
               </>
             ) : (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <ThemeToggle />
                 <Link to="/auth">
-                  <Button size="sm" className="h-9 px-5 font-bold tracking-tight shadow-lg shadow-primary/10 transition-all hover:scale-105 active:scale-95">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-6 font-mono text-[10px] uppercase tracking-[0.2em] border-white/10 bg-transparent hover:bg-white/5 hover:border-white/20 transition-all duration-300 rounded-none"
+                  >
                     Continue your journey
                   </Button>
                 </Link>

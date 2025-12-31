@@ -11,12 +11,12 @@ interface LogEntryCardProps {
 
 export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
   return (
-    <article className="py-4 border-b border-border last:border-0">
+    <article className="py-6 border-b border-white/5 last:border-0 group/log">
       <div className="flex gap-4">
         {/* Poster */}
         {showMovie && (
           <Link to={`/${entry.mediaType || 'movie'}/${entry.movieId}`} className="shrink-0">
-            <div className="w-16 aspect-[2/3] bg-muted rounded-sm overflow-hidden border border-border">
+            <div className="w-16 aspect-[2/3] bg-muted rounded-none overflow-hidden border border-white/5 grayscale group-hover/log:grayscale-0 transition-all duration-500">
               {entry.movie.posterUrl ? (
                 <img
                   src={entry.movie.posterUrl}
@@ -42,17 +42,17 @@ export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
               {showMovie && (
                 <Link
                   to={`/${entry.mediaType || 'movie'}/${entry.movieId}`}
-                  className="font-medium hover:underline underline-offset-2"
+                  className="font-serif text-lg font-bold hover:text-primary transition-colors uppercase tracking-tight"
                 >
                   {entry.movie.title}
                 </Link>
               )}
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-0.5">
-                <time>{format(new Date(entry.watchedDate), "MMM d, yyyy")}</time>
+              <div className="flex items-center gap-3 text-muted-foreground mt-1">
+                <time className="font-mono text-[10px] uppercase tracking-[0.2em]">{format(new Date(entry.watchedDate), "dd MMM yyyy")}</time>
                 {entry.isRewatch && (
-                  <span className="flex items-center gap-0.5">
+                  <span className="flex items-center gap-1 font-mono text-[10px] text-primary/60 uppercase tracking-widest">
                     <RotateCcw className="h-3 w-3" />
-                    <span>×{entry.rewatchCount}</span>
+                    <span>REV / {entry.rewatchCount}</span>
                   </span>
                 )}
               </div>
@@ -62,8 +62,8 @@ export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
 
           {/* Review */}
           {entry.reviewShort && (
-            <p className="mt-2 text-sm leading-relaxed line-clamp-3">
-              {entry.reviewShort}
+            <p className="mt-3 text-[13px] leading-relaxed line-clamp-3 text-foreground/80 font-serif italic border-l border-white/10 pl-4">
+              "{entry.reviewShort}"
             </p>
           )}
 
@@ -73,7 +73,7 @@ export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
               {entry.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-sm"
+                  className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-widest border border-white/5 px-2 py-0.5"
                 >
                   {tag}
                 </span>

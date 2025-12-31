@@ -138,11 +138,11 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
       <div className={cn("relative transition-all duration-500", sizeClasses[size])}>
         {/* Poster Container with Glassmorphic Frame */}
         <div className={cn(
-          "aspect-[2/3] bg-muted rounded-xl overflow-hidden transition-all duration-700 relative z-0 transform-gpu",
-          isHovered ? "scale-[1.02] shadow-[0_15px_40px_rgba(0,0,0,0.2)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.8)] z-30" : "shadow-lg"
+          "aspect-[2/3] bg-muted rounded-none overflow-hidden transition-all duration-700 relative z-0 transform-gpu",
+          isHovered ? "scale-[1.02] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-30" : "shadow-md"
         )}>
-          {/* Persistent Border Overlay to prevent chipping */}
-          <div className="absolute inset-0 border border-border/50 rounded-xl pointer-events-none z-50" />
+          {/* Persistent Border Overlay */}
+          <div className="absolute inset-0 border border-white/5 rounded-none pointer-events-none z-50" />
           {/* Subtle Reflection Overlay on Hover */}
           <div className={cn(
             "absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-700 pointer-events-none z-10",
@@ -155,8 +155,8 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
               alt={movie.title}
               loading="lazy"
               className={cn(
-                "w-full h-full object-cover transition-transform duration-[1.5s] ease-out",
-                isHovered && "scale-105"
+                "w-full h-full object-cover transition-all duration-[1.5s] ease-out",
+                isHovered ? "scale-110 grayscale-0" : "scale-100 grayscale-[0.4]"
               )}
             />
           ) : (
@@ -176,8 +176,8 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
               <button
                 onClick={handleToggleLike}
                 className={cn(
-                  "p-1.5 rounded-full backdrop-blur-3xl border border-border transition-all hover:scale-110 active:scale-90",
-                  isLiked ? "bg-primary text-primary-foreground border-primary" : "bg-muted/30 text-foreground hover:bg-muted/50"
+                  "p-2 rounded-none backdrop-blur-3xl border border-white/10 transition-all hover:scale-110 active:scale-90",
+                  isLiked ? "bg-primary text-primary-foreground border-primary" : "bg-black/40 text-foreground hover:bg-black/60"
                 )}
               >
                 {isActionLoading === 'like' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />}
@@ -185,31 +185,31 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
               <button
                 onClick={handleQuickLog}
                 className={cn(
-                  "p-1.5 rounded-full backdrop-blur-3xl border border-border transition-all hover:scale-110 active:scale-90",
-                  isLogged ? "bg-green-500 text-white border-green-500" : "bg-muted/30 text-foreground hover:bg-muted/50"
+                  "p-2 rounded-none backdrop-blur-3xl border border-white/10 transition-all hover:scale-110 active:scale-90",
+                  isLogged ? "bg-green-500/80 text-white border-green-500/50" : "bg-black/40 text-foreground hover:bg-black/60"
                 )}
               >
                 {isActionLoading === 'log' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
               </button>
               <button
                 onClick={handleAddToList}
-                className="p-1.5 rounded-full bg-muted/30 text-foreground backdrop-blur-3xl border border-border hover:bg-muted/50 transition-all hover:scale-110 active:scale-90"
+                className="p-2 rounded-none bg-black/40 text-foreground backdrop-blur-3xl border border-white/10 hover:bg-black/60 transition-all hover:scale-110 active:scale-90"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
             </div>
 
             {displayRating !== undefined && (
-              <div className="flex items-center justify-center gap-1.5 mb-1 px-2 py-1 bg-muted/50 backdrop-blur-md rounded-full w-fit mx-auto border border-border">
-                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                <span className="text-[10px] font-black text-foreground tracking-widest">
+              <div className="flex items-center justify-center gap-1.5 mb-1 px-3 py-1 bg-black/60 backdrop-blur-md rounded-none w-fit mx-auto border border-white/5">
+                <Star className="h-3 w-3 fill-primary text-primary" />
+                <span className="font-mono text-[10px] font-bold text-foreground tracking-[0.2em]">
                   {displayRating.toFixed(1)}
                 </span>
               </div>
             )}
 
             {directorOrCreator && (
-              <p className="text-[9px] text-muted-foreground font-black uppercase tracking-[0.2em] text-center truncate italic">
+              <p className="font-mono text-[8px] text-muted-foreground/60 uppercase tracking-[0.4em] text-center truncate">
                 {directorOrCreator}
               </p>
             )}
@@ -218,7 +218,7 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
 
         {/* Rating badge (always visible if showRating is true) */}
         {showRating && rating !== undefined && (
-          <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-black px-2 py-1 rounded-lg z-40 shadow-xl border border-border">
+          <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground font-mono text-[10px] font-bold px-2 py-1 rounded-none z-40 shadow-xl border border-primary/20">
             {rating.toFixed(1)}
           </div>
         )}
@@ -230,12 +230,12 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
           "mt-4 transition-all duration-500 transform",
           isHovered ? "translate-y-1" : "translate-y-0"
         )}>
-          <p className="text-[13px] md:text-sm font-bold leading-tight truncate tracking-tight text-foreground group-hover/card:text-primary transition-colors">
+          <p className="font-serif text-[13px] md:text-sm font-bold leading-tight truncate tracking-tight text-foreground group-hover/card:text-primary transition-colors uppercase">
             {movie.title}
           </p>
-          <div className="flex items-center gap-2 mt-1">
-            <div className="h-px w-3 bg-border" />
-            <p className="text-[9px] md:text-[10px] text-muted-foreground font-black tracking-[0.2em] uppercase">
+          <div className="flex items-center gap-3 mt-1.5">
+            <div className="h-px w-4 bg-primary/30" />
+            <p className="font-mono text-[9px] text-muted-foreground/50 tracking-[0.4em] uppercase">
               {movie.year}
             </p>
           </div>
