@@ -151,6 +151,8 @@ export interface ConnectionStatus {
 export interface Review {
   id: string;
   movieId: number;
+  movieTitle?: string;
+  moviePoster?: string;
   mediaType: 'movie' | 'tv';
   authorUid: string;
   authorName: string;

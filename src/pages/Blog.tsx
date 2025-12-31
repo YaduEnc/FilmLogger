@@ -1,7 +1,7 @@
 import { Layout } from '@/components/layout/Layout';
-import { H1, H2, Lead } from '@/components/ui/typography';
-import { Divider } from '@/components/ui/divider';
-import { Card } from '@/components/ui/card';
+import { SmoothScroll } from "@/components/landing/SmoothScroll";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
 import { Calendar, ArrowRight } from 'lucide-react';
 
 const blogPosts = [
@@ -26,49 +26,98 @@ const blogPosts = [
 ];
 
 export default function Blog() {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!contentRef.current || !headerRef.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        headerRef.current,
+        { y: 30, opacity: 0 },
+        { y: 0, opacity: 1, duration: 1, ease: "power3.out" }
+      );
+
+      const posts = contentRef.current?.querySelectorAll(".blog-post-card");
+      if (posts) {
+        gsap.fromTo(
+          posts,
+          { y: 20, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.8,
+            stagger: 0.1,
+            ease: "power3.out",
+            delay: 0.3
+          }
+        );
+      }
+    });
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <Layout>
-      <div className="container mx-auto px-6 py-12 max-w-4xl">
-        <H1 className="mb-4">Blog & Updates</H1>
-        <Lead className="mb-8">
-          News, updates, and thoughts on cinema.
-        </Lead>
+      <SmoothScroll>
+        <main className="relative min-h-screen selection:bg-primary selection:text-primary-foreground overflow-hidden">
+          <div className="grid-bg fixed inset-0 opacity-20 pointer-events-none" aria-hidden="true" />
+          <div className="noise-overlay" aria-hidden="true" />
 
-        <Divider className="my-8" />
-
-        <div className="space-y-6">
-          {blogPosts.map((post) => (
-            <Card key={post.slug} className="p-6 hover:shadow-lg transition-shadow">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                <Calendar className="h-4 w-4" />
-                <span>{post.date}</span>
-              </div>
-              
-              <H2 className="text-2xl mb-3">{post.title}</H2>
-              
-              <p className="text-muted-foreground leading-relaxed mb-4">
-                {post.excerpt}
+          <div className="relative z-10 container mx-auto px-6 md:px-28 py-32 max-w-5xl">
+            <header ref={headerRef} className="mb-20">
+              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">Journal / Updates</span>
+              <h1 className="mt-4 font-serif text-5xl md:text-7xl tracking-tight uppercase">Field Notes</h1>
+              <p className="mt-6 font-mono text-sm text-muted-foreground uppercase tracking-widest max-w-xl">
+                News, updates, and philosophical musings on the art of cinema.
               </p>
-              
-              <button className="text-sm text-primary hover:underline flex items-center gap-1">
-                Read more
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            </Card>
-          ))}
-        </div>
+              <div className="mt-8 w-24 h-px bg-primary/60" />
+            </header>
 
-        <Divider className="my-12" />
+            <div ref={contentRef} className="space-y-12">
+              {blogPosts.map((post) => (
+                <article key={post.slug} className="blog-post-card group relative p-10 border border-border/40 bg-card/30 backdrop-blur-sm overflow-hidden transition-all hover:bg-card/50">
+                  {/* Subtle Grid Accent */}
+                  <div className="absolute inset-0 opacity-[0.03] pointer-events-none grid-bg" />
 
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">
-            Want to stay updated with the latest news and features?
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Follow us on social media or check back here regularly for updates.
-          </p>
-        </div>
-      </div>
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-3 font-mono text-[10px] text-primary uppercase tracking-[0.2em] mb-6">
+                      <Calendar className="h-3 w-3" />
+                      <span>{post.date}</span>
+                    </div>
+
+                    <h2 className="font-serif text-3xl md:text-4xl uppercase tracking-tight mb-6 group-hover:text-primary transition-colors">
+                      {post.title}
+                    </h2>
+
+                    <p className="font-mono text-sm text-muted-foreground leading-relaxed mb-8 max-w-2xl">
+                      {post.excerpt}
+                    </p>
+
+                    <button className="font-mono text-[10px] uppercase tracking-[0.3em] text-foreground flex items-center gap-2 group/btn">
+                      Read Full Article
+                      <ArrowRight className="h-3 w-3 transition-transform group-hover/btn:translate-x-1" />
+                    </button>
+                  </div>
+
+                  <div className="absolute bottom-0 right-0 w-12 h-12 bg-background rotate-45 translate-x-8 translate-y-8 border-t border-l border-border/30" />
+                </article>
+              ))}
+
+              <div className="mt-24 pt-12 border-t border-border/40 text-center">
+                <p className="font-mono text-xs text-muted-foreground uppercase tracking-[0.2em] mb-6">
+                  Want to stay updated with the latest news?
+                </p>
+                <div className="inline-block px-10 py-4 border border-border/40 font-mono text-[10px] uppercase tracking-[0.3em] text-primary hover:bg-primary/5 cursor-pointer transition-colors">
+                  Join the Archives
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </SmoothScroll>
     </Layout>
   );
 }
