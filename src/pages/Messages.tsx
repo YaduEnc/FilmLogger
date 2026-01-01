@@ -6,12 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  getUserConversations, 
-  getConversationMessages, 
-  sendMessage, 
+import {
+  getUserConversations,
+  getConversationMessages,
+  sendMessage,
   markMessagesAsRead,
-  getOrCreateConversation 
+  getOrCreateConversation,
+  subscribeToConversations,
+  subscribeToMessages
 } from '@/lib/messaging';
 import { getUserFriends } from '@/lib/db';
 import { Send, ArrowLeft, Film, Loader2, Plus, MessageCircle } from 'lucide-react';
@@ -33,16 +35,28 @@ export default function Messages() {
 
   useEffect(() => {
     if (user) {
-      loadConversations();
+      // Subscribe to conversations
+      const unsubscribe = subscribeToConversations(user.uid, (data) => {
+        setConversations(data);
+        setIsLoading(false);
+      });
+      return () => unsubscribe();
     }
   }, [user]);
 
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(selectedConversation.id);
+      // Subscribe to messages for the selected conversation
+      setMessages([]); // Clear previous messages while loading
+      const unsubscribe = subscribeToMessages(selectedConversation.id, (data) => {
+        setMessages(data);
+      });
+
       markMessagesAsRead(selectedConversation.id, user!.uid);
+
+      return () => unsubscribe();
     }
-  }, [selectedConversation]);
+  }, [selectedConversation?.id]); // Depend on ID to re-subscribe when switching
 
   useEffect(() => {
     scrollToBottom();
@@ -52,16 +66,7 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadConversations = async () => {
-    try {
-      const data = await getUserConversations(user!.uid);
-      setConversations(data);
-    } catch (error) {
-      console.error('Error loading conversations:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Removed loadConversations as it's handled by subscription
 
   const loadFriends = async () => {
     if (!user) return;
@@ -78,14 +83,14 @@ export default function Messages() {
 
   const handleStartConversation = async (friend: any) => {
     if (!user) return;
-    
+
     try {
       // Get current user's data
       const { getDoc, doc } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const currentUserData = userDoc.data();
-      
+
       const conversationId = await getOrCreateConversation(
         user.uid,
         friend.uid,
@@ -100,17 +105,18 @@ export default function Messages() {
           username: friend.username
         }
       );
-      
-      // Reload conversations
-      await loadConversations();
-      
-      // Find and select the conversation
+
+      // No need to manually reload conversations, subscription handles it
+
+      // Find and select the conversation (we might need to wait a moment for subscription to update)
+      // For immediate feedback, we can optimistically set it from the result if we had the full obj
+      // But simpler to just wait or fetch it once directly
       const updatedConversations = await getUserConversations(user.uid);
       const newConversation = updatedConversations.find(c => c.id === conversationId);
       if (newConversation) {
         setSelectedConversation(newConversation);
       }
-      
+
       setIsNewMessageOpen(false);
       toast.success(`Started conversation with ${friend.displayName}`);
     } catch (error) {
@@ -119,14 +125,7 @@ export default function Messages() {
     }
   };
 
-  const loadMessages = async (conversationId: string) => {
-    try {
-      const data = await getConversationMessages(conversationId);
-      setMessages(data);
-    } catch (error) {
-      console.error('Error loading messages:', error);
-    }
-  };
+  // Removed loadMessages as it's handled by subscription
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation || !user) return;
@@ -134,7 +133,7 @@ export default function Messages() {
     setIsSending(true);
     try {
       const otherUserId = selectedConversation.participants.find((id: string) => id !== user.uid);
-      
+
       await sendMessage({
         conversationId: selectedConversation.id,
         senderId: user.uid,
@@ -145,8 +144,7 @@ export default function Messages() {
       });
 
       setNewMessage('');
-      await loadMessages(selectedConversation.id);
-      await loadConversations();
+      // No need to manually reload messages or conversations
     } catch (error) {
       toast.error('Failed to send message');
     } finally {
@@ -236,7 +234,7 @@ export default function Messages() {
                 </DialogContent>
               </Dialog>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto">
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
@@ -251,14 +249,13 @@ export default function Messages() {
                 conversations.map((conversation) => {
                   const otherUser = getOtherUser(conversation);
                   const unreadCount = conversation.unreadCount?.[user.uid] || 0;
-                  
+
                   return (
                     <button
                       key={conversation.id}
                       onClick={() => setSelectedConversation(conversation)}
-                      className={`w-full p-4 flex items-start gap-3 hover:bg-muted/50 transition-colors border-b ${
-                        selectedConversation?.id === conversation.id ? 'bg-muted' : ''
-                      }`}
+                      className={`w-full p-4 flex items-start gap-3 hover:bg-muted/50 transition-colors border-b ${selectedConversation?.id === conversation.id ? 'bg-muted' : ''
+                        }`}
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={otherUser.photo} />
@@ -313,7 +310,7 @@ export default function Messages() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {messages.map((message) => {
                     const isOwn = message.senderId === user.uid;
-                    
+
                     return (
                       <div
                         key={message.id}
@@ -325,11 +322,10 @@ export default function Messages() {
                         </Avatar>
                         <div className={`flex-1 ${isOwn ? 'text-right' : ''}`}>
                           <div
-                            className={`inline-block max-w-[70%] p-3 rounded-lg ${
-                              isOwn
+                            className={`inline-block max-w-[70%] p-3 rounded-lg ${isOwn
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted'
-                            }`}
+                              }`}
                           >
                             {message.movieId && (
                               <Link
