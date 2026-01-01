@@ -228,6 +228,9 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
                 .catch(err => console.error("Failed to update community rating:", err));
         }
 
+        // Trigger stats recalculation asynchronously
+        recalculateUserStats(userId).catch(err => console.error("Failed to update user stats:", err));
+
         return docRef.id;
     } catch (error) {
         console.error("Error creating log entry:", error);
@@ -371,73 +374,111 @@ const safeTimestampToISO = (value: any): string => {
     return new Date().toISOString();
 };
 
-export const getUserStats = async (logs: LogEntry[], listsCount: number = 0) => {
-    const totalWatched = logs.length;
-    const thisYear = new Date().getFullYear();
-    const currentYearLogs = logs.filter(log => new Date(log.watchedDate).getFullYear() === thisYear);
-    const thisYearWatched = currentYearLogs.length;
+export const recalculateUserStats = async (userId: string) => {
+    try {
+        const logsRef = collection(db, "users", userId, "logs");
+        const snapshot = await getDocs(logsRef);
+        const logs = snapshot.docs.map(doc => doc.data() as LogEntry);
 
-    const ratings = logs.filter(log => log.rating > 0).map(log => log.rating);
-    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+        const listsRef = collection(db, "users", userId, "lists");
+        const listsSnapshot = await getDocs(listsRef);
+        const listsCount = listsSnapshot.size;
 
-    const totalMinutes = logs.reduce((acc, log) => acc + (log.movie.runtime || 0), 0);
-    const totalHours = Math.round(totalMinutes / 60);
+        const totalWatched = logs.length;
+        const thisYear = new Date().getFullYear();
+        const currentYearLogs = logs.filter(log => new Date(log.watchedDate).getFullYear() === thisYear);
+        const thisYearWatched = currentYearLogs.length;
 
-    // Genres breakdown
-    const genreCounts: Record<string, number> = {};
-    logs.forEach(log => {
-        log.movie.genres?.forEach(genre => {
-            genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+        const ratings = logs.filter(log => log.rating > 0).map(log => log.rating);
+        const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+
+        const totalMinutes = logs.reduce((acc, log) => acc + (log.movie.runtime || 0), 0);
+        const totalHours = Math.round(totalMinutes / 60);
+
+        // Genres breakdown
+        const genreCounts: Record<string, number> = {};
+        logs.forEach(log => {
+            log.movie.genres?.forEach(genre => {
+                genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+            });
         });
-    });
-    const topGenres = Object.entries(genreCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([name, count]) => ({ name, count }));
+        const topGenres = Object.entries(genreCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
 
-    // Directors breakdown
-    const directorCounts: Record<string, number> = {};
-    logs.forEach(log => {
-        if (log.movie.director) {
-            directorCounts[log.movie.director] = (directorCounts[log.movie.director] || 0) + 1;
+        // Directors breakdown
+        const directorCounts: Record<string, number> = {};
+        logs.forEach(log => {
+            if (log.movie.director) {
+                directorCounts[log.movie.director] = (directorCounts[log.movie.director] || 0) + 1;
+            }
+        });
+        const topDirectors = Object.entries(directorCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
+
+        // Countries breakdown
+        const countryCounts: Record<string, number> = {};
+        logs.forEach(log => {
+            log.movie.countries?.forEach(country => {
+                countryCounts[country] = (countryCounts[country] || 0) + 1;
+            });
+        });
+        const topCountries = Object.entries(countryCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([name, count]) => ({ name, count }));
+
+        // Monthly data
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthlyCounts = months.map(month => ({ month, films: 0 }));
+        currentYearLogs.forEach(log => {
+            const rawDate = log.watchedDate as any;
+            const date = rawDate instanceof Timestamp ? rawDate.toDate() : new Date(rawDate);
+            const monthIndex = date.getMonth();
+            monthlyCounts[monthIndex].films++;
+        });
+
+        const statsData = {
+            totalWatched,
+            thisYearWatched,
+            avgRating: parseFloat(avgRating.toFixed(1)),
+            totalHours,
+            topGenres,
+            topDirectors,
+            topCountries,
+            filmsPerMonth: monthlyCounts,
+            lists: listsCount,
+            lastUpdated: serverTimestamp()
+        };
+
+        // Save to stats/general
+        await setDoc(doc(db, "users", userId, "stats", "general"), statsData);
+
+        return statsData;
+    } catch (error) {
+        console.error("Error recalculating stats:", error);
+        throw error;
+    }
+};
+
+export const getUserStats = async (userId: string) => {
+    try {
+        const statsRef = doc(db, "users", userId, "stats", "general");
+        const statsDoc = await getDoc(statsRef);
+
+        if (statsDoc.exists()) {
+            return statsDoc.data();
         }
-    });
-    const topDirectors = Object.entries(directorCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([name, count]) => ({ name, count }));
 
-    // Countries breakdown
-    const countryCounts: Record<string, number> = {};
-    logs.forEach(log => {
-        log.movie.countries?.forEach(country => {
-            countryCounts[country] = (countryCounts[country] || 0) + 1;
-        });
-    });
-    const topCountries = Object.entries(countryCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10)
-        .map(([name, count]) => ({ name, count }));
-
-    // Monthly data
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthlyCounts = months.map(month => ({ month, films: 0 }));
-    currentYearLogs.forEach(log => {
-        const monthIndex = new Date(log.watchedDate).getMonth();
-        monthlyCounts[monthIndex].films++;
-    });
-
-    return {
-        totalWatched,
-        thisYearWatched,
-        avgRating: parseFloat(avgRating.toFixed(1)),
-        totalHours,
-        topGenres,
-        topDirectors,
-        topCountries,
-        filmsPerMonth: monthlyCounts,
-        lists: listsCount
-    };
+        // Fallback: Compute and save if not exists
+        return await recalculateUserStats(userId);
+    } catch (error) {
+        console.error("Error getting user stats:", error);
+        return null;
+    }
 };
 
 export const toggleWatchlist = async (userId: string, movie: Movie) => {
