@@ -31,12 +31,20 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const genres = ["All", "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"];
-const genreIds: Record<string, number> = {
+const movieGenres = ["All", "Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Thriller", "War", "Western"];
+const movieGenreIds: Record<string, number> = {
   "Action": 28, "Adventure": 12, "Animation": 16, "Comedy": 35, "Crime": 80,
   "Documentary": 99, "Drama": 18, "Family": 10751, "Fantasy": 14, "History": 36,
   "Horror": 27, "Music": 10402, "Mystery": 9648, "Romance": 10749, "Sci-Fi": 878,
   "Thriller": 53, "War": 10752, "Western": 37
+};
+
+const tvGenres = ["All", "Action & Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family", "Kids", "Mystery", "News", "Reality", "Sci-Fi & Fantasy", "Soap", "Talk", "War & Politics", "Western"];
+const tvGenreIds: Record<string, number> = {
+  "Action & Adventure": 10759, "Animation": 16, "Comedy": 35, "Crime": 80,
+  "Documentary": 99, "Drama": 18, "Family": 10751, "Kids": 10762,
+  "Mystery": 9648, "News": 10763, "Reality": 10764, "Sci-Fi & Fantasy": 10765,
+  "Soap": 10766, "Talk": 10767, "War & Politics": 10768, "Western": 37
 };
 
 const decades = ["All", "2020s", "2010s", "2000s", "1990s", "1980s", "1970s", "1960s", "Earlier"];
@@ -369,23 +377,46 @@ export default function Search() {
               </div>
 
               {/* Content Lists */}
+              {/* Content Lists */}
               <div className="max-h-[300px] overflow-y-auto pr-1 space-y-0.5 custom-scrollbar">
-                {activeTab === 'Genre' && (genres.filter(g => g !== 'All').map((genre) => (
-                  <button
-                    key={genre}
-                    onClick={() => {
-                      const genreId = genreIds[genre];
-                      if (!genreId) return;
-                      const params = getDiscoveryParams({ with_genres: genreId.toString() });
-                      executeDiscovery(params);
-                      toast.success(`Browsing ${genre}`);
-                    }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 rounded-md transition-colors group"
-                  >
-                    <span className="text-muted-foreground group-hover:text-foreground transition-colors">{genre}</span>
-                    <ChevronRight className="h-3 w-3 text-muted-foreground/30 group-hover:text-foreground transition-colors" />
-                  </button>
-                )))}
+                {activeTab === 'Genre' && (
+                  (mediaType === 'movie' ? movieGenres : tvGenres)
+                    .filter(g => g !== 'All')
+                    .map((genre) => (
+                      <button
+                        key={genre}
+                        onClick={() => {
+                          const genreId = mediaType === 'movie' ? movieGenreIds[genre] : tvGenreIds[genre];
+                          if (!genreId) return;
+                          const params = getDiscoveryParams({ with_genres: genreId.toString() });
+                          executeDiscovery(params);
+                          toast.success(`Browsing ${genre}`);
+                          // Manually update selected genre for UI feedback if needed, currently we just execute
+                          setSelectedGenre(genre);
+                        }}
+                        className={cn(
+                          "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors group",
+                          selectedGenre === genre ? "bg-primary text-primary-foreground" : "hover:bg-muted/30 text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <span className={cn("transition-colors", selectedGenre === genre ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")}>
+                          {genre}
+                        </span>
+                        {selectedGenre === genre ? (
+                          <X
+                            className="h-3 w-3 cursor-pointer hover:scale-110"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedGenre("All");
+                              executeDiscovery(getDiscoveryParams({ with_genres: undefined }));
+                            }}
+                          />
+                        ) : (
+                          <ChevronRight className="h-3 w-3 text-muted-foreground/30 group-hover:text-foreground transition-colors" />
+                        )}
+                      </button>
+                    ))
+                )}
 
                 {activeTab === 'Country' && ([
                   { code: 'US', name: 'United States' },

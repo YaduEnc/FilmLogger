@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { getRecentActivities } from '@/lib/db';
-import { Film, Heart, List, Users, MessageSquare, BarChart3, Loader2, Star } from 'lucide-react';
+import { Film, Heart, List, Users, MessageSquare, BarChart3, Loader2, Star, Timer, Quote } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Activity {
@@ -54,14 +53,14 @@ export function ActivityFeed() {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'log': return <Film className="h-4 w-4" />;
-      case 'review': return <MessageSquare className="h-4 w-4" />;
-      case 'list_created': return <List className="h-4 w-4" />;
-      case 'favorite': return <Heart className="h-4 w-4 fill-current" />;
-      case 'connection': return <Users className="h-4 w-4" />;
-      case 'poll_created': return <BarChart3 className="h-4 w-4" />;
-      case 'debate_created': return <MessageSquare className="h-4 w-4" />;
-      default: return <Film className="h-4 w-4" />;
+      case 'log': return <Film className="h-3 w-3" />;
+      case 'review': return <Quote className="h-3 w-3" />;
+      case 'list_created': return <List className="h-3 w-3" />;
+      case 'favorite': return <Heart className="h-3 w-3 fill-current" />;
+      case 'connection': return <Users className="h-3 w-3" />;
+      case 'poll_created': return <BarChart3 className="h-3 w-3" />;
+      case 'debate_created': return <MessageSquare className="h-3 w-3" />;
+      default: return <Film className="h-3 w-3" />;
     }
   };
 
@@ -69,83 +68,80 @@ export function ActivityFeed() {
     switch (activity.type) {
       case 'log':
         return (
-          <>
-            watched{' '}
-            <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-medium hover:underline">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">watched</span>
+            <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-serif text-lg font-bold uppercase tracking-tight hover:text-primary transition-colors line-clamp-1 leading-none">
               {activity.movieTitle}
             </Link>
-            {activity.mediaType === 'tv' && activity.tvProgress && (
-              <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded ml-2">
-                {activity.tvProgress}
-              </span>
-            )}
             {activity.rating && (
-              <span className="ml-2 inline-flex items-center gap-1">
-                <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
-                <span className="text-sm">{activity.rating}/10</span>
-              </span>
+              <div className="flex items-center gap-1 mt-1">
+                <Star className="h-3 w-3 fill-primary text-primary" />
+                <span className="font-mono text-[9px] font-bold text-foreground">{activity.rating}/10</span>
+                {activity.mediaType === 'tv' && activity.tvProgress && (
+                  <>
+                    <span className="text-white/10 mx-1">•</span>
+                    <span className="font-mono text-[9px] text-muted-foreground">{activity.tvProgress}</span>
+                  </>
+                )}
+              </div>
             )}
-          </>
+          </div>
         );
       case 'review':
         return (
-          <>
-            reviewed{' '}
-            <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-medium hover:underline">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">reviewed</span>
+            <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-serif text-lg font-bold uppercase tracking-tight hover:text-primary transition-colors line-clamp-1 leading-none">
               {activity.movieTitle}
             </Link>
-            {activity.mediaType === 'tv' && activity.tvProgress && (
-              <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded ml-2">
-                {activity.tvProgress}
-              </span>
-            )}
             {activity.reviewText && (
-              <div className="text-sm text-muted-foreground mt-1 line-clamp-2">"{activity.reviewText}"</div>
+              <p className="font-serif text-sm text-muted-foreground/80 italic mt-1 line-clamp-2">"{activity.reviewText}"</p>
             )}
-          </>
+          </div>
         );
       case 'list_created':
         return (
-          <>
-            created a list{' '}
-            <Link to={`/lists`} className="font-medium hover:underline">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">created list</span>
+            <Link to={`/lists`} className="font-serif text-lg font-bold uppercase tracking-tight hover:text-primary transition-colors line-clamp-1 leading-none">
               {activity.listName}
             </Link>
-          </>
+          </div>
         );
       case 'favorite':
         return (
-          <>
-            added{' '}
-            <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-medium hover:underline">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">favorited</span>
+            <Link to={`/${activity.mediaType}/${activity.movieId}`} className="font-serif text-lg font-bold uppercase tracking-tight hover:text-primary transition-colors line-clamp-1 leading-none">
               {activity.movieTitle}
-            </Link>{' '}
-            to favorites
-          </>
+            </Link>
+          </div>
         );
       case 'connection':
         return (
-          <>
-            connected with{' '}
-            <Link to={`/profile/${activity.connectedUserName}`} className="font-medium hover:underline">
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">connected with</span>
+            <Link to={`/profile/${activity.connectedUserName}`} className="font-serif text-lg font-bold uppercase tracking-tight hover:text-primary transition-colors line-clamp-1 leading-none">
               {activity.connectedUserName}
             </Link>
-          </>
+          </div>
         );
       case 'poll_created':
         return (
-          <>
-            created a poll: <span className="font-medium">{activity.pollQuestion}</span>
-          </>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">poll</span>
+            <span className="font-serif text-lg font-bold uppercase tracking-tight leading-none line-clamp-1">{activity.pollQuestion}</span>
+          </div>
         );
       case 'debate_created':
         return (
-          <>
-            started a debate: <span className="font-medium">{activity.debateTitle}</span>
-          </>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60">debate</span>
+            <span className="font-serif text-lg font-bold uppercase tracking-tight leading-none line-clamp-1">{activity.debateTitle}</span>
+          </div>
         );
       default:
-        return 'did something';
+        return <span className="font-mono text-xs text-muted-foreground">Active in community</span>;
     }
   };
 
@@ -155,114 +151,94 @@ export function ActivityFeed() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {/* Filter Buttons */}
-      <div className="flex flex-wrap gap-2">
-        <Badge
-          variant={filter === 'all' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setFilter('all')}
-        >
-          All Activity
-        </Badge>
-        <Badge
-          variant={filter === 'log' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setFilter('log')}
-        >
-          <Film className="h-3 w-3 mr-1" />
-          Watched
-        </Badge>
-        <Badge
-          variant={filter === 'review' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setFilter('review')}
-        >
-          <MessageSquare className="h-3 w-3 mr-1" />
-          Reviews
-        </Badge>
-        <Badge
-          variant={filter === 'list_created' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setFilter('list_created')}
-        >
-          <List className="h-3 w-3 mr-1" />
-          Lists
-        </Badge>
-        <Badge
-          variant={filter === 'favorite' ? 'default' : 'outline'}
-          className="cursor-pointer"
-          onClick={() => setFilter('favorite')}
-        >
-          <Heart className="h-3 w-3 mr-1" />
-          Favorites
-        </Badge>
+      <div className="flex flex-wrap gap-2 pb-4 border-b border-white/5">
+        {[
+          { id: 'all', label: 'All' },
+          { id: 'log', label: 'Watched', icon: Film },
+          { id: 'review', label: 'Reviews', icon: MessageSquare },
+          { id: 'list_created', label: 'Lists', icon: List },
+          { id: 'favorite', label: 'Likes', icon: Heart }
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setFilter(item.id)}
+            className={cn(
+              "px-4 py-2 text-[10px] font-mono uppercase tracking-[0.2em] transition-all border",
+              filter === item.id
+                ? "bg-white/10 border-white/20 text-white"
+                : "bg-transparent border-transparent text-muted-foreground hover:bg-white/5 hover:text-white"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {item.icon && <item.icon className="h-3 w-3" />}
+              {item.label}
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Activity List */}
-      <div className="space-y-2">
+      <div className="space-y-0">
         {filteredActivities.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground bg-muted/5 border-dashed">
-            <p>No activities yet</p>
-            <p className="text-sm mt-1">Start watching movies and connecting with people!</p>
-          </Card>
+          <div className="py-24 text-center border border-white/10 bg-white/[0.02]">
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground/60">No activities found</p>
+          </div>
         ) : (
           filteredActivities.map((activity) => (
-            <Card key={activity.id} className="p-3 hover:bg-muted/30 transition-colors border-border/40 group relative">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                {/* User Avatar - Slightly smaller */}
-                <Link to={`/profile/${activity.userName}`} className="shrink-0 pt-0.5 sm:pt-0">
-                  <Avatar className="h-8 w-8 border border-border/50">
-                    <AvatarImage src={activity.userPhoto} />
-                    <AvatarFallback className="text-[10px]">{activity.userName?.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                </Link>
+            <div key={activity.id} className="group flex gap-6 p-6 border-b border-white/5 hover:bg-white/[0.02] transition-colors relative">
+              {/* Timeline Connector */}
+              <div className="absolute left-9 top-0 bottom-0 w-px bg-white/5 group-last:bottom-auto group-last:h-1/2 -z-10" />
 
-                {/* Activity Content - Flex-1 to push poster to right */}
-                <div className="flex-1 min-w-0 w-full">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="text-sm leading-snug">
-                        <Link to={`/profile/${activity.userName}`} className="font-semibold hover:underline">
-                          {activity.userName}
-                        </Link>{' '}
-                        <span className="text-foreground/90">{getActivityText(activity)}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-tight font-medium">
-                          {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
-                        </p>
-                        <div className="h-1 w-1 rounded-full bg-border" />
-                        <div className="text-muted-foreground opacity-60">
-                          {getActivityIcon(activity.type)}
-                        </div>
-                      </div>
-                    </div>
+              {/* User Avatar */}
+              <Link to={`/profile/${activity.userName}`} className="shrink-0 z-10">
+                <Avatar className="h-8 w-8 rounded-none ring-4 ring-black">
+                  <AvatarImage src={activity.userPhoto} />
+                  <AvatarFallback className="rounded-none font-mono text-[10px] bg-muted text-foreground">{activity.userName?.charAt(0)}</AvatarFallback>
+                </Avatar>
+              </Link>
 
-                    {/* Compact Poster on the right */}
-                    {activity.moviePoster && (
-                      <Link
-                        to={`/${activity.mediaType}/${activity.movieId}`}
-                        className="shrink-0 transition-transform group-hover:scale-105"
-                      >
-                        <img
-                          src={activity.moviePoster}
-                          alt={activity.movieTitle}
-                          className="w-10 h-14 object-cover rounded shadow-sm border border-border/50"
-                        />
-                      </Link>
-                    )}
+              {/* Content */}
+              <div className="flex-1 min-w-0 flex flex-col sm:flex-row gap-6">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Link to={`/profile/${activity.userName}`} className="font-serif text-sm font-bold hover:text-primary transition-colors">
+                      {activity.userName}
+                    </Link>
+                    <span className="text-white/10 text-[9px]">•</span>
+                    <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">
+                      {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                    </span>
                   </div>
+
+                  {getActivityText(activity)}
                 </div>
+
+                {/* Poster on the right for relevant types */}
+                {activity.moviePoster && (
+                  <Link
+                    to={`/${activity.mediaType}/${activity.movieId}`}
+                    className="shrink-0 group/poster"
+                  >
+                    <div className="w-16 h-24 bg-muted/20 border border-white/10 overflow-hidden relative">
+                      <img
+                        src={activity.moviePoster}
+                        alt={activity.movieTitle}
+                        className="w-full h-full object-cover grayscale opacity-60 group-hover/poster:grayscale-0 group-hover/poster:opacity-100 transition-all duration-500"
+                      />
+                    </div>
+                  </Link>
+                )}
               </div>
-            </Card>
+            </div>
           ))
         )}
       </div>
