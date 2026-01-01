@@ -14,7 +14,8 @@ import {
     deleteDoc,
     updateDoc,
     arrayUnion,
-    runTransaction
+    runTransaction,
+    collectionGroup
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { LogEntry, Movie, MovieList, Notification, Review, ReviewComment, TVProgress } from "@/types/movie";
@@ -607,41 +608,38 @@ export const getUserLists = async (userId: string) => {
 };
 
 // Get trending lists (by engagement: likes + comments + saves)
+// Get trending lists (by engagement: likes + comments + saves)
 export const getTrendingLists = async (limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query to fetch across all users
+        // Requires Index: collectionId: lists, fields: visibility Asc, likeCount Desc
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            orderBy("likeCount", "desc"),
+            limit(50) // Fetch top 50 by likes as candidate pool for trending
+        );
 
-        const allLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                limit(50)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
+        // Sort in memory for the complex engagement score
+        return snapshot.docs
+            .map(doc => {
                 const data = doc.data();
-                allLists.push({
+                return {
                     id: doc.id,
-                    userId: userDoc.id,
                     ...data,
+                    userId: data.userId, // Ensure userId is captured from doc
                     createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        // Sort by engagement score (likes + comments + saves)
-        return allLists
+                } as MovieList;
+            })
             .sort((a, b) => {
                 const scoreA = (a.likeCount || 0) + (a.commentCount || 0) * 2 + (a.saveCount || 0) * 1.5;
                 const scoreB = (b.likeCount || 0) + (b.commentCount || 0) * 2 + (b.saveCount || 0) * 1.5;
                 return scoreB - scoreA;
             })
             .slice(0, limitCount);
+
     } catch (error) {
         console.error("Error getting trending lists:", error);
         return [];
@@ -649,36 +647,28 @@ export const getTrendingLists = async (limitCount: number = 20) => {
 };
 
 // Get most liked lists
+// Get most liked lists
 export const getMostLikedLists = async (limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            orderBy("likeCount", "desc"),
+            limit(limitCount)
+        );
 
-        const allLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                limit(50)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                allLists.push({
-                    id: doc.id,
-                    userId: userDoc.id,
-                    ...data,
-                    createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        return allLists
-            .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
-            .slice(0, limitCount);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                userId: data.userId,
+                createdAt: safeTimestampToISO(data.createdAt)
+            } as MovieList;
+        });
     } catch (error) {
         console.error("Error getting most liked lists:", error);
         return [];
@@ -686,37 +676,30 @@ export const getMostLikedLists = async (limitCount: number = 20) => {
 };
 
 // Get lists by genre tag
+// Get lists by genre tag
 export const getListsByTag = async (tag: string, limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query with array-contains
+        // Requires Index: collectionId: lists, fields: visibility Asc, tags Array, likeCount Desc
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            where("tags", "array-contains", tag),
+            orderBy("likeCount", "desc"),
+            limit(limitCount)
+        );
 
-        const matchingLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                where("tags", "array-contains", tag),
-                limit(50)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                matchingLists.push({
-                    id: doc.id,
-                    userId: userDoc.id,
-                    ...data,
-                    createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        return matchingLists
-            .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
-            .slice(0, limitCount);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                userId: data.userId,
+                createdAt: safeTimestampToISO(data.createdAt)
+            } as MovieList;
+        });
     } catch (error) {
         console.error("Error getting lists by tag:", error);
         return [];
@@ -724,37 +707,29 @@ export const getListsByTag = async (tag: string, limitCount: number = 20) => {
 };
 
 // Get recent public lists
+// Get recent public lists
 export const getRecentPublicLists = async (limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query
+        // Requires Index: collectionId: lists, fields: visibility Asc, createdAt Desc
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            orderBy("createdAt", "desc"),
+            limit(limitCount)
+        );
 
-        const allLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                orderBy("createdAt", "desc"),
-                limit(20)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                allLists.push({
-                    id: doc.id,
-                    userId: userDoc.id,
-                    ...data,
-                    createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        return allLists
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, limitCount);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                userId: data.userId,
+                createdAt: safeTimestampToISO(data.createdAt)
+            } as MovieList;
+        });
     } catch (error) {
         console.error("Error getting recent public lists:", error);
         return [];
