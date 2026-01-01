@@ -14,9 +14,10 @@ interface MovieCardProps {
   showRating?: boolean;
   rating?: number;
   size?: "sm" | "md" | "lg";
+  className?: string; // Added className prop
 }
 
-export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardProps) {
+export function MovieCard({ movie, showRating, rating, size = "md", className }: MovieCardProps) {
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -127,7 +128,7 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
   return (
     <Link
       to={`/${movie.mediaType === 'tv' ? 'tv' : 'movie'}/${movie.id}`}
-      className="block group/card outline-none"
+      className={cn("block group/card outline-none", className)} // Added className here
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onFocus={() => setIsHovered(true)}
@@ -135,112 +136,124 @@ export function MovieCard({ movie, showRating, rating, size = "md" }: MovieCardP
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <div className={cn("relative transition-all duration-500", sizeClasses[size])}>
-        {/* Poster Container with Glassmorphic Frame */}
+      <div className={cn("relative transition-all duration-500 group/container", sizeClasses[size], "w-full")}>
+        {/* Poster Container */}
         <div className={cn(
-          "aspect-[2/3] bg-muted rounded-none overflow-hidden transition-all duration-700 relative z-0 transform-gpu",
-          isHovered ? "scale-[1.02] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-30" : "shadow-md"
+          "aspect-[2/3] bg-muted/20 relative overflow-hidden shadow-md transition-all duration-500",
+          isHovered ? "shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-30" : "z-0"
         )}>
-          {/* Persistent Border Overlay */}
-          <div className="absolute inset-0 border border-white/5 rounded-none pointer-events-none z-50" />
-          {/* Subtle Reflection Overlay on Hover */}
-          <div className={cn(
-            "absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-700 pointer-events-none z-10",
-            isHovered && "opacity-100"
-          )} />
-
+          {/* Poster Image */}
           {movie.posterUrl ? (
             <img
               src={movie.posterUrl}
               alt={movie.title}
               loading="lazy"
               className={cn(
-                "w-full h-full object-cover transition-all duration-[1.5s] ease-out",
-                isHovered ? "scale-110 grayscale-0" : "scale-100 grayscale-[0.4]"
+                "w-full h-full object-cover transition-all duration-700",
+                isHovered ? "scale-105 grayscale-[0.2]" : "scale-100 grayscale-[0.5]"
               )}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-white/5">
-              <span className="text-xs text-center px-2 leading-tight font-serif italic">
+            <div className="w-full h-full flex items-center justify-center bg-white/5">
+              <span className="text-xs text-center px-2 font-mono uppercase tracking-widest text-muted-foreground/60">
                 {movie.title}
               </span>
             </div>
           )}
 
-          {/* Kinetic Hover Overlay with Quick Actions - Theme Aware */}
-          <div className={cn(
-            "absolute inset-0 bg-gradient-to-t from-background/70 via-background/10 to-transparent transition-all duration-500 flex flex-col justify-end p-4 z-20",
-            isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none"
-          )}>
-            <div className="flex items-center justify-center gap-2 mb-3 scale-90 group-hover/card:scale-100 transition-transform duration-500 delay-100">
-              <button
-                onClick={handleToggleLike}
-                className={cn(
-                  "p-2 rounded-none backdrop-blur-3xl border border-white/10 transition-all hover:scale-110 active:scale-90",
-                  isLiked ? "bg-primary text-primary-foreground border-primary" : "bg-black/40 text-foreground hover:bg-black/60"
-                )}
-              >
-                {isActionLoading === 'like' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Heart className={cn("h-3.5 w-3.5", isLiked && "fill-current")} />}
-              </button>
-              <button
-                onClick={handleQuickLog}
-                className={cn(
-                  "p-2 rounded-none backdrop-blur-3xl border border-white/10 transition-all hover:scale-110 active:scale-90",
-                  isLogged ? "bg-green-500/80 text-white border-green-500/50" : "bg-black/40 text-foreground hover:bg-black/60"
-                )}
-              >
-                {isActionLoading === 'log' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-              </button>
-              <button
-                onClick={handleAddToList}
-                className="p-2 rounded-none bg-black/40 text-foreground backdrop-blur-3xl border border-white/10 hover:bg-black/60 transition-all hover:scale-110 active:scale-90"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
+          {/* Top Gradient for contrast if needed (optional, keeping minimal) */}
 
-            {displayRating !== undefined && (
-              <div className="flex items-center justify-center gap-1.5 mb-1 px-3 py-1 bg-black/60 backdrop-blur-md rounded-none w-fit mx-auto border border-white/5">
+          {/* Rating Badge - Top Right */}
+          {displayRating !== undefined && displayRating > 0 && (
+            <div className="absolute top-3 right-3 z-20">
+              <div className="flex items-center gap-1.5 bg-black/80 backdrop-blur-md border border-white/10 px-2.5 py-1.5 shadow-lg">
                 <Star className="h-3 w-3 fill-primary text-primary" />
-                <span className="font-mono text-[10px] font-bold text-foreground tracking-[0.2em]">
+                <span className="font-mono text-[10px] font-bold text-white tracking-widest">
                   {displayRating.toFixed(1)}
                 </span>
               </div>
-            )}
+            </div>
+          )}
 
-            {directorOrCreator && (
-              <p className="font-mono text-[8px] text-muted-foreground/60 uppercase tracking-[0.4em] text-center truncate">
-                {directorOrCreator}
-              </p>
-            )}
+          {/* Action Touchpoint Overlay (Glassmorphic Strip) */}
+          <div className={cn(
+            "absolute bottom-0 left-0 right-0 p-3 z-20 transition-all duration-300 ease-out translate-y-full opacity-0",
+            (isHovered || isActionLoading) && "translate-y-0 opacity-100"
+          )}>
+            <div className="flex items-center justify-between gap-1 bg-black/70 backdrop-blur-xl border border-white/10 p-1 shadow-2xl">
+              <button
+                onClick={handleToggleLike}
+                className={cn(
+                  "flex-1 flex items-center justify-center p-1.5 transition-all hover:bg-white/10 outline-none group/btn",
+                  isLiked ? "text-primary" : "text-white/70 hover:text-white"
+                )}
+                aria-label="Like"
+              >
+                {isActionLoading === 'like' ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Heart className={cn("h-3.5 w-3.5 transition-transform group-hover/btn:scale-110", isLiked && "fill-current")} />
+                )}
+              </button>
+
+              <div className="w-px h-3 bg-white/10" />
+
+              <button
+                onClick={handleQuickLog}
+                className={cn(
+                  "flex-1 flex items-center justify-center p-1.5 transition-all hover:bg-white/10 outline-none group/btn",
+                  isLogged ? "text-green-500" : "text-white/70 hover:text-white"
+                )}
+                aria-label="Log"
+              >
+                {isActionLoading === 'log' ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Check className="h-3.5 w-3.5 transition-transform group-hover/btn:scale-110" />
+                )}
+              </button>
+
+              <div className="w-px h-3 bg-white/10" />
+
+              <button
+                onClick={handleAddToList}
+                className="flex-1 flex items-center justify-center p-1.5 text-white/70 hover:text-white hover:bg-white/10 transition-all outline-none group/btn"
+                aria-label="Add to List"
+              >
+                <Plus className="h-3.5 w-3.5 transition-transform group-hover/btn:scale-110" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Rating badge (always visible if showRating is true) */}
-        {showRating && rating !== undefined && (
-          <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground font-mono text-[10px] font-bold px-2 py-1 rounded-none z-40 shadow-xl border border-primary/20">
-            {rating.toFixed(1)}
+        {/* Info Section */}
+        {size !== "sm" && (
+          <div className="mt-4 space-y-1">
+            <h3 className={cn(
+              "font-serif text-sm font-bold leading-tight uppercase tracking-tight text-foreground transition-colors duration-300",
+              isHovered ? "text-primary" : "text-foreground"
+            )}>
+              <span className="line-clamp-1">{movie.title}</span>
+            </h3>
+            <div className="flex items-center gap-3">
+              {movie.year && (
+                <span className="font-mono text-[10px] text-muted-foreground/60 tracking-[0.2em] uppercase">
+                  {movie.year}
+                </span>
+              )}
+              {directorOrCreator && (
+                <>
+                  <div className="h-px w-3 bg-white/10" />
+                  <span className="font-mono text-[9px] text-muted-foreground/40 tracking-[0.2em] uppercase truncate max-w-[80px]">
+                    {directorOrCreator}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>
 
-      {/* Refined Metadata Typography */}
-      {size !== "sm" && (
-        <div className={cn(
-          "mt-4 transition-all duration-500 transform",
-          isHovered ? "translate-y-1" : "translate-y-0"
-        )}>
-          <p className="font-serif text-[13px] md:text-sm font-bold leading-tight truncate tracking-tight text-foreground group-hover/card:text-primary transition-colors uppercase">
-            {movie.title}
-          </p>
-          <div className="flex items-center gap-3 mt-1.5">
-            <div className="h-px w-4 bg-primary/30" />
-            <p className="font-mono text-[9px] text-muted-foreground/50 tracking-[0.4em] uppercase">
-              {movie.year}
-            </p>
-          </div>
-        </div>
-      )}
       {/* Modals */}
       <AddToListModal
         movie={movie}
