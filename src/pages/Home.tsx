@@ -18,7 +18,7 @@ import { LogEntry, Movie, Announcement } from "@/types/movie";
 import {
   getTrendingMovies,
   getPopularMovies,
-  getTrendingTV,
+  getTrendingAll,
   getPopularTV,
   getTopRatedTV,
   getOnTheAirTV,
@@ -68,7 +68,7 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
 
   return (
     <div className="mb-20 group/scroll">
-      <div className="flex items-end justify-between mb-8 px-2 border-l-2 border-primary/20 pl-6">
+      <div className="flex items-end justify-between mb-4 px-2">
         <div className="flex flex-col gap-2">
           <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">{title}</h2>
         </div>
@@ -96,30 +96,6 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
             <div className="w-px h-40 bg-gradient-to-b from-transparent via-white/5 to-transparent" />
           </div>
         </div>
-
-        {/* Premium Scroll Controls */}
-        <div className="absolute -top-16 right-0 flex gap-2">
-          <button
-            onClick={() => scroll('left')}
-            disabled={!canScrollLeft}
-            className={cn(
-              "h-10 w-10 flex items-center justify-center border border-white/5 transition-all duration-300",
-              canScrollLeft ? "bg-white/[0.02] hover:bg-white/5 text-foreground" : "opacity-20 cursor-not-allowed"
-            )}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => scroll('right')}
-            disabled={!canScrollRight}
-            className={cn(
-              "h-10 w-10 flex items-center justify-center border border-white/5 transition-all duration-300",
-              canScrollRight ? "bg-white/[0.02] hover:bg-white/5 text-foreground" : "opacity-20 cursor-not-allowed"
-            )}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -130,13 +106,14 @@ export default function Home() {
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
   const [friendActivity, setFriendActivity] = useState<Record<number, any[]>>({});
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
-  const [trendingTV, setTrendingTV] = useState<Movie[]>([]);
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
   const [onTheAirTV, setOnTheAirTV] = useState<Movie[]>([]);
+  const [trendingAll, setTrendingAll] = useState<Movie[]>([]);
+  const [trendingTimeWindow, setTrendingTimeWindow] = useState<'day' | 'week'>('day');
+  const [isTrendingLoading, setIsTrendingLoading] = useState(false);
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -151,17 +128,17 @@ export default function Home() {
         const [
           trendingMoviesData,
           popularMoviesData,
-          trendingTVData,
           popularTVData,
           topRatedTVData,
-          onTheAirTVData
+          onTheAirTVData,
+          trendingAllData
         ] = await Promise.all([
           getTrendingMovies(),
           getPopularMovies(),
-          getTrendingTV(),
           getPopularTV(),
           getTopRatedTV(),
-          getOnTheAirTV()
+          getOnTheAirTV(),
+          getTrendingAll(1, trendingTimeWindow)
         ]);
 
         const featuredBasic = trendingMoviesData.movies
@@ -183,13 +160,12 @@ export default function Home() {
         );
         setFeaturedMovies(featuredFull);
 
-        setTrendingMovies(trendingMoviesData.movies.slice(0, 12));
         setPopularMovies(popularMoviesData.movies.slice(0, 12));
         setTopRatedMovies(popularMoviesData.movies.slice(12, 24));
-        setTrendingTV(trendingTVData.movies.slice(0, 12));
         setPopularTV(popularTVData.movies.slice(0, 12));
         setTopRatedTV(topRatedTVData.movies.slice(0, 12));
         setOnTheAirTV(onTheAirTVData.movies.slice(0, 12));
+        setTrendingAll(trendingAllData.movies.slice(0, 15));
 
         const announcementsData = await getActiveAnnouncements(5);
         setAnnouncements(announcementsData as Announcement[]);
@@ -221,21 +197,26 @@ export default function Home() {
     }
 
     loadData();
-
-    // Auto-rotation timer for Hero
-    const interval = setInterval(() => {
-      setFeaturedMovies(current => {
-        if (current.length > 0) {
-          setCurrentFeaturedIndex((prev) => (prev + 1) % current.length);
-        }
-        return current;
-      });
-    }, 12000); // Slower rotation for premium feel
-
-    return () => {
-      clearInterval(interval);
-    };
   }, [user]);
+
+  // Effect to load trending data on toggle
+  useEffect(() => {
+    async function loadTrending() {
+      setIsTrendingLoading(true);
+      try {
+        const { movies } = await getTrendingAll(1, trendingTimeWindow);
+        setTrendingAll(movies.slice(0, 15));
+      } catch (err) {
+        console.error("Failed to update trending:", err);
+      } finally {
+        setIsTrendingLoading(false);
+      }
+    }
+
+    if (!isLoading) {
+      loadTrending();
+    }
+  }, [trendingTimeWindow]);
 
   // Content change animation
   useEffect(() => {
@@ -490,15 +471,65 @@ export default function Home() {
         </div>
 
 
-        {/* Popular on CineLunatic */}
         <div className="container mx-auto px-6 py-12">
+          {/* Unified Trending Section with Filter */}
+          {!isLoading && trendingAll.length > 0 && (
+            <div className="mb-20">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-4">
+                <div className="flex flex-col gap-2">
+                  <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Trending</h2>
+                </div>
+
+                {/* Premium Toggle Filter */}
+                <div className="flex bg-white/[0.03] border border-white/5 p-1 rounded-none scale-90 sm:scale-100 origin-left">
+                  <button
+                    onClick={() => setTrendingTimeWindow('day')}
+                    className={cn(
+                      "px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-all duration-500",
+                      trendingTimeWindow === 'day'
+                        ? "bg-primary text-black font-black"
+                        : "text-muted-foreground/60 hover:text-foreground"
+                    )}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setTrendingTimeWindow('week')}
+                    className={cn(
+                      "px-6 py-2 font-mono text-[10px] uppercase tracking-[0.2em] transition-all duration-500",
+                      trendingTimeWindow === 'week'
+                        ? "bg-primary text-black font-black"
+                        : "text-muted-foreground/60 hover:text-foreground"
+                    )}
+                  >
+                    This Week
+                  </button>
+                </div>
+              </div>
+
+              {isTrendingLoading ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary/20" />
+                </div>
+              ) : (
+                <HorizontalScroll title="" link="/search">
+                  {trendingAll.map((item) => (
+                    <div key={`${item.id}-${trendingTimeWindow}`} className="w-[180px] sm:w-[200px]">
+                      <MovieCard movie={item} size="md" />
+                    </div>
+                  ))}
+                </HorizontalScroll>
+              )}
+            </div>
+          )}
+
           <PopularSection />
         </div>
 
         {/* Announcements Preview - Compact Horizontal Layout */}
         {announcements.length > 0 && (
           <div className="container mx-auto px-6 pb-20">
-            <div className="flex items-end justify-between mb-8 border-l-2 border-primary/20 pl-6">
+            <div className="flex items-end justify-between mb-4">
               <div className="flex flex-col gap-2">
                 <h2 className="font-serif text-3xl font-bold tracking-tight uppercase">Cinema News</h2>
               </div>
@@ -536,7 +567,7 @@ export default function Home() {
               {/* Recent Activity */}
               {recentLogs.length > 0 && (
                 <div className="mb-24">
-                  <div className="flex items-end justify-between mb-10 border-l-2 border-primary/20 pl-6">
+                  <div className="flex items-end justify-between mb-4">
                     <div className="flex flex-col gap-2">
                       <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Recent Activity</h2>
                     </div>
@@ -552,27 +583,9 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Trending Films */}
-              <HorizontalScroll title="Trending Films" link="/search">
-                {trendingMovies.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
-                    <MovieCard movie={item} size="md" />
-                  </div>
-                ))}
-              </HorizontalScroll>
-
               {/* Popular Films */}
               <HorizontalScroll title="Popular Films" link="/search">
                 {popularMovies.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
-                    <MovieCard movie={item} size="md" />
-                  </div>
-                ))}
-              </HorizontalScroll>
-
-              {/* Trending Series */}
-              <HorizontalScroll title="Trending Series" link="/search?type=tv">
-                {trendingTV.map((item) => (
                   <div key={item.id} className="w-[180px] sm:w-[200px]">
                     <MovieCard movie={item} size="md" />
                   </div>
