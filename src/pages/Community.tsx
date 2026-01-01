@@ -16,8 +16,8 @@ import {
   TrendingUp, Film, X, Activity, Sparkles, ArrowUpRight
 } from "lucide-react";
 import { AnimatedNoise } from "@/components/landing/AnimatedNoise";
-import { searchMovies, searchTV } from "@/lib/tmdb";
-import { Movie } from "@/types/movie";
+import { searchMovies, searchTV, getCollectionDetails } from "@/lib/tmdb";
+import { Movie, Collection } from "@/types/movie";
 import { useAuth } from "@/hooks/useAuth";
 import {
   searchUsers, getConnectionStatus, sendConnectionRequest, acceptConnectionRequest,
@@ -56,6 +56,7 @@ export default function Community() {
                 { id: "polls", icon: BarChart3, label: "Polls" },
                 { id: "debates", icon: MessageSquare, label: "Debates" },
                 { id: "lists", icon: List, label: "Lists" },
+                { id: "collections", icon: Film, label: "Collections" },
                 { id: "people", icon: Users, label: "People" },
               ].map((tab) => (
                 <TabsTrigger
@@ -87,6 +88,10 @@ export default function Community() {
 
             <TabsContent value="people" className="mt-0">
               <PeopleSection user={user} />
+            </TabsContent>
+
+            <TabsContent value="collections" className="mt-0">
+              <CollectionsSection />
             </TabsContent>
           </Tabs>
         </div>
@@ -1225,3 +1230,125 @@ function UserResultCard({ targetUser, currentUser }: { targetUser: any; currentU
     </div>
   );
 }
+
+// ==================== COLLECTIONS SECTION ====================
+const CURATED_COLLECTIONS = [
+  { id: 726871, name: "Dune Collection" },
+  { id: 119, name: "The Lord of the Rings Collection" },
+  { id: 10, name: "Star Wars Collection" },
+  { id: 1241, name: "Harry Potter Collection" },
+  { id: 86311, name: "The Avengers Collection" },
+  { id: 230, name: "The Godfather Trilogy" },
+  { id: 263, name: "The Dark Knight Trilogy" },
+  { id: 84, name: "Indiana Jones Collection" },
+  { id: 295, name: "Pirates of the Caribbean Collection" },
+  { id: 328, name: "Jurassic Park Collection" },
+  { id: 2344, name: "The Matrix Collection" },
+  { id: 131635, name: "The Hunger Games Collection" },
+  { id: 748, name: "X-Men Collection" },
+  { id: 9485, name: "The Fast and the Furious Collection" },
+  { id: 87359, name: "Mission: Impossible Collection" },
+  { id: 10194, name: "Toy Story Collection" },
+  { id: 173710, name: "Planet of the Apes (Reboot) Collection" },
+];
+
+function CollectionsSection() {
+  const [collections, setCollections] = useState<{ id: number; name: string; posterUrl?: string; backdropUrl?: string; parts: Movie[] }[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadCollections() {
+      setIsLoading(true);
+      try {
+        const promises = CURATED_COLLECTIONS.map(c =>
+          getCollectionDetails(c.id).catch(() => null)
+        );
+        const results = await Promise.all(promises);
+        setCollections(results.filter(Boolean) as any[]);
+      } catch (error) {
+        console.error("Failed to load collections:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadCollections();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-end justify-between pb-4 border-b border-white/10">
+        <div>
+          <h2 className="font-serif text-2xl text-foreground mb-1">Curated Collections</h2>
+          <p className="font-mono text-xs text-muted-foreground uppercase tracking-widest">
+            Iconic film franchises and sagas
+          </p>
+        </div>
+      </div>
+
+      {/* Collections Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {collections.map((collection) => (
+          <Link
+            key={collection.id}
+            to={`/collection/${collection.id}`}
+            className="group relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] hover:border-primary/30 transition-all"
+          >
+            {/* Backdrop */}
+            {collection.backdropUrl && (
+              <div className="absolute inset-0 z-0">
+                <img
+                  src={collection.backdropUrl}
+                  alt=""
+                  className="w-full h-full object-cover opacity-20 grayscale group-hover:opacity-30 group-hover:grayscale-0 transition-all duration-500"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
+              </div>
+            )}
+
+            <div className="relative z-10 flex items-center gap-5 p-5">
+              {/* Poster Stack */}
+              <div className="flex -space-x-6 shrink-0">
+                {collection.parts.slice(0, 3).map((movie, idx) => (
+                  <div
+                    key={movie.id}
+                    className="w-14 h-20 rounded-lg overflow-hidden border-2 border-background shadow-lg"
+                    style={{ zIndex: 3 - idx }}
+                  >
+                    {movie.posterUrl ? (
+                      <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <Film className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <h3 className="font-serif text-lg font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                  {collection.name}
+                </h3>
+                <p className="font-mono text-xs text-muted-foreground mt-1">
+                  {collection.parts.length} films
+                </p>
+              </div>
+
+              <ArrowUpRight className="h-5 w-5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+

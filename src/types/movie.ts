@@ -50,6 +50,20 @@ export interface Movie {
   status?: string;
   type?: string;
   lastAirDate?: string;
+  // Collection (Franchise)
+  collectionId?: number;
+  collectionName?: string;
+  collectionPosterUrl?: string;
+  collectionBackdropUrl?: string;
+}
+
+export interface Collection {
+  id: number;
+  name: string;
+  overview?: string;
+  posterUrl?: string;
+  backdropUrl?: string;
+  parts: Movie[];
 }
 
 export interface LogEntry {

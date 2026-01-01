@@ -1,4 +1,4 @@
-import { Movie } from "@/types/movie";
+import { Movie, Collection } from "@/types/movie";
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN;
@@ -59,6 +59,12 @@ interface TMDBMovie {
   status?: string;
   type?: string;
   last_air_date?: string;
+  belongs_to_collection?: {
+    id: number;
+    name: string;
+    poster_path?: string;
+    backdrop_path?: string;
+  };
 }
 
 interface TMDBSearchResponse {
@@ -167,7 +173,16 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     })),
     status: tmdbMovie.status,
     type: tmdbMovie.type,
-    lastAirDate: tmdbMovie.last_air_date
+    lastAirDate: tmdbMovie.last_air_date,
+    // Collection (Franchise)
+    collectionId: tmdbMovie.belongs_to_collection?.id,
+    collectionName: tmdbMovie.belongs_to_collection?.name,
+    collectionPosterUrl: tmdbMovie.belongs_to_collection?.poster_path
+      ? `${TMDB_IMAGE_BASE}/w500${tmdbMovie.belongs_to_collection.poster_path}`
+      : undefined,
+    collectionBackdropUrl: tmdbMovie.belongs_to_collection?.backdrop_path
+      ? `${TMDB_IMAGE_BASE}/original${tmdbMovie.belongs_to_collection.backdrop_path}`
+      : undefined,
   };
 }
 
@@ -319,6 +334,19 @@ export async function getPopularTV(page = 1): Promise<{ movies: Movie[]; totalPa
   } catch (error) {
     console.error("TMDB popular tv error:", error);
     throw new Error("Failed to fetch popular tv shows");
+  }
+}
+
+export async function getTrendingAll(page = 1, timeWindow: 'day' | 'week' = 'week'): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/trending/all/${timeWindow}?page=${page}&region=IN`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages
+    };
+  } catch (error) {
+    console.error("TMDB trending all error:", error);
+    throw new Error("Failed to fetch trending all media");
   }
 }
 
@@ -529,5 +557,31 @@ export async function discoverMedia(
   } catch (error) {
     console.error(`TMDB discover ${type} error:`, error);
     throw new Error(`Failed to discover ${type}`);
+  }
+}
+
+// ==================== COLLECTIONS ====================
+export async function getCollectionDetails(collectionId: number): Promise<Collection> {
+  try {
+    const data = await fetchTMDB(`/collection/${collectionId}?region=IN`);
+
+    return {
+      id: data.id,
+      name: data.name,
+      overview: data.overview,
+      posterUrl: data.poster_path ? `${TMDB_IMAGE_BASE}/w500${data.poster_path}` : undefined,
+      backdropUrl: data.backdrop_path ? `${TMDB_IMAGE_BASE}/original${data.backdrop_path}` : undefined,
+      parts: data.parts
+        ?.sort((a: any, b: any) => {
+          // Sort by release date for proper ordering
+          const dateA = a.release_date ? new Date(a.release_date).getTime() : 0;
+          const dateB = b.release_date ? new Date(b.release_date).getTime() : 0;
+          return dateA - dateB;
+        })
+        .map(transformMovie) || []
+    };
+  } catch (error) {
+    console.error("TMDB collection error:", error);
+    throw new Error("Failed to fetch collection details");
   }
 }

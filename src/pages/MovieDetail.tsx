@@ -333,19 +333,14 @@ export default function MovieDetail() {
           {/* Left Column: Poster & Quick Info - Hidden on Mobile */}
           <aside className="hidden lg:block space-y-8">
             <div
-              className="relative group"
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
+              className="relative"
             >
               <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl relative">
                 {movie.posterUrl ? (
                   <img
                     src={movie.posterUrl}
                     alt={movie.title}
-                    className={cn(
-                      "w-full h-full object-cover transition-transform duration-500",
-                      isHovered && "scale-105"
-                    )}
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted-foreground p-8">
@@ -353,54 +348,6 @@ export default function MovieDetail() {
                   </div>
                 )}
 
-                {/* Hover Overlay */}
-                <div className={cn(
-                  "absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-all duration-300 flex flex-col justify-end p-4 z-20",
-                  isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-                )}>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleToggleFavorite}
-                      className={cn(
-                        "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
-                        inFavorites ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"
-                      )}
-                    >
-                      {isFavoriteActionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className={cn("h-5 w-5", inFavorites && "fill-current")} />}
-                    </button>
-                    <button
-                      onClick={handleQuickLog}
-                      className={cn(
-                        "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
-                        hasWatched ? "bg-green-500 text-white" : "bg-white/10 text-white hover:bg-white/20"
-                      )}
-                    >
-                      {isActionLoading === 'log' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                    </button>
-                    <button
-                      onClick={handleAddToListTrigger}
-                      className="p-2.5 rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-all hover:scale-110 active:scale-95"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-
-                {movie.trailerUrl && (
-                  <a
-                    href={movie.trailerUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      "absolute inset-0 flex items-center justify-center bg-black/40 transition-opacity cursor-pointer z-10",
-                      isHovered ? "opacity-100" : "opacity-0"
-                    )}
-                  >
-                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                      <Play className="h-8 w-8 text-white fill-current translate-x-0.5" />
-                    </div>
-                  </a>
-                )}
               </div>
             </div>
 
@@ -672,6 +619,53 @@ export default function MovieDetail() {
               </div>
             )}
 
+            {/* Collection Card */}
+            {movie.collectionId && movie.collectionName && (
+              <Link
+                to={`/collection/${movie.collectionId}`}
+                className="block mb-16 group"
+              >
+                <div className="relative overflow-hidden rounded-xl border border-border/50 bg-muted/20 hover:bg-muted/30 transition-all hover:border-primary/30">
+                  {/* Backdrop */}
+                  {movie.collectionBackdropUrl && (
+                    <div className="absolute inset-0 z-0">
+                      <img
+                        src={movie.collectionBackdropUrl}
+                        alt=""
+                        className="w-full h-full object-cover opacity-20 grayscale group-hover:opacity-30 group-hover:grayscale-0 transition-all duration-500"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
+                    </div>
+                  )}
+
+                  <div className="relative z-10 flex items-center gap-6 p-6">
+                    {/* Collection Poster */}
+                    {movie.collectionPosterUrl && (
+                      <div className="w-20 h-28 shrink-0 rounded-lg overflow-hidden border border-border/50 shadow-lg">
+                        <img
+                          src={movie.collectionPosterUrl}
+                          alt={movie.collectionName}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-1 block">
+                        Part of
+                      </span>
+                      <h3 className="font-serif text-xl md:text-2xl font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                        {movie.collectionName}
+                      </h3>
+                      <p className="font-mono text-xs text-muted-foreground mt-2">
+                        View all films in this collection →
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            )}
+
             {/* Videos Section */}
             {movie.videos && movie.videos.length > 0 && (
               <div className="mb-16">
@@ -764,7 +758,7 @@ export default function MovieDetail() {
             )}
           </main>
         </div>
-      </div>
+      </div >
 
 
       <AddToListModal
@@ -782,26 +776,27 @@ export default function MovieDetail() {
         }}
       />
 
-      {/* Video Modal */}
-      {isVideoModalOpen && selectedVideo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsVideoModalOpen(false)}>
-          <div className="relative w-full max-w-5xl mx-4 aspect-video bg-black rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setIsVideoModalOpen(false)}
-              className="absolute top-4 right-4 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 hover:bg-background transition-colors shadow-lg"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            <iframe
-              src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
+      {
+        isVideoModalOpen && selectedVideo && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsVideoModalOpen(false)}>
+            <div className="relative w-full max-w-5xl mx-4 aspect-video bg-black rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={() => setIsVideoModalOpen(false)}
+                className="absolute top-4 right-4 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 hover:bg-background transition-colors shadow-lg"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <iframe
+                src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
           </div>
-        </div>
-      )}
-    </Layout>
+        )
+      }
+    </Layout >
   );
 }
 

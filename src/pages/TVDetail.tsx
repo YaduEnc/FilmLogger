@@ -239,19 +239,14 @@ export default function TVDetail() {
                     {/* Left Column: Poster & Quick Info - Hidden on Mobile */}
                     <aside className="hidden lg:block space-y-8">
                         <div
-                            className="relative group"
-                            onMouseEnter={() => setIsHovered(true)}
-                            onMouseLeave={() => setIsHovered(false)}
+                            className="relative"
                         >
                             <div className="aspect-[2/3] bg-muted rounded-lg overflow-hidden border border-border/50 shadow-2xl relative">
                                 {movie.posterUrl ? (
                                     <img
                                         src={movie.posterUrl}
                                         alt={movie.title}
-                                        className={cn(
-                                            "w-full h-full object-cover transition-transform duration-500",
-                                            isHovered && "scale-105"
-                                        )}
+                                        className="w-full h-full object-cover"
                                     />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-muted-foreground p-8">
@@ -259,38 +254,6 @@ export default function TVDetail() {
                                     </div>
                                 )}
 
-                                {/* Hover Overlay */}
-                                <div className={cn(
-                                    "absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-all duration-300 flex flex-col justify-end p-4 z-20",
-                                    isHovered ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
-                                )}>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={handleToggleFavorite}
-                                            className={cn(
-                                                "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
-                                                inFavorites ? "bg-primary text-primary-foreground" : "bg-white/10 text-white hover:bg-white/20"
-                                            )}
-                                        >
-                                            {isFavoriteActionLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Heart className={cn("h-5 w-5", inFavorites && "fill-current")} />}
-                                        </button>
-                                        <button
-                                            onClick={handleQuickLog}
-                                            className={cn(
-                                                "p-2.5 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95",
-                                                hasWatched ? "bg-green-500 text-white" : "bg-white/10 text-white hover:bg-white/20"
-                                            )}
-                                        >
-                                            {isActionLoading === 'log' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />}
-                                        </button>
-                                        <button
-                                            onClick={handleAddToListTrigger}
-                                            className="p-2.5 rounded-full bg-white/10 text-white backdrop-blur-md hover:bg-white/20 transition-all hover:scale-110 active:scale-95"
-                                        >
-                                            <Plus className="h-5 w-5" />
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -763,7 +726,7 @@ export default function TVDetail() {
 
                     </main>
                 </div>
-            </div>
+            </div >
 
 
             <AddToListModal
@@ -781,25 +744,26 @@ export default function TVDetail() {
                 }}
             />
 
-            {/* Video Modal */}
-            {isVideoModalOpen && selectedVideo && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsVideoModalOpen(false)}>
-                    <div className="relative w-full max-w-5xl mx-4 aspect-video bg-black rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
-                        <button
-                            onClick={() => setIsVideoModalOpen(false)}
-                            className="absolute top-4 right-4 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 hover:bg-background transition-colors shadow-lg"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                        <iframe
-                            src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
-                            className="w-full h-full"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                        />
+            {
+                isVideoModalOpen && selectedVideo && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setIsVideoModalOpen(false)}>
+                        <div className="relative w-full max-w-5xl mx-4 aspect-video bg-black rounded-lg overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                            <button
+                                onClick={() => setIsVideoModalOpen(false)}
+                                className="absolute top-4 right-4 z-20 bg-background/90 backdrop-blur-sm border border-border rounded-full p-2 hover:bg-background transition-colors shadow-lg"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                            <iframe
+                                src={`https://www.youtube.com/embed/${selectedVideo}?autoplay=1`}
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                            />
+                        </div>
                     </div>
-                </div>
-            )}
-        </Layout>
+                )
+            }
+        </Layout >
     );
 }

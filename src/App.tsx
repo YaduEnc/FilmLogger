@@ -39,6 +39,7 @@ import Membership from "./pages/Membership";
 import Admin from "./pages/Admin";
 import Announcements from "./pages/Announcements";
 import Checkout from "./pages/Checkout";
+import CollectionDetail from "./pages/CollectionDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -62,6 +63,7 @@ const App = () => (
                 <Route path="/tv/:id" element={<TVDetail />} />
                 <Route path="/person/:id" element={<PersonDetail />} />
                 <Route path="/network/:id" element={<NetworkDetail />} />
+                <Route path="/collection/:id" element={<CollectionDetail />} />
                 <Route path="/log" element={<Log />} />
                 <Route path="/diary" element={<Diary />} />
                 <Route path="/lists" element={<Lists />} />
