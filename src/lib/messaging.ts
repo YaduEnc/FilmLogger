@@ -9,6 +9,8 @@ import {
     query,
     where,
     orderBy,
+    onSnapshot,
+    Unsubscribe
 } from 'firebase/firestore';
 
 const safeTimestampToISO = (value: any): string => {
@@ -34,16 +36,16 @@ export const getOrCreateConversation = async (user1Id: string, user2Id: string, 
             conversationsRef,
             where('participants', 'array-contains', user1Id)
         );
-        
+
         const snapshot = await getDocs(q);
-        const existing = snapshot.docs.find(doc => 
+        const existing = snapshot.docs.find(doc =>
             doc.data().participants.includes(user2Id)
         );
-        
+
         if (existing) {
             return existing.id;
         }
-        
+
         // Create new conversation
         const newConversation = {
             participants: [user1Id, user2Id],
@@ -68,7 +70,7 @@ export const getOrCreateConversation = async (user1Id: string, user2Id: string, 
             },
             createdAt: new Date().toISOString()
         };
-        
+
         const docRef = await addDoc(conversationsRef, newConversation);
         return docRef.id;
     } catch (error) {
@@ -92,7 +94,7 @@ export const sendMessage = async (messageData: {
 }) => {
     try {
         const { conversationId, recipientId, ...messageFields } = messageData;
-        
+
         // Add message
         const messagesRef = collection(db, 'conversations', conversationId, 'messages');
         await addDoc(messagesRef, {
@@ -100,12 +102,12 @@ export const sendMessage = async (messageData: {
             read: false,
             createdAt: new Date().toISOString()
         });
-        
+
         // Update conversation
         const conversationRef = doc(db, 'conversations', conversationId);
         const conversationSnap = await getDoc(conversationRef);
         const currentUnread = conversationSnap.data()?.unreadCount || {};
-        
+
         await updateDoc(conversationRef, {
             lastMessage: messageData.text,
             lastMessageTime: new Date().toISOString(),
@@ -121,7 +123,35 @@ export const sendMessage = async (messageData: {
     }
 };
 
-// Get user's conversations
+// Subscribe to user's conversations
+export const subscribeToConversations = (userId: string, callback: (conversations: any[]) => void): Unsubscribe => {
+    try {
+        const conversationsRef = collection(db, 'conversations');
+        const q = query(
+            conversationsRef,
+            where('participants', 'array-contains', userId),
+            orderBy('lastMessageTime', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const conversations = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt),
+                lastMessageTime: safeTimestampToISO(doc.data().lastMessageTime)
+            }));
+            callback(conversations);
+        }, (error) => {
+            console.error("Error subscribing to conversations:", error);
+            callback([]);
+        });
+    } catch (error) {
+        console.error("Error setting up conversation subscription:", error);
+        return () => { };
+    }
+};
+
+// Get user's conversations (Legacy - keep for now if needed, or remove)
 export const getUserConversations = async (userId: string) => {
     try {
         const conversationsRef = collection(db, 'conversations');
@@ -130,7 +160,7 @@ export const getUserConversations = async (userId: string) => {
             where('participants', 'array-contains', userId),
             orderBy('lastMessageTime', 'desc')
         );
-        
+
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
             id: doc.id,
@@ -144,12 +174,35 @@ export const getUserConversations = async (userId: string) => {
     }
 };
 
+// Subscribe to messages in a conversation
+export const subscribeToMessages = (conversationId: string, callback: (messages: any[]) => void): Unsubscribe => {
+    try {
+        const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+        const q = query(messagesRef, orderBy('createdAt', 'asc'));
+
+        return onSnapshot(q, (snapshot) => {
+            const messages = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: safeTimestampToISO(doc.data().createdAt)
+            }));
+            callback(messages);
+        }, (error) => {
+            console.error("Error subscribing to messages:", error);
+            callback([]);
+        });
+    } catch (error) {
+        console.error("Error setting up message subscription:", error);
+        return () => { };
+    }
+};
+
 // Get messages in a conversation
 export const getConversationMessages = async (conversationId: string) => {
     try {
         const messagesRef = collection(db, 'conversations', conversationId, 'messages');
         const q = query(messagesRef, orderBy('createdAt', 'asc'));
-        
+
         const snapshot = await getDocs(q);
         return snapshot.docs.map(doc => ({
             id: doc.id,
@@ -168,7 +221,7 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
         const conversationRef = doc(db, 'conversations', conversationId);
         const conversationSnap = await getDoc(conversationRef);
         const currentUnread = conversationSnap.data()?.unreadCount || {};
-        
+
         await updateDoc(conversationRef, {
             unreadCount: {
                 ...currentUnread,
