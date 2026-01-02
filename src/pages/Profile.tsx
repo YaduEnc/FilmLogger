@@ -4,6 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { H1, H3 } from "@/components/ui/typography";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SEOHead } from "@/components/seo/SEOHead";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { MovieCard } from "@/components/movies/MovieCard";
 import { Settings, Loader2, Bookmark, History, UserPlus, Check, Clock, Globe, Lock, ShieldAlert, Edit2, Star, Plus } from "lucide-react";
@@ -209,6 +210,14 @@ export default function Profile() {
 
   return (
     <Layout>
+      {targetUser && (
+        <SEOHead
+          title={`${targetUser.displayName} | CineLunatic Profile`}
+          description={`Check out ${targetUser.displayName}'s film collection and stats on CineLunatic.`}
+          image={targetUser.photoURL || undefined}
+          type="profile"
+        />
+      )}
       <div className="relative min-h-screen pb-20">
         <AnimatedNoise opacity={0.03} />
 
