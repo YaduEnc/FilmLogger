@@ -6,11 +6,17 @@ import { LandingPricing } from "@/components/landing/LandingPricing";
 import { ColophonSection } from "@/components/landing/ColophonSection";
 import { SideNav } from "@/components/landing/SideNav";
 import { SmoothScroll } from "@/components/landing/SmoothScroll";
+import { SEOHead } from "@/components/seo/SEOHead";
 import { Layout } from "@/components/layout/Layout";
 
 export default function Landing() {
   return (
     <Layout>
+      <SEOHead
+        title="CineLunatic - An Archival Cinema Companion"
+        description="An archival cinema companion for the obsessive film viewer. Track, rate, and discover movies and TV shows."
+        type="website"
+      />
       <SmoothScroll>
         <main className="relative min-h-screen selection:bg-primary selection:text-primary-foreground">
           <SideNav />
