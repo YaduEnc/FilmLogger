@@ -4,26 +4,8 @@ import { useEffect, useRef } from "react";
 import gsap from "gsap";
 import { Calendar, ArrowRight } from 'lucide-react';
 
-const blogPosts = [
-  {
-    title: 'Welcome to CineLunatic',
-    date: 'December 2024',
-    excerpt: 'Introducing a new way to track and share your film journey. Learn about our vision and what makes CineLunatic special.',
-    slug: 'welcome-to-cinelunatic'
-  },
-  {
-    title: 'Building Your Film Archive',
-    date: 'December 2024',
-    excerpt: 'Tips and best practices for logging your films, writing reviews, and organizing your personal cinema archive.',
-    slug: 'building-your-film-archive'
-  },
-  {
-    title: 'Community Features Launch',
-    date: 'December 2024',
-    excerpt: 'Connect with fellow cinephiles through polls, debates, and shared lists. Discover what the community is watching.',
-    slug: 'community-features-launch'
-  }
-];
+import { Link } from 'react-router-dom';
+import { blogPosts } from '@/data/blogPosts';
 
 export default function Blog() {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -88,18 +70,20 @@ export default function Blog() {
                       <span>{post.date}</span>
                     </div>
 
-                    <h2 className="font-serif text-3xl md:text-4xl uppercase tracking-tight mb-6 group-hover:text-primary transition-colors">
-                      {post.title}
-                    </h2>
+                    <Link to={`/blog/${post.slug}`} className="block">
+                      <h2 className="font-serif text-3xl md:text-4xl uppercase tracking-tight mb-6 group-hover:text-primary transition-colors">
+                        {post.title}
+                      </h2>
+                    </Link>
 
                     <p className="font-mono text-sm text-muted-foreground leading-relaxed mb-8 max-w-2xl">
                       {post.excerpt}
                     </p>
 
-                    <button className="font-mono text-[10px] uppercase tracking-[0.3em] text-foreground flex items-center gap-2 group/btn">
+                    <Link to={`/blog/${post.slug}`} className="font-mono text-[10px] uppercase tracking-[0.3em] text-foreground flex items-center gap-2 group/btn">
                       Read Full Article
                       <ArrowRight className="h-3 w-3 transition-transform group-hover/btn:translate-x-1" />
-                    </button>
+                    </Link>
                   </div>
 
                   <div className="absolute bottom-0 right-0 w-12 h-12 bg-background rotate-45 translate-x-8 translate-y-8 border-t border-l border-border/30" />
