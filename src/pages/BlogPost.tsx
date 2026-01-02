@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
+import { SEOHead } from "@/components/seo/SEOHead";
 import { SmoothScroll } from "@/components/landing/SmoothScroll";
 import { useEffect, useRef } from "react";
 import gsap from "gsap";

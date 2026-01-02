@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite, logActivity, updateMovieStats } from "@/lib/db";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { CreateListModal } from "@/components/movies/CreateListModal";
+import { SEOHead } from "@/components/seo/SEOHead";
 import { AddToListModal } from "@/components/movies/AddToListModal";
 import { ReviewSection } from "@/components/reviews/ReviewSection";
 import { CommunityRatingMeter } from "@/components/movies/CommunityRatingMeter";
@@ -273,6 +274,12 @@ export default function MovieDetail() {
 
   return (
     <Layout>
+      <SEOHead
+        title={`${movie.title} (${movie.year}) | CineLunatic`}
+        description={movie.synopsis || `Details for ${movie.title}`}
+        image={movie.posterUrl || undefined}
+        type="website"
+      />
       {/* Hero Backdrop Section with Parallax - Small on Mobile */}
       {movie.backdropUrl && (
         <div className="relative w-full h-[120px] sm:h-[200px] lg:h-[450px] overflow-hidden">
