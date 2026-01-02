@@ -40,6 +40,7 @@ import Admin from "./pages/Admin";
 import Announcements from "./pages/Announcements";
 import Checkout from "./pages/Checkout";
 import CollectionDetail from "./pages/CollectionDetail";
+import BlogPost from "./pages/BlogPost";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ const App = () => (
                 <Route path="/actors" element={<Actors />} />
                 <Route path="/about" element={<About />} />
                 <Route path="/blog" element={<Blog />} />
+                <Route path="/blog/:slug" element={<BlogPost />} />
                 <Route path="/privacy" element={<Privacy />} />
                 <Route path="/terms" element={<Terms />} />
                 <Route path="/contact" element={<Contact />} />
