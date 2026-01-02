@@ -14,7 +14,8 @@ import {
     deleteDoc,
     updateDoc,
     arrayUnion,
-    runTransaction
+    runTransaction,
+    collectionGroup
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { LogEntry, Movie, MovieList, Notification, Review, ReviewComment, TVProgress } from "@/types/movie";
@@ -227,6 +228,9 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
                 .catch(err => console.error("Failed to update community rating:", err));
         }
 
+        // Trigger stats recalculation asynchronously
+        recalculateUserStats(userId).catch(err => console.error("Failed to update user stats:", err));
+
         return docRef.id;
     } catch (error) {
         console.error("Error creating log entry:", error);
@@ -370,73 +374,111 @@ const safeTimestampToISO = (value: any): string => {
     return new Date().toISOString();
 };
 
-export const getUserStats = async (logs: LogEntry[], listsCount: number = 0) => {
-    const totalWatched = logs.length;
-    const thisYear = new Date().getFullYear();
-    const currentYearLogs = logs.filter(log => new Date(log.watchedDate).getFullYear() === thisYear);
-    const thisYearWatched = currentYearLogs.length;
+export const recalculateUserStats = async (userId: string) => {
+    try {
+        const logsRef = collection(db, "users", userId, "logs");
+        const snapshot = await getDocs(logsRef);
+        const logs = snapshot.docs.map(doc => doc.data() as LogEntry);
 
-    const ratings = logs.filter(log => log.rating > 0).map(log => log.rating);
-    const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+        const listsRef = collection(db, "users", userId, "lists");
+        const listsSnapshot = await getDocs(listsRef);
+        const listsCount = listsSnapshot.size;
 
-    const totalMinutes = logs.reduce((acc, log) => acc + (log.movie.runtime || 0), 0);
-    const totalHours = Math.round(totalMinutes / 60);
+        const totalWatched = logs.length;
+        const thisYear = new Date().getFullYear();
+        const currentYearLogs = logs.filter(log => new Date(log.watchedDate).getFullYear() === thisYear);
+        const thisYearWatched = currentYearLogs.length;
 
-    // Genres breakdown
-    const genreCounts: Record<string, number> = {};
-    logs.forEach(log => {
-        log.movie.genres?.forEach(genre => {
-            genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+        const ratings = logs.filter(log => log.rating > 0).map(log => log.rating);
+        const avgRating = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+
+        const totalMinutes = logs.reduce((acc, log) => acc + (log.movie.runtime || 0), 0);
+        const totalHours = Math.round(totalMinutes / 60);
+
+        // Genres breakdown
+        const genreCounts: Record<string, number> = {};
+        logs.forEach(log => {
+            log.movie.genres?.forEach(genre => {
+                genreCounts[genre] = (genreCounts[genre] || 0) + 1;
+            });
         });
-    });
-    const topGenres = Object.entries(genreCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([name, count]) => ({ name, count }));
+        const topGenres = Object.entries(genreCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
 
-    // Directors breakdown
-    const directorCounts: Record<string, number> = {};
-    logs.forEach(log => {
-        if (log.movie.director) {
-            directorCounts[log.movie.director] = (directorCounts[log.movie.director] || 0) + 1;
+        // Directors breakdown
+        const directorCounts: Record<string, number> = {};
+        logs.forEach(log => {
+            if (log.movie.director) {
+                directorCounts[log.movie.director] = (directorCounts[log.movie.director] || 0) + 1;
+            }
+        });
+        const topDirectors = Object.entries(directorCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 5)
+            .map(([name, count]) => ({ name, count }));
+
+        // Countries breakdown
+        const countryCounts: Record<string, number> = {};
+        logs.forEach(log => {
+            log.movie.countries?.forEach(country => {
+                countryCounts[country] = (countryCounts[country] || 0) + 1;
+            });
+        });
+        const topCountries = Object.entries(countryCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([name, count]) => ({ name, count }));
+
+        // Monthly data
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthlyCounts = months.map(month => ({ month, films: 0 }));
+        currentYearLogs.forEach(log => {
+            const rawDate = log.watchedDate as any;
+            const date = rawDate instanceof Timestamp ? rawDate.toDate() : new Date(rawDate);
+            const monthIndex = date.getMonth();
+            monthlyCounts[monthIndex].films++;
+        });
+
+        const statsData = {
+            totalWatched,
+            thisYearWatched,
+            avgRating: parseFloat(avgRating.toFixed(1)),
+            totalHours,
+            topGenres,
+            topDirectors,
+            topCountries,
+            filmsPerMonth: monthlyCounts,
+            lists: listsCount,
+            lastUpdated: serverTimestamp()
+        };
+
+        // Save to stats/general
+        await setDoc(doc(db, "users", userId, "stats", "general"), statsData);
+
+        return statsData;
+    } catch (error) {
+        console.error("Error recalculating stats:", error);
+        throw error;
+    }
+};
+
+export const getUserStats = async (userId: string) => {
+    try {
+        const statsRef = doc(db, "users", userId, "stats", "general");
+        const statsDoc = await getDoc(statsRef);
+
+        if (statsDoc.exists()) {
+            return statsDoc.data();
         }
-    });
-    const topDirectors = Object.entries(directorCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([name, count]) => ({ name, count }));
 
-    // Countries breakdown
-    const countryCounts: Record<string, number> = {};
-    logs.forEach(log => {
-        log.movie.countries?.forEach(country => {
-            countryCounts[country] = (countryCounts[country] || 0) + 1;
-        });
-    });
-    const topCountries = Object.entries(countryCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 10)
-        .map(([name, count]) => ({ name, count }));
-
-    // Monthly data
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const monthlyCounts = months.map(month => ({ month, films: 0 }));
-    currentYearLogs.forEach(log => {
-        const monthIndex = new Date(log.watchedDate).getMonth();
-        monthlyCounts[monthIndex].films++;
-    });
-
-    return {
-        totalWatched,
-        thisYearWatched,
-        avgRating: parseFloat(avgRating.toFixed(1)),
-        totalHours,
-        topGenres,
-        topDirectors,
-        topCountries,
-        filmsPerMonth: monthlyCounts,
-        lists: listsCount
-    };
+        // Fallback: Compute and save if not exists
+        return await recalculateUserStats(userId);
+    } catch (error) {
+        console.error("Error getting user stats:", error);
+        return null;
+    }
 };
 
 export const toggleWatchlist = async (userId: string, movie: Movie) => {
@@ -607,41 +649,38 @@ export const getUserLists = async (userId: string) => {
 };
 
 // Get trending lists (by engagement: likes + comments + saves)
+// Get trending lists (by engagement: likes + comments + saves)
 export const getTrendingLists = async (limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query to fetch across all users
+        // Requires Index: collectionId: lists, fields: visibility Asc, likeCount Desc
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            orderBy("likeCount", "desc"),
+            limit(50) // Fetch top 50 by likes as candidate pool for trending
+        );
 
-        const allLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                limit(50)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
+        // Sort in memory for the complex engagement score
+        return snapshot.docs
+            .map(doc => {
                 const data = doc.data();
-                allLists.push({
+                return {
                     id: doc.id,
-                    userId: userDoc.id,
                     ...data,
+                    userId: data.userId, // Ensure userId is captured from doc
                     createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        // Sort by engagement score (likes + comments + saves)
-        return allLists
+                } as MovieList;
+            })
             .sort((a, b) => {
                 const scoreA = (a.likeCount || 0) + (a.commentCount || 0) * 2 + (a.saveCount || 0) * 1.5;
                 const scoreB = (b.likeCount || 0) + (b.commentCount || 0) * 2 + (b.saveCount || 0) * 1.5;
                 return scoreB - scoreA;
             })
             .slice(0, limitCount);
+
     } catch (error) {
         console.error("Error getting trending lists:", error);
         return [];
@@ -649,36 +688,28 @@ export const getTrendingLists = async (limitCount: number = 20) => {
 };
 
 // Get most liked lists
+// Get most liked lists
 export const getMostLikedLists = async (limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            orderBy("likeCount", "desc"),
+            limit(limitCount)
+        );
 
-        const allLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                limit(50)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                allLists.push({
-                    id: doc.id,
-                    userId: userDoc.id,
-                    ...data,
-                    createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        return allLists
-            .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
-            .slice(0, limitCount);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                userId: data.userId,
+                createdAt: safeTimestampToISO(data.createdAt)
+            } as MovieList;
+        });
     } catch (error) {
         console.error("Error getting most liked lists:", error);
         return [];
@@ -686,37 +717,30 @@ export const getMostLikedLists = async (limitCount: number = 20) => {
 };
 
 // Get lists by genre tag
+// Get lists by genre tag
 export const getListsByTag = async (tag: string, limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query with array-contains
+        // Requires Index: collectionId: lists, fields: visibility Asc, tags Array, likeCount Desc
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            where("tags", "array-contains", tag),
+            orderBy("likeCount", "desc"),
+            limit(limitCount)
+        );
 
-        const matchingLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                where("tags", "array-contains", tag),
-                limit(50)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                matchingLists.push({
-                    id: doc.id,
-                    userId: userDoc.id,
-                    ...data,
-                    createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        return matchingLists
-            .sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0))
-            .slice(0, limitCount);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                userId: data.userId,
+                createdAt: safeTimestampToISO(data.createdAt)
+            } as MovieList;
+        });
     } catch (error) {
         console.error("Error getting lists by tag:", error);
         return [];
@@ -724,37 +748,29 @@ export const getListsByTag = async (tag: string, limitCount: number = 20) => {
 };
 
 // Get recent public lists
+// Get recent public lists
 export const getRecentPublicLists = async (limitCount: number = 20) => {
     try {
-        const usersRef = collection(db, "users");
-        const usersSnapshot = await getDocs(usersRef);
+        // Optimized: Use Collection Group Query
+        // Requires Index: collectionId: lists, fields: visibility Asc, createdAt Desc
+        const listsQuery = query(
+            collectionGroup(db, "lists"),
+            where("visibility", "==", "public"),
+            orderBy("createdAt", "desc"),
+            limit(limitCount)
+        );
 
-        const allLists: MovieList[] = [];
+        const snapshot = await getDocs(listsQuery);
 
-        for (const userDoc of usersSnapshot.docs) {
-            const listsRef = collection(db, "users", userDoc.id, "lists");
-            const q = query(
-                listsRef,
-                where("visibility", "==", "public"),
-                orderBy("createdAt", "desc"),
-                limit(20)
-            );
-            const listsSnapshot = await getDocs(q);
-
-            listsSnapshot.docs.forEach(doc => {
-                const data = doc.data();
-                allLists.push({
-                    id: doc.id,
-                    userId: userDoc.id,
-                    ...data,
-                    createdAt: safeTimestampToISO(data.createdAt)
-                } as MovieList);
-            });
-        }
-
-        return allLists
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .slice(0, limitCount);
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                userId: data.userId,
+                createdAt: safeTimestampToISO(data.createdAt)
+            } as MovieList;
+        });
     } catch (error) {
         console.error("Error getting recent public lists:", error);
         return [];

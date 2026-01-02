@@ -103,7 +103,9 @@ export default function Profile() {
           setConnection(connStatus as ConnectionStatus);
           setActivityData(fetchedActivityData);
 
-          const calculatedStats = await getUserStats(fetchedLogs, fetchedLists.length);
+
+          // Fetch stats (now reads from cached doc)
+          const calculatedStats = await getUserStats(profileUser.uid);
           setStats(calculatedStats);
         }
       } catch (error) {
