@@ -1,11 +1,18 @@
 // Stripe Webhook endpoint to handle payment events
 // Vercel Serverless Function
-// Configure webhook URL in Stripe Dashboard: https://dashboard.stripe.com/webhooks
+// 
+// IMPORTANT: Vercel automatically parses JSON bodies, which breaks Stripe signature verification.
+// Solution: Use Stripe CLI for local testing, or configure Vercel to pass raw body.
+// For production, you may need to use a different approach or middleware.
 
 import Stripe from 'stripe';
 
 // Vercel Serverless Function Handler
 export default async function handler(req, res) {
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -33,12 +40,41 @@ export default async function handler(req, res) {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  // Get raw body - Vercel may parse it as JSON, so we need to handle both
+  let rawBody;
+  
+  // Check if body is already a string (raw) or Buffer
+  if (typeof req.body === 'string') {
+    rawBody = req.body;
+  } else if (Buffer.isBuffer(req.body)) {
+    rawBody = req.body;
+  } else if (req.body && typeof req.body === 'object') {
+    // Body was parsed as JSON - this breaks signature verification
+    // For Vercel, we need the raw body as a string
+    // Try to reconstruct it (this may not work perfectly for signature verification)
+    rawBody = JSON.stringify(req.body);
+    
+    // Log warning
+    console.warn('WARNING: Request body was parsed as JSON. Stripe signature verification may fail.');
+    console.warn('For Vercel, you need to configure the route to receive raw body.');
+    console.warn('Consider using Stripe CLI for local testing: stripe listen --forward-to localhost:3000/api/webhook');
+    
+    // Still try to verify, but it will likely fail
+  } else {
+    return res.status(400).json({ 
+      error: 'Invalid request body',
+      details: 'Request body must be a string or Buffer for Stripe webhook signature verification.'
+    });
+  }
+
   let event;
 
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
+    console.error('This usually means the request body was parsed as JSON before reaching the handler.');
+    console.error('Solution: Configure Vercel to pass raw body, or use Stripe CLI for testing.');
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -46,7 +82,7 @@ export default async function handler(req, res) {
   switch (event.type) {
     case 'checkout.session.completed':
       const session = event.data.object;
-      const { userId, planId } = session.metadata;
+      const { userId, planId } = session.metadata || {};
       console.log('Payment successful for user:', userId, 'Plan:', planId);
       
       if (userId && planId && session.subscription) {
@@ -56,7 +92,7 @@ export default async function handler(req, res) {
             ? `https://${process.env.VERCEL_URL}` 
             : process.env.VITE_API_URL || 'http://localhost:3000';
           
-          await fetch(`${apiUrl}/api/update-subscription`, {
+          const updateResponse = await fetch(`${apiUrl}/api/update-subscription`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -69,16 +105,25 @@ export default async function handler(req, res) {
               }
             })
           });
-          console.log('Subscription updated in Firestore for user:', userId);
+
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            console.error('Failed to update subscription:', errorText);
+          } else {
+            console.log('✅ Subscription updated in Firestore for user:', userId);
+          }
         } catch (error) {
           console.error('Error updating subscription in Firestore:', error);
         }
+      } else {
+        console.warn('⚠️ Missing userId, planId, or subscription in checkout.session.completed event');
+        console.warn('Session metadata:', session.metadata);
+        console.warn('Session subscription:', session.subscription);
       }
       break;
 
     case 'customer.subscription.updated':
       const updatedSubscription = event.data.object;
-      // Get userId from subscription metadata or customer
       const updatedUserId = updatedSubscription.metadata?.userId;
       
       if (updatedUserId) {
@@ -87,7 +132,7 @@ export default async function handler(req, res) {
             ? `https://${process.env.VERCEL_URL}` 
             : process.env.VITE_API_URL || 'http://localhost:3000';
           
-          await fetch(`${apiUrl}/api/update-subscription`, {
+          const updateResponse = await fetch(`${apiUrl}/api/update-subscription`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -97,13 +142,19 @@ export default async function handler(req, res) {
                 status: updatedSubscription.status === 'active' ? 'active' : 'inactive',
                 subscriptionId: updatedSubscription.id,
                 cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end,
-                ...(updatedSubscription.cancel_at && {
-                  endDate: new Date(updatedSubscription.cancel_at * 1000).toISOString()
+                ...(updatedSubscription.current_period_end && {
+                  endDate: new Date(updatedSubscription.current_period_end * 1000).toISOString()
                 })
               }
             })
           });
-          console.log('Subscription status updated in Firestore');
+
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            console.error('Failed to update subscription status:', errorText);
+          } else {
+            console.log('✅ Subscription status updated in Firestore');
+          }
         } catch (error) {
           console.error('Error updating subscription status:', error);
         }
@@ -120,7 +171,7 @@ export default async function handler(req, res) {
             ? `https://${process.env.VERCEL_URL}` 
             : process.env.VITE_API_URL || 'http://localhost:3000';
           
-          await fetch(`${apiUrl}/api/update-subscription`, {
+          const updateResponse = await fetch(`${apiUrl}/api/update-subscription`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -133,7 +184,13 @@ export default async function handler(req, res) {
               }
             })
           });
-          console.log('Subscription cancelled in Firestore');
+
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            console.error('Failed to cancel subscription:', errorText);
+          } else {
+            console.log('✅ Subscription cancelled in Firestore');
+          }
         } catch (error) {
           console.error('Error cancelling subscription:', error);
         }
@@ -150,7 +207,7 @@ export default async function handler(req, res) {
             ? `https://${process.env.VERCEL_URL}` 
             : process.env.VITE_API_URL || 'http://localhost:3000';
           
-          await fetch(`${apiUrl}/api/update-subscription`, {
+          const updateResponse = await fetch(`${apiUrl}/api/update-subscription`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -161,7 +218,13 @@ export default async function handler(req, res) {
               }
             })
           });
-          console.log('Payment failure recorded in Firestore');
+
+          if (!updateResponse.ok) {
+            const errorText = await updateResponse.text();
+            console.error('Failed to record payment failure:', errorText);
+          } else {
+            console.log('✅ Payment failure recorded in Firestore');
+          }
         } catch (error) {
           console.error('Error recording payment failure:', error);
         }
