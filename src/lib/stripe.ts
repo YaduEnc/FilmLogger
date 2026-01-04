@@ -48,8 +48,9 @@ export const createCheckoutSession = async (planId: string, userId: string, user
       throw new Error(errorData.message || "Failed to create checkout session");
     }
 
-    const { sessionId } = await response.json();
-    return sessionId;
+    const { sessionId, url } = await response.json();
+    // Return both sessionId and url for compatibility
+    return { sessionId, url };
   } catch (error: any) {
     console.error("Error creating checkout session:", error);
     // If backend is not available, show helpful error

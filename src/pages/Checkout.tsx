@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Loader2, ShieldCheck, CreditCard, Sparkles, Zap, Lock } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
-import { getStripe, createCheckoutSession } from "@/lib/stripe";
+import { createCheckoutSession } from "@/lib/stripe";
 import { toast } from "sonner";
 
 const plans = {
@@ -66,24 +66,20 @@ export default function Checkout() {
         setIsProcessing(true);
         try {
             // Create checkout session
-            const sessionId = await createCheckoutSession(
+            const result = await createCheckoutSession(
                 planId,
                 user.uid,
                 user.email || ""
             );
 
-            // Redirect to Stripe Checkout
-            const stripe = await getStripe();
-            if (!stripe) {
-                throw new Error("Stripe failed to initialize");
-            }
-
-            const { error } = await stripe.redirectToCheckout({
-                sessionId,
-            });
-
-            if (error) {
-                throw error;
+            // Redirect directly to Stripe Checkout URL
+            if (result.url) {
+                window.location.href = result.url;
+            } else if (result.sessionId) {
+                // Fallback: construct URL from sessionId if URL not provided
+                window.location.href = `https://checkout.stripe.com/c/pay/${result.sessionId}`;
+            } else {
+                throw new Error("No checkout URL or session ID received");
             }
         } catch (error: any) {
             console.error("Payment error:", error);

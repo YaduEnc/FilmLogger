@@ -96,7 +96,10 @@ export default async function handler(req, res) {
       cancel_url: cancelUrl || `${req.headers.origin}/payment-cancel`,
     });
 
-    return res.status(200).json({ sessionId: session.id });
+    return res.status(200).json({ 
+      sessionId: session.id,
+      url: session.url 
+    });
   } catch (error) {
     console.error('Error creating checkout session:', error);
     return res.status(500).json({ error: error.message });
