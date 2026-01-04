@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Documentation files
+README.md
+*SETUP.md
+*CHECKLIST.md
+*_SETUP.md
+*_CHECKLIST.md

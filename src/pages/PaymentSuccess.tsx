@@ -185,7 +185,7 @@ export default function PaymentSuccess() {
           </div>
 
           {/* Invoice Card */}
-          <Card ref={invoiceRef} className="border-2 p-8 space-y-6 bg-white">
+          <Card ref={invoiceRef} className="border-2 p-8 space-y-6 bg-card">
             {/* Invoice Header */}
             <div className="flex items-start justify-between border-b pb-6">
               <div className="space-y-2">
