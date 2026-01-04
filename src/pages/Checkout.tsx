@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft, Loader2, ShieldCheck, CreditCard, Sparkles, Zap, Lock } from "lucide-react";
 import { Logo } from "@/components/layout/Logo";
+import { getStripe, createCheckoutSession } from "@/lib/stripe";
+import { toast } from "sonner";
 
 const plans = {
     pro: {
@@ -59,13 +61,35 @@ export default function Checkout() {
     }
 
     const handlePayment = async () => {
+        if (!user || !planId) return;
+
         setIsProcessing(true);
-        // Placeholder for Razorpay implementation
-        setTimeout(() => {
+        try {
+            // Create checkout session
+            const sessionId = await createCheckoutSession(
+                planId,
+                user.uid,
+                user.email || ""
+            );
+
+            // Redirect to Stripe Checkout
+            const stripe = await getStripe();
+            if (!stripe) {
+                throw new Error("Stripe failed to initialize");
+            }
+
+            const { error } = await stripe.redirectToCheckout({
+                sessionId,
+            });
+
+            if (error) {
+                throw error;
+            }
+        } catch (error: any) {
+            console.error("Payment error:", error);
+            toast.error(error.message || "Failed to process payment. Please try again.");
             setIsProcessing(false);
-            // In a real app, this would trigger Razorpay
-            alert("Razorpay implementation coming soon! This page satisfies verification requirements.");
-        }, 1500);
+        }
     };
 
     return (
@@ -178,12 +202,11 @@ export default function Checkout() {
                                 </Button>
 
                                 <p className="text-[9px] text-center text-muted-foreground/60 uppercase tracking-widest leading-relaxed">
-                                    Secure payment via Razorpay. By clicking, you agree to our <Link to="/terms" className="underline font-bold">Terms</Link>, <Link to="/refunds" className="underline font-bold">Refunds</Link> & <Link to="/contact" className="underline font-bold">Contact</Link>.
+                                    Secure payment via Stripe. By clicking, you agree to our <Link to="/terms" className="underline font-bold">Terms</Link>, <Link to="/refunds" className="underline font-bold">Refunds</Link> & <Link to="/contact" className="underline font-bold">Contact</Link>.
                                 </p>
 
                                 <div className="flex justify-center items-center gap-6 pt-6 opacity-40 grayscale border-t mt-4">
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/8/89/Razorpay_logo.svg" alt="Razorpay" className="h-3" />
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="h-3" />
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="h-4" />
                                 </div>
                             </div>
                         </div>

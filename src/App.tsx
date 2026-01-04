@@ -40,6 +40,8 @@ import Membership from "./pages/Membership";
 import Admin from "./pages/Admin";
 import Announcements from "./pages/Announcements";
 import Checkout from "./pages/Checkout";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
 import CollectionDetail from "./pages/CollectionDetail";
 import BlogPost from "./pages/BlogPost";
 import Status from "./pages/Status";
@@ -94,6 +96,8 @@ const App = () => (
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/announcements" element={<Announcements />} />
                   <Route path="/checkout/:planId" element={<Checkout />} />
+                  <Route path="/payment-success" element={<PaymentSuccess />} />
+                  <Route path="/payment-cancel" element={<PaymentCancel />} />
                   <Route path="/status" element={<Status />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
