@@ -24,8 +24,11 @@ export const PLAN_PRICES = {
 // Create checkout session
 export const createCheckoutSession = async (planId: string, userId: string, userEmail: string) => {
   try {
-    const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    const response = await fetch(`${apiUrl}/api/create-checkout-session`, {
+    // For Vercel, API routes are on the same domain, so use relative path
+    // For local development, use VITE_API_URL if set, otherwise use relative path
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiEndpoint = apiUrl ? `${apiUrl}/api/create-checkout-session` : '/api/create-checkout-session';
+    const response = await fetch(apiEndpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
