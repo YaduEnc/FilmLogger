@@ -1,11 +1,21 @@
 // Stripe Webhook endpoint to handle payment events
 // Vercel Serverless Function
 // 
-// IMPORTANT: Vercel automatically parses JSON bodies, which breaks Stripe signature verification.
-// Solution: Use Stripe CLI for local testing, or configure Vercel to pass raw body.
-// For production, you may need to use a different approach or middleware.
+// IMPORTANT: For Vercel, the request body is automatically parsed as JSON.
+// We need to access the raw body for Stripe signature verification.
+// Solution: Read from request stream before parsing, or use Vercel's rawBody if available.
 
 import Stripe from 'stripe';
+
+// Helper to read raw body from request stream
+function getRawBodyFromStream(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', (chunk) => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+}
 
 // Vercel Serverless Function Handler
 export default async function handler(req, res) {
@@ -40,41 +50,79 @@ export default async function handler(req, res) {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  // Get raw body - Vercel may parse it as JSON, so we need to handle both
+  // Get raw body - try multiple methods for Vercel compatibility
   let rawBody;
   
-  // Check if body is already a string (raw) or Buffer
-  if (typeof req.body === 'string') {
-    rawBody = req.body;
-  } else if (Buffer.isBuffer(req.body)) {
-    rawBody = req.body;
-  } else if (req.body && typeof req.body === 'object') {
-    // Body was parsed as JSON - this breaks signature verification
-    // For Vercel, we need the raw body as a string
-    // Try to reconstruct it (this may not work perfectly for signature verification)
-    rawBody = JSON.stringify(req.body);
-    
-    // Log warning
-    console.warn('WARNING: Request body was parsed as JSON. Stripe signature verification may fail.');
-    console.warn('For Vercel, you need to configure the route to receive raw body.');
-    console.warn('Consider using Stripe CLI for local testing: stripe listen --forward-to localhost:3000/api/webhook');
-    
-    // Still try to verify, but it will likely fail
-  } else {
-    return res.status(400).json({ 
-      error: 'Invalid request body',
-      details: 'Request body must be a string or Buffer for Stripe webhook signature verification.'
-    });
+  try {
+    // Method 1: Check if rawBody is available (some Vercel setups expose this)
+    if (req.rawBody) {
+      rawBody = typeof req.rawBody === 'string' ? req.rawBody : Buffer.from(req.rawBody);
+      console.log('✅ Using req.rawBody');
+    }
+    // Method 2: Check if body is already a string or Buffer (raw)
+    else if (typeof req.body === 'string') {
+      rawBody = req.body;
+      console.log('✅ Using req.body as string');
+    } 
+    else if (Buffer.isBuffer(req.body)) {
+      rawBody = req.body;
+      console.log('✅ Using req.body as Buffer');
+    }
+    // Method 3: Try to read from stream (if not already parsed)
+    else if (req.readable && !req.body) {
+      rawBody = await getRawBodyFromStream(req);
+      console.log('✅ Read from request stream');
+    }
+    // Method 4: Body was parsed as JSON - this will fail signature verification
+    else if (req.body && typeof req.body === 'object') {
+      // This is the problem - Vercel parsed it as JSON
+      console.error('❌ ERROR: Request body was parsed as JSON by Vercel.');
+      console.error('This breaks Stripe signature verification.');
+      console.error('');
+      console.error('SOLUTIONS:');
+      console.error('1. Use Stripe CLI for testing: stripe listen --forward-to localhost:3000/api/webhook');
+      console.error('2. For production, you may need to use a proxy or different approach');
+      console.error('3. Consider using Stripe\'s webhook endpoint verification in a different way');
+      console.error('');
+      console.error('Attempting to reconstruct body (signature verification will likely fail):');
+      rawBody = JSON.stringify(req.body);
+    } 
+    else {
+      return res.status(400).json({ 
+        error: 'Invalid request body',
+        details: 'Request body must be raw (string/Buffer) for Stripe webhook signature verification.'
+      });
+    }
+  } catch (error) {
+    console.error('Error reading raw body:', error);
+    return res.status(400).json({ error: 'Failed to read request body' });
+  }
+
+  if (!rawBody) {
+    return res.status(400).json({ error: 'Empty request body' });
   }
 
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+    console.log('✅ Webhook signature verified successfully');
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    console.error('This usually means the request body was parsed as JSON before reaching the handler.');
-    console.error('Solution: Configure Vercel to pass raw body, or use Stripe CLI for testing.');
+    console.error('❌ Webhook signature verification failed:', err.message);
+    console.error('');
+    console.error('This usually happens because:');
+    console.error('1. Vercel parsed the JSON body before it reached this handler');
+    console.error('2. The webhook secret is incorrect');
+    console.error('3. The request was modified by a proxy or middleware');
+    console.error('');
+    console.error('For local testing, use Stripe CLI:');
+    console.error('  stripe listen --forward-to localhost:3000/api/webhook');
+    console.error('');
+    console.error('For production on Vercel, you may need to:');
+    console.error('1. Use a different webhook handling approach');
+    console.error('2. Set up a proxy that preserves raw body');
+    console.error('3. Use Stripe\'s webhook endpoint verification differently');
+    
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -83,7 +131,7 @@ export default async function handler(req, res) {
     case 'checkout.session.completed':
       const session = event.data.object;
       const { userId, planId } = session.metadata || {};
-      console.log('Payment successful for user:', userId, 'Plan:', planId);
+      console.log('✅ Payment successful for user:', userId, 'Plan:', planId);
       
       if (userId && planId && session.subscription) {
         // Update user subscription in Firestore
@@ -108,12 +156,12 @@ export default async function handler(req, res) {
 
           if (!updateResponse.ok) {
             const errorText = await updateResponse.text();
-            console.error('Failed to update subscription:', errorText);
+            console.error('❌ Failed to update subscription:', errorText);
           } else {
             console.log('✅ Subscription updated in Firestore for user:', userId);
           }
         } catch (error) {
-          console.error('Error updating subscription in Firestore:', error);
+          console.error('❌ Error updating subscription in Firestore:', error);
         }
       } else {
         console.warn('⚠️ Missing userId, planId, or subscription in checkout.session.completed event');
@@ -151,12 +199,12 @@ export default async function handler(req, res) {
 
           if (!updateResponse.ok) {
             const errorText = await updateResponse.text();
-            console.error('Failed to update subscription status:', errorText);
+            console.error('❌ Failed to update subscription status:', errorText);
           } else {
             console.log('✅ Subscription status updated in Firestore');
           }
         } catch (error) {
-          console.error('Error updating subscription status:', error);
+          console.error('❌ Error updating subscription status:', error);
         }
       }
       break;
@@ -187,12 +235,12 @@ export default async function handler(req, res) {
 
           if (!updateResponse.ok) {
             const errorText = await updateResponse.text();
-            console.error('Failed to cancel subscription:', errorText);
+            console.error('❌ Failed to cancel subscription:', errorText);
           } else {
             console.log('✅ Subscription cancelled in Firestore');
           }
         } catch (error) {
-          console.error('Error cancelling subscription:', error);
+          console.error('❌ Error cancelling subscription:', error);
         }
       }
       break;
@@ -221,18 +269,18 @@ export default async function handler(req, res) {
 
           if (!updateResponse.ok) {
             const errorText = await updateResponse.text();
-            console.error('Failed to record payment failure:', errorText);
+            console.error('❌ Failed to record payment failure:', errorText);
           } else {
             console.log('✅ Payment failure recorded in Firestore');
           }
         } catch (error) {
-          console.error('Error recording payment failure:', error);
+          console.error('❌ Error recording payment failure:', error);
         }
       }
       break;
 
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      console.log(`ℹ️ Unhandled event type ${event.type}`);
   }
 
   return res.status(200).json({ received: true });
