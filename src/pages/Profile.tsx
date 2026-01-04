@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SEOHead } from "@/components/seo/SEOHead";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
 import { MovieCard } from "@/components/movies/MovieCard";
-import { Settings, Loader2, Bookmark, History, UserPlus, Check, Clock, Globe, Lock, ShieldAlert, Edit2, Star, Plus } from "lucide-react";
+import { Settings, Loader2, Bookmark, History, UserPlus, Check, Clock, Globe, Lock, ShieldAlert, Edit2, Star, Plus, Sparkles, Zap, Crown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LogEntry, Movie, UserStats, UserProfile, ConnectionStatus } from "@/types/movie";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,6 +46,7 @@ export default function Profile() {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [isTop5ModalOpen, setIsTop5ModalOpen] = useState(false);
   const [activityData, setActivityData] = useState<{ date: string; count: number }[]>([]);
+  const [subscription, setSubscription] = useState<any>(null);
 
   const isOwnProfile = !username || (targetUser && targetUser.uid === currentUser?.uid);
 
@@ -103,6 +105,11 @@ export default function Profile() {
           setWatchlist(fetchedWatchlist);
           setConnection(connStatus as ConnectionStatus);
           setActivityData(fetchedActivityData);
+          
+          // Load subscription data
+          if (profileUser.subscription) {
+            setSubscription(profileUser.subscription);
+          }
 
 
           // Fetch stats (now reads from cached doc)
@@ -233,11 +240,40 @@ export default function Profile() {
             <div className="flex-1 pt-2 text-center md:text-left">
               <div className="flex flex-col md:flex-row justify-between items-center md:items-start gap-6">
                 <div>
-                  <div className="flex items-baseline justify-center md:justify-start gap-3">
+                  <div className="flex items-baseline justify-center md:justify-start gap-3 flex-wrap">
                     <h1 className="font-serif text-4xl md:text-6xl font-medium tracking-tight text-white m-0 leading-none">
                       {targetUser.displayName}
                     </h1>
                     {targetUser.isPublic === false && <Lock className="h-4 w-4 text-white/30" />}
+                    {subscription?.status === 'active' && (
+                      <Badge 
+                        className={cn(
+                          "ml-2 font-mono text-[9px] uppercase tracking-widest border-2",
+                          subscription.planId === 'pro' 
+                            ? "bg-primary/20 text-primary border-primary/30" 
+                            : subscription.planId === 'legend'
+                            ? "bg-amber-500/20 text-amber-500 border-amber-500/30"
+                            : "bg-primary/20 text-primary border-primary/30"
+                        )}
+                      >
+                        {subscription.planId === 'pro' ? (
+                          <>
+                            <Sparkles className="h-3 w-3 mr-1 inline" />
+                            Pro
+                          </>
+                        ) : subscription.planId === 'legend' ? (
+                          <>
+                            <Crown className="h-3 w-3 mr-1 inline" />
+                            Legend
+                          </>
+                        ) : (
+                          <>
+                            <Crown className="h-3 w-3 mr-1 inline" />
+                            Premium
+                          </>
+                        )}
+                      </Badge>
+                    )}
                   </div>
 
                   {targetUser.username && (

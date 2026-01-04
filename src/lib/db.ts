@@ -1679,6 +1679,28 @@ export const getUserData = async (userId: string) => {
     }
 };
 
+// Update user subscription
+export const updateUserSubscription = async (userId: string, subscriptionData: {
+    planId?: string;
+    status?: 'active' | 'inactive' | 'cancelled' | 'past_due';
+    subscriptionId?: string;
+    startDate?: string;
+    endDate?: string;
+    cancelAtPeriodEnd?: boolean;
+}) => {
+    try {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, {
+            subscription: subscriptionData,
+            updatedAt: serverTimestamp()
+        });
+        return true;
+    } catch (error) {
+        console.error("Error updating user subscription:", error);
+        throw error;
+    }
+};
+
 // ==================== ACCOUNT DELETION ====================
 
 // Helper function to delete all documents in a collection

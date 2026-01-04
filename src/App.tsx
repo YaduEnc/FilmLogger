@@ -37,6 +37,7 @@ import Terms from "./pages/Terms";
 import Contact from "./pages/Contact";
 import Refunds from "./pages/Refunds";
 import Membership from "./pages/Membership";
+import Subscription from "./pages/Subscription";
 import Admin from "./pages/Admin";
 import Announcements from "./pages/Announcements";
 import Checkout from "./pages/Checkout";
@@ -93,6 +94,7 @@ const App = () => (
                   <Route path="/contact" element={<Contact />} />
                   <Route path="/refunds" element={<Refunds />} />
                   <Route path="/membership" element={<Membership />} />
+                  <Route path="/subscription" element={<Subscription />} />
                   <Route path="/admin" element={<Admin />} />
                   <Route path="/announcements" element={<Announcements />} />
                   <Route path="/checkout/:planId" element={<Checkout />} />

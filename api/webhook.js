@@ -46,26 +46,126 @@ export default async function handler(req, res) {
   switch (event.type) {
     case 'checkout.session.completed':
       const session = event.data.object;
-      // Update user subscription in database
       const { userId, planId } = session.metadata;
       console.log('Payment successful for user:', userId, 'Plan:', planId);
-      // TODO: Update user subscription in Firestore
-      // await updateUserSubscription(userId, planId, session.subscription);
+      
+      if (userId && planId && session.subscription) {
+        // Update user subscription in Firestore
+        try {
+          const apiUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : process.env.VITE_API_URL || 'http://localhost:3000';
+          
+          await fetch(`${apiUrl}/api/update-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId,
+              subscriptionData: {
+                planId,
+                status: 'active',
+                subscriptionId: typeof session.subscription === 'string' ? session.subscription : session.subscription.id,
+                startDate: new Date().toISOString(),
+              }
+            })
+          });
+          console.log('Subscription updated in Firestore for user:', userId);
+        } catch (error) {
+          console.error('Error updating subscription in Firestore:', error);
+        }
+      }
       break;
 
     case 'customer.subscription.updated':
+      const updatedSubscription = event.data.object;
+      // Get userId from subscription metadata or customer
+      const updatedUserId = updatedSubscription.metadata?.userId;
+      
+      if (updatedUserId) {
+        try {
+          const apiUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : process.env.VITE_API_URL || 'http://localhost:3000';
+          
+          await fetch(`${apiUrl}/api/update-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: updatedUserId,
+              subscriptionData: {
+                planId: updatedSubscription.metadata?.planId || 'unknown',
+                status: updatedSubscription.status === 'active' ? 'active' : 'inactive',
+                subscriptionId: updatedSubscription.id,
+                cancelAtPeriodEnd: updatedSubscription.cancel_at_period_end,
+                ...(updatedSubscription.cancel_at && {
+                  endDate: new Date(updatedSubscription.cancel_at * 1000).toISOString()
+                })
+              }
+            })
+          });
+          console.log('Subscription status updated in Firestore');
+        } catch (error) {
+          console.error('Error updating subscription status:', error);
+        }
+      }
+      break;
+
     case 'customer.subscription.deleted':
-      const subscription = event.data.object;
-      // Handle subscription updates/cancellations
-      console.log('Subscription updated:', subscription.id);
-      // TODO: Update subscription status in database
+      const deletedSubscription = event.data.object;
+      const deletedUserId = deletedSubscription.metadata?.userId;
+      
+      if (deletedUserId) {
+        try {
+          const apiUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : process.env.VITE_API_URL || 'http://localhost:3000';
+          
+          await fetch(`${apiUrl}/api/update-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: deletedUserId,
+              subscriptionData: {
+                planId: deletedSubscription.metadata?.planId || 'unknown',
+                status: 'cancelled',
+                subscriptionId: deletedSubscription.id,
+                endDate: new Date().toISOString(),
+              }
+            })
+          });
+          console.log('Subscription cancelled in Firestore');
+        } catch (error) {
+          console.error('Error cancelling subscription:', error);
+        }
+      }
       break;
 
     case 'invoice.payment_failed':
       const invoice = event.data.object;
-      // Handle failed payment
-      console.log('Payment failed for invoice:', invoice.id);
-      // TODO: Notify user and update subscription status
+      const failedUserId = invoice.metadata?.userId || invoice.subscription_details?.metadata?.userId;
+      
+      if (failedUserId) {
+        try {
+          const apiUrl = process.env.VERCEL_URL 
+            ? `https://${process.env.VERCEL_URL}` 
+            : process.env.VITE_API_URL || 'http://localhost:3000';
+          
+          await fetch(`${apiUrl}/api/update-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: failedUserId,
+              subscriptionData: {
+                status: 'past_due',
+                lastPaymentFailed: new Date().toISOString(),
+              }
+            })
+          });
+          console.log('Payment failure recorded in Firestore');
+        } catch (error) {
+          console.error('Error recording payment failure:', error);
+        }
+      }
       break;
 
     default:
