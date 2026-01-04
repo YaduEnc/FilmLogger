@@ -176,7 +176,14 @@ export function ColophonSection() {
                     <h4 className="font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground mb-4">Status</h4>
                     <ul className="space-y-2">
                         <li className="font-mono text-xs text-foreground/80">{new Date().getFullYear()}</li>
-                        <li className="font-mono text-xs text-foreground/80">Active</li>
+                        <li>
+                            <Link
+                                to="/status"
+                                className="font-mono text-xs text-foreground/80 hover:text-primary transition-colors duration-200 inline-block"
+                            >
+                                Active
+                            </Link>
+                        </li>
                     </ul>
                 </div>
             </div>
