@@ -3,6 +3,7 @@ import { SignalsSection } from "@/components/landing/SignalsSection";
 import { WorkSection } from "@/components/landing/WorkSection";
 import { PrinciplesSection } from "@/components/landing/PrinciplesSection";
 import { LandingPricing } from "@/components/landing/LandingPricing";
+import { CinemaFinderSection } from "@/components/landing/CinemaFinderSection";
 import { ColophonSection } from "@/components/landing/ColophonSection";
 import { SideNav } from "@/components/landing/SideNav";
 import { SmoothScroll } from "@/components/landing/SmoothScroll";
@@ -29,6 +30,7 @@ export default function Landing() {
             <WorkSection />
             <PrinciplesSection />
             <LandingPricing />
+            <CinemaFinderSection />
             <ColophonSection />
           </div>
         </main>

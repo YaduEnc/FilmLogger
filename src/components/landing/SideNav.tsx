@@ -7,6 +7,7 @@ const navItems = [
     { id: "work", label: "Collections" },
     { id: "principles", label: "Values" },
     { id: "pricing", label: "Access" },
+    { id: "cinema-finder", label: "Cinemas" },
     { id: "colophon", label: "Info" },
 ];
 

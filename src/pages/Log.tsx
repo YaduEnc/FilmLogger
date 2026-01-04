@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
-import { CalendarIcon, ArrowLeft, Search, Loader2, Tv, Plus, X } from "lucide-react";
+import { CalendarIcon, ArrowLeft, Search, Loader2, Tv, Plus, X, MapPin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { createLogEntry, logActivity, updateMovieStats, saveTVProgress } from "@/lib/db";
@@ -21,6 +21,9 @@ import { cn } from "@/lib/utils";
 import { Movie } from "@/types/movie";
 import { searchMovies, searchTV, getMovieDetails, getTVDetails } from "@/lib/tmdb";
 import { AnimatedNoise } from "@/components/landing/AnimatedNoise";
+import { CinemaFinder } from "@/components/movies/CinemaFinder";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { Cinema } from "@/lib/cinema-api";
 
 const moods = ["", "Euphoric", "Thoughtful", "Melancholic", "Nostalgic", "Unsettled", "Inspired"];
 const locations = ["", "Cinema", "Home", "Plane", "Festival", "Other"];
@@ -46,6 +49,8 @@ export default function Log() {
   const [tags, setTags] = useState("");
   const [mood, setMood] = useState("");
   const [location, setLocation] = useState("");
+  const [selectedCinema, setSelectedCinema] = useState<Cinema | null>(null);
+  const [showCinemaFinder, setShowCinemaFinder] = useState(false);
   const [visibility, setVisibility] = useState<"private" | "followers" | "public">("public");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState<number[]>([0]);
@@ -340,7 +345,12 @@ export default function Log() {
 
                 <div className="space-y-3">
                   <Label className="font-mono text-[9px] uppercase tracking-[0.4em] text-muted-foreground/40 font-bold block">Location</Label>
-                  <Select value={location} onValueChange={setLocation}>
+                  <Select value={location} onValueChange={(value) => {
+                    setLocation(value);
+                    if (value === "Cinema") {
+                      setShowCinemaFinder(true);
+                    }
+                  }}>
                     <SelectTrigger className="h-12 bg-white/[0.01] border-white/10 rounded-none font-mono text-[10px] uppercase tracking-[0.2em] focus:ring-primary/20 focus:border-primary/40">
                       <SelectValue placeholder="SELECT LOCATION" />
                     </SelectTrigger>
@@ -352,6 +362,24 @@ export default function Log() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {location === "Cinema" && (
+                    <div className="space-y-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setShowCinemaFinder(true)}
+                        className="w-full h-10 font-mono text-[10px] uppercase tracking-[0.2em] border-white/10 hover:border-primary/40"
+                      >
+                        <MapPin className="h-3.5 w-3.5 mr-2" />
+                        {selectedCinema ? `Selected: ${selectedCinema.name}` : "Find Cinema"}
+                      </Button>
+                      {selectedCinema && (
+                        <p className="font-mono text-[9px] text-muted-foreground/60 uppercase tracking-widest">
+                          {selectedCinema.displayName}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -387,6 +415,25 @@ export default function Log() {
           </div>
         </div>
       </div>
+
+      {/* Cinema Finder Dialog */}
+      <Dialog open={showCinemaFinder} onOpenChange={setShowCinemaFinder}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto bg-background border-border/50">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-2xl">Find Cinema</DialogTitle>
+            <DialogDescription className="font-mono text-xs">
+              Search for cinemas by city or use your current location
+            </DialogDescription>
+          </DialogHeader>
+          <CinemaFinder
+            onSelectCinema={(cinema) => {
+              setSelectedCinema(cinema);
+              setShowCinemaFinder(false);
+            }}
+            selectedCinema={selectedCinema}
+          />
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
