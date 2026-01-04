@@ -1,8 +1,8 @@
 // Stripe Webhook endpoint to handle payment events
-// This should be deployed as a serverless function
+// Vercel Serverless Function
 // Configure webhook URL in Stripe Dashboard: https://dashboard.stripe.com/webhooks
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import Stripe from 'stripe';
 
 // Vercel Serverless Function Handler
 export default async function handler(req, res) {
@@ -10,8 +10,25 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // For webhooks, we need the raw body
-  const body = req.body;
+  // Check for required environment variables
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('STRIPE_SECRET_KEY environment variable is missing');
+    return res.status(500).json({ 
+      error: 'Server configuration error: STRIPE_SECRET_KEY is not set.' 
+    });
+  }
+
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('STRIPE_WEBHOOK_SECRET environment variable is missing');
+    return res.status(500).json({ 
+      error: 'Server configuration error: STRIPE_WEBHOOK_SECRET is not set.' 
+    });
+  }
+
+  // Initialize Stripe
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-12-18.acacia',
+  });
 
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

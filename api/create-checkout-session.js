@@ -1,19 +1,14 @@
 // Backend API endpoint for creating Stripe Checkout Sessions
-// This should be deployed as a serverless function (Vercel, Netlify, Firebase Functions, etc.)
-// Or as a Node.js/Express API endpoint
-
-// Example for Vercel/Netlify serverless function:
-// Place this file at: /api/create-checkout-session.js
+// Vercel Serverless Function
 
 // IMPORTANT: Set your Stripe secret key in environment variables
 // Never hardcode secrets in production code!
 // Set STRIPE_SECRET_KEY in your environment variables (Vercel, .env, etc.)
 
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import Stripe from 'stripe';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY environment variable is required');
-}
+// Initialize Stripe - check will happen in handler
+let stripe = null;
 
 const PLAN_CONFIG = {
   pro: {
@@ -43,6 +38,21 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // Check for Stripe secret key
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('STRIPE_SECRET_KEY environment variable is missing');
+    return res.status(500).json({ 
+      error: 'Server configuration error: STRIPE_SECRET_KEY is not set. Please add it in Vercel environment variables.' 
+    });
+  }
+
+  // Initialize Stripe if not already done
+  if (!stripe) {
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2024-12-18.acacia',
+    });
   }
 
   try {
