@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +7,8 @@ import { CheckCircle2, ArrowRight, Download, Receipt, Sparkles, Zap, Loader2 } f
 import { Layout } from "@/components/layout/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { Logo } from "@/components/layout/Logo";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 const PLAN_NAMES: Record<string, { name: string; icon: React.ReactNode }> = {
   pro: {
@@ -45,6 +47,8 @@ export default function PaymentSuccess() {
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchSessionDetails = async () => {
@@ -93,6 +97,43 @@ export default function PaymentSuccess() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!invoiceRef.current || !sessionData) return;
+
+    setIsGeneratingPDF(true);
+    try {
+      // Capture the invoice card as canvas
+      const canvas = await html2canvas(invoiceRef.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      // Create PDF
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 10;
+
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      // Generate filename
+      const date = new Date(sessionData.created * 1000).toISOString().split('T')[0];
+      const filename = `invoice-${sessionData.id.slice(0, 10)}-${date}.pdf`;
+      
+      pdf.save(filename);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const planInfo = sessionData?.planId ? PLAN_NAMES[sessionData.planId] : null;
@@ -144,7 +185,7 @@ export default function PaymentSuccess() {
           </div>
 
           {/* Invoice Card */}
-          <Card className="border-2 p-8 space-y-6">
+          <Card ref={invoiceRef} className="border-2 p-8 space-y-6 bg-white">
             {/* Invoice Header */}
             <div className="flex items-start justify-between border-b pb-6">
               <div className="space-y-2">
@@ -227,6 +268,24 @@ export default function PaymentSuccess() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4">
+            <Button
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF || !sessionData}
+              variant="outline"
+              className="flex-1 h-12 font-mono text-xs uppercase tracking-widest"
+            >
+              {isGeneratingPDF ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Invoice PDF
+                </>
+              )}
+            </Button>
             <Button
               onClick={() => navigate("/home")}
               className="flex-1 h-12 font-mono text-xs uppercase tracking-widest"
