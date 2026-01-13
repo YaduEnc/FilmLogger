@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Announcement } from '@/types/movie';
 import {
   Play, ExternalLink, Calendar, Pin, Newspaper,
@@ -202,10 +202,6 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
         {/* Video Modal */}
         <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
           <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black">
-            <DialogHeader className="sr-only">
-              <DialogTitle>{announcement.title}</DialogTitle>
-              <DialogDescription>Video player for {announcement.title}</DialogDescription>
-            </DialogHeader>
             <div className="aspect-video">
               <iframe
                 src={`https://www.youtube.com/embed/${announcement.youtubeVideoId}?autoplay=1`}
@@ -341,10 +337,6 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
       {/* Video Modal */}
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black">
-          <DialogHeader className="sr-only">
-            <DialogTitle>{announcement.title}</DialogTitle>
-            <DialogDescription>Video player for {announcement.title}</DialogDescription>
-          </DialogHeader>
           <div className="aspect-video">
             <iframe
               src={`https://www.youtube.com/embed/${announcement.youtubeVideoId}?autoplay=1`}
