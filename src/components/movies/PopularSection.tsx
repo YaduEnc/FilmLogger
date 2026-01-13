@@ -139,7 +139,7 @@ export function PopularSection() {
 
   return (
     <div className="space-y-12">
-      <div className="flex flex-col gap-3 border-l-2 border-primary/20 pl-6 mb-12">
+      <div className="flex flex-col gap-3 mb-12">
         <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Trending on CineLunatic</h2>
       </div>
 

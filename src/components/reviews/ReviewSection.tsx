@@ -27,22 +27,41 @@ const DISCUSSION_PROMPTS = [
     "I'm still thinking about that one scene in {title}. You know the one.",
     "Is {title} a future classic or a product of its time?",
     "{title} is basically {genre} perfection. Agree or disagree?",
-    "Honestly, {director} just gets it. Is this their best yet?"
+    "Honestly, {director} just gets it. Is this their best yet?",
+    "The musical numbers in {title} are next level. Is {genre} peaking here?",
+    "Does {title} capture the true essence of its setting or is it too editorialized?",
+    "Is {director} reinventing the {genre} trope with this one?",
+    "The cultural impact of {title} cannot be understated. How does it land for you?",
+    "Is {title} a masterclass in emotional weight or just classic melodrama?"
+];
+
+const REGIONAL_PROMPTS = [
+    "How does {title} compare to other {genre} films from {director}?",
+    "The choreography in {title} is exceptional. Is this the new gold standard?",
+    "Is {title} the definitive representation of {region} cinema this year?",
+    "Does the chemistry between the leads in {title} save the second act?",
+    "Is {title}'s blend of social commentary and {genre} actually effective?"
 ];
 
 function getDiscussionPrompt(movie: Movie) {
     const director = movie.director || "the filmmaker";
     const genre = movie.genres?.[0] || "cinema";
     const title = movie.title;
+    const region = movie.region === 'IN' ? 'Indian' : 'modern';
+
+    // Choose between regional and general prompts
+    const isRegional = movie.region === 'IN' || ['HI', 'TA', 'TE', 'ML', 'KN', 'BN'].includes(movie.language || '');
+    const pool = isRegional ? [...DISCUSSION_PROMPTS, ...REGIONAL_PROMPTS] : DISCUSSION_PROMPTS;
 
     // Use a hash of the movie ID to pick a consistent prompt for the same movie
-    const promptIndex = (movie.id % DISCUSSION_PROMPTS.length);
-    const prompt = DISCUSSION_PROMPTS[promptIndex];
+    const promptIndex = (movie.id % pool.length);
+    const prompt = pool[promptIndex];
 
     return prompt
         .replace(/{director}/g, director)
         .replace(/{genre}/g, genre.toLowerCase())
-        .replace(/{title}/g, title);
+        .replace(/{title}/g, title)
+        .replace(/{region}/g, region);
 }
 
 export function ReviewSection({ movie, onReviewSubmitted }: ReviewSectionProps) {

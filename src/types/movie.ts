@@ -12,6 +12,8 @@ export interface Movie {
   synopsis?: string;
   tagline?: string;
   language?: string;
+  originalLanguage?: string;
+  region?: string;
   countries?: string[];
   rating?: number;
   voteCount?: number;

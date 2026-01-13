@@ -142,6 +142,8 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     synopsis: tmdbMovie.overview,
     tagline: tmdbMovie.tagline,
     language: tmdbMovie.original_language?.toUpperCase(),
+    originalLanguage: tmdbMovie.original_language,
+    region: tmdbMovie.production_countries?.some(c => c.iso_3166_1 === 'IN') ? 'IN' : undefined,
     rating: tmdbMovie.vote_average,
     voteCount: tmdbMovie.vote_count,
     trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : undefined,
@@ -609,5 +611,44 @@ export async function getCollectionDetails(collectionId: number): Promise<Collec
   } catch (error) {
     console.error("TMDB collection error:", error);
     throw new Error("Failed to fetch collection details");
+  }
+}
+
+// ==================== REGIONAL CINEMA ====================
+
+export async function getBollywoodMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  return discoverMedia('movie', {
+    with_original_language: 'hi',
+    with_origin_country: 'IN',
+    page
+  });
+}
+
+export async function getIndianRegionalMovies(languageCode: string, page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  return discoverMedia('movie', {
+    with_original_language: languageCode,
+    with_origin_country: 'IN',
+    page
+  });
+}
+
+export async function getHollywoodMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  return discoverMedia('movie', {
+    with_original_language: 'en',
+    with_origin_country: 'US',
+    page
+  });
+}
+
+export async function getTrendingBollywood(timeWindow: 'day' | 'week' = 'week', page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
+  try {
+    const data = await fetchTMDB(`/discover/movie?with_original_language=hi&with_origin_country=IN&sort_by=trending_score.desc&page=${page}&region=IN`);
+    return {
+      movies: data.results.map(transformMovie),
+      totalPages: data.total_pages,
+    };
+  } catch (error) {
+    console.error("TMDB trending bollywood error:", error);
+    return getBollywoodMovies(page); // Fallback to popular Bollywood
   }
 }

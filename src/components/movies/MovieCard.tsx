@@ -161,6 +161,29 @@ export function MovieCard({ movie, showRating, rating, size = "md", className }:
             </div>
           )}
 
+          {/* Language & Region Badges */}
+          <div className="absolute top-2 left-2 z-20 flex flex-col gap-1">
+            {movie.language && movie.language !== 'EN' && (
+              <div className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 border border-white/10 rounded-none">
+                <span className="font-mono text-[8px] font-bold text-white tracking-widest uppercase">
+                  {movie.language === 'HI' ? 'Hindi' :
+                    movie.language === 'TA' ? 'Tamil' :
+                      movie.language === 'TE' ? 'Telugu' :
+                        movie.language === 'ML' ? 'Malayalam' :
+                          movie.language === 'KN' ? 'Kannada' :
+                            movie.language === 'BN' ? 'Bengali' : movie.language}
+                </span>
+              </div>
+            )}
+            {movie.region === 'IN' && (
+              <div className="bg-primary/20 backdrop-blur-md px-1.5 py-0.5 border border-primary/20 rounded-none">
+                <span className="font-mono text-[8px] font-bold text-primary tracking-widest uppercase">
+                  India
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* Top Gradient for contrast if needed (optional, keeping minimal) */}
 
 

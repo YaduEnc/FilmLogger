@@ -62,7 +62,7 @@ export function LogEntryCard({ entry, showMovie = true }: LogEntryCardProps) {
 
           {/* Review */}
           {entry.reviewShort && (
-            <p className="mt-3 text-[13px] leading-relaxed line-clamp-3 text-foreground/80 font-serif italic border-l border-white/10 pl-4">
+            <p className="mt-3 text-[13px] leading-relaxed line-clamp-3 text-foreground/80 font-serif italic pl-4">
               "{entry.reviewShort}"
             </p>
           )}

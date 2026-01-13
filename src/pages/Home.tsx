@@ -23,7 +23,10 @@ import {
   getTopRatedTV,
   getOnTheAirTV,
   getMovieDetails,
-  getTVDetails
+  getTVDetails,
+  getTrendingBollywood,
+  getBollywoodMovies,
+  getHollywoodMovies
 } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -91,10 +94,6 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
               {child}
             </div>
           ))}
-          {/* Decorative end marker */}
-          <div className="flex-none w-20 flex items-center justify-center">
-            <div className="w-px h-40 bg-gradient-to-b from-transparent via-white/5 to-transparent" />
-          </div>
         </div>
       </div>
     </div>
@@ -112,6 +111,9 @@ export default function Home() {
   const [topRatedTV, setTopRatedTV] = useState<Movie[]>([]);
   const [onTheAirTV, setOnTheAirTV] = useState<Movie[]>([]);
   const [trendingAll, setTrendingAll] = useState<Movie[]>([]);
+  const [trendingBollywood, setTrendingBollywood] = useState<Movie[]>([]);
+  const [popularBollywood, setPopularBollywood] = useState<Movie[]>([]);
+  const [popularHollywood, setPopularHollywood] = useState<Movie[]>([]);
   const [trendingTimeWindow, setTrendingTimeWindow] = useState<'day' | 'week'>('day');
   const [isTrendingLoading, setIsTrendingLoading] = useState(false);
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
@@ -131,14 +133,20 @@ export default function Home() {
           popularTVData,
           topRatedTVData,
           onTheAirTVData,
-          trendingAllData
+          trendingAllData,
+          trendingBollywoodData,
+          popularBollywoodData,
+          popularHollywoodData
         ] = await Promise.all([
           getTrendingMovies(),
           getPopularMovies(),
           getPopularTV(),
           getTopRatedTV(),
           getOnTheAirTV(),
-          getTrendingAll(1, trendingTimeWindow)
+          getTrendingAll(1, trendingTimeWindow),
+          getTrendingBollywood('week'),
+          getBollywoodMovies(),
+          getHollywoodMovies()
         ]);
 
         const featuredBasic = trendingMoviesData.movies
@@ -166,6 +174,9 @@ export default function Home() {
         setTopRatedTV(topRatedTVData.movies.slice(0, 12));
         setOnTheAirTV(onTheAirTVData.movies.slice(0, 12));
         setTrendingAll(trendingAllData.movies.slice(0, 15));
+        setTrendingBollywood(trendingBollywoodData.movies.slice(0, 12));
+        setPopularBollywood(popularBollywoodData.movies.slice(0, 12));
+        setPopularHollywood(popularHollywoodData.movies.slice(0, 12));
 
         const announcementsData = await getActiveAnnouncements(5);
         setAnnouncements(announcementsData as Announcement[]);
@@ -588,6 +599,37 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Bollywood Expansion */}
+              {trendingBollywood.length > 0 && (
+                <HorizontalScroll title="Trending Bollywood" link="/search?original_language=hi">
+                  {trendingBollywood.map((item) => (
+                    <div key={item.id} className="w-[180px] sm:w-[200px]">
+                      <MovieCard movie={item} size="md" />
+                    </div>
+                  ))}
+                </HorizontalScroll>
+              )}
+
+              {popularBollywood.length > 0 && (
+                <HorizontalScroll title="Popular Indian Cinema" link="/search?region=IN">
+                  {popularBollywood.map((item) => (
+                    <div key={item.id} className="w-[180px] sm:w-[200px]">
+                      <MovieCard movie={item} size="md" />
+                    </div>
+                  ))}
+                </HorizontalScroll>
+              )}
+
+              {popularHollywood.length > 0 && (
+                <HorizontalScroll title="Hollywood Spotlight" link="/search?original_language=en">
+                  {popularHollywood.map((item) => (
+                    <div key={item.id} className="w-[180px] sm:w-[200px]">
+                      <MovieCard movie={item} size="md" />
+                    </div>
+                  ))}
+                </HorizontalScroll>
               )}
 
               {/* Popular Films */}
