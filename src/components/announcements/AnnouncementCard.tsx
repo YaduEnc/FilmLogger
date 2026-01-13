@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Announcement } from '@/types/movie';
-import { 
-  Play, ExternalLink, Calendar, Pin, Newspaper, 
-  Film, Sparkles, Bell, PartyPopper 
+import {
+  Play, ExternalLink, Calendar, Pin, Newspaper,
+  Film, Sparkles, Bell, PartyPopper
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -26,18 +26,18 @@ const categoryConfig = {
 
 export function AnnouncementCard({ announcement, variant = 'full' }: AnnouncementCardProps) {
   const [isVideoOpen, setIsVideoOpen] = useState(false);
-  
+
   const CategoryIcon = categoryConfig[announcement.category]?.icon || Newspaper;
   const categoryLabel = categoryConfig[announcement.category]?.label || 'News';
   const categoryColor = categoryConfig[announcement.category]?.color || 'bg-muted';
-  
+
   // YouTube thumbnail URL
-  const youtubeThumbnail = announcement.youtubeVideoId 
+  const youtubeThumbnail = announcement.youtubeVideoId
     ? `https://img.youtube.com/vi/${announcement.youtubeVideoId}/maxresdefault.jpg`
     : null;
-  
+
   // Fallback thumbnail if maxresdefault doesn't exist
-  const youtubeThumbnailFallback = announcement.youtubeVideoId 
+  const youtubeThumbnailFallback = announcement.youtubeVideoId
     ? `https://img.youtube.com/vi/${announcement.youtubeVideoId}/hqdefault.jpg`
     : null;
 
@@ -49,9 +49,9 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
           {/* Thumbnail */}
           {youtubeThumbnail ? (
             <div className="w-full aspect-video relative bg-muted">
-              <img 
-                src={youtubeThumbnail} 
-                alt="" 
+              <img
+                src={youtubeThumbnail}
+                alt=""
                 loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={(e) => {
@@ -81,9 +81,9 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
             </div>
           ) : announcement.imageUrl ? (
             <div className="w-full aspect-video relative bg-muted">
-              <img 
-                src={announcement.imageUrl} 
-                alt="" 
+              <img
+                src={announcement.imageUrl}
+                alt=""
                 loading="lazy"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
@@ -100,7 +100,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
               <CategoryIcon className="h-8 w-8 text-primary opacity-50" />
             </div>
           )}
-          
+
           {/* Content */}
           <div className="p-3">
             <div className="flex items-center gap-1.5 mb-1">
@@ -128,13 +128,13 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
           <div className="flex gap-4">
             {/* Thumbnail */}
             {youtubeThumbnail ? (
-              <button 
+              <button
                 onClick={() => setIsVideoOpen(true)}
                 className="w-32 h-20 rounded-lg overflow-hidden bg-muted shrink-0 relative group"
               >
-                <img 
-                  src={youtubeThumbnail} 
-                  alt="" 
+                <img
+                  src={youtubeThumbnail}
+                  alt=""
                   loading="lazy"
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                   onError={(e) => {
@@ -151,15 +151,15 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
               </button>
             ) : announcement.imageUrl ? (
               <div className="w-32 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
-                <img 
-                  src={announcement.imageUrl} 
-                  alt="" 
+                <img
+                  src={announcement.imageUrl}
+                  alt=""
                   loading="lazy"
                   className="w-full h-full object-cover"
                 />
               </div>
             ) : null}
-            
+
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2">
@@ -174,17 +174,17 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
                   </Badge>
                 )}
               </div>
-              
+
               <h3 className="font-medium mb-1 line-clamp-1">{announcement.title}</h3>
               <p className="text-sm text-muted-foreground line-clamp-2">{announcement.content}</p>
-              
+
               <div className="flex items-center gap-4 mt-2">
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
                   {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
                 </span>
                 {announcement.articleUrl && (
-                  <a 
+                  <a
                     href={announcement.articleUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -198,10 +198,14 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
             </div>
           </div>
         </Card>
-        
+
         {/* Video Modal */}
         <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
           <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black">
+            <DialogHeader className="sr-only">
+              <DialogTitle>{announcement.title}</DialogTitle>
+              <DialogDescription>Video player for {announcement.title}</DialogDescription>
+            </DialogHeader>
             <div className="aspect-video">
               <iframe
                 src={`https://www.youtube.com/embed/${announcement.youtubeVideoId}?autoplay=1`}
@@ -223,13 +227,13 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
       <Card className="overflow-hidden border-border/50 hover:border-border transition-all">
         {/* Thumbnail */}
         {youtubeThumbnail ? (
-          <button 
+          <button
             onClick={() => setIsVideoOpen(true)}
             className="w-full aspect-video bg-muted relative group"
           >
-            <img 
-              src={youtubeThumbnail} 
-              alt="" 
+            <img
+              src={youtubeThumbnail}
+              alt=""
               loading="lazy"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
@@ -262,9 +266,9 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
           </button>
         ) : announcement.imageUrl ? (
           <div className="w-full aspect-video bg-muted relative">
-            <img 
-              src={announcement.imageUrl} 
-              alt="" 
+            <img
+              src={announcement.imageUrl}
+              alt=""
               loading="lazy"
               className="w-full h-full object-cover"
             />
@@ -277,7 +281,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
             </div>
           </div>
         ) : null}
-        
+
         {/* Content */}
         <div className="p-6">
           {/* Category badge if no image */}
@@ -295,20 +299,20 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
               )}
             </div>
           )}
-          
+
           <h2 className="text-xl font-serif font-medium mb-3">{announcement.title}</h2>
           <p className="text-muted-foreground leading-relaxed mb-4">{announcement.content}</p>
-          
+
           <div className="flex items-center justify-between pt-4 border-t border-border/50">
             <span className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
               {formatDistanceToNow(new Date(announcement.createdAt), { addSuffix: true })}
             </span>
-            
+
             <div className="flex items-center gap-2">
               {announcement.youtubeUrl && (
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => setIsVideoOpen(true)}
                   className="gap-2 rounded-full"
@@ -318,7 +322,7 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
                 </Button>
               )}
               {announcement.articleUrl && (
-                <a 
+                <a
                   href={announcement.articleUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -333,10 +337,14 @@ export function AnnouncementCard({ announcement, variant = 'full' }: Announcemen
           </div>
         </div>
       </Card>
-      
+
       {/* Video Modal */}
       <Dialog open={isVideoOpen} onOpenChange={setIsVideoOpen}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{announcement.title}</DialogTitle>
+            <DialogDescription>Video player for {announcement.title}</DialogDescription>
+          </DialogHeader>
           <div className="aspect-video">
             <iframe
               src={`https://www.youtube.com/embed/${announcement.youtubeVideoId}?autoplay=1`}
