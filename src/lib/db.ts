@@ -1430,6 +1430,12 @@ export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "li
             createdAt: serverTimestamp()
         });
 
+        // Update community rating if rating is provided
+        if (review.rating > 0) {
+            updateCommunityRating(review.authorUid, review.movieId.toString(), review.mediaType, review.rating)
+                .catch(err => console.error("Failed to update community rating from review:", err));
+        }
+
         // Log social activity
         logActivity({
             userId: review.authorUid,

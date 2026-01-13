@@ -19,6 +19,8 @@ import { getUserFriends } from '@/lib/db';
 import { Send, ArrowLeft, Film, Loader2, Plus, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { getDoc, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function Messages() {
   const { user } = useAuth();
@@ -86,8 +88,6 @@ export default function Messages() {
 
     try {
       // Get current user's data
-      const { getDoc, doc } = await import('firebase/firestore');
-      const { db } = await import('@/lib/firebase');
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       const currentUserData = userDoc.data();
 
@@ -323,8 +323,8 @@ export default function Messages() {
                         <div className={`flex-1 ${isOwn ? 'text-right' : ''}`}>
                           <div
                             className={`inline-block max-w-[70%] p-3 rounded-lg ${isOwn
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
                               }`}
                           >
                             {message.movieId && (

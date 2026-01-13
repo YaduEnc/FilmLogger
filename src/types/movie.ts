@@ -10,12 +10,18 @@ export interface Movie {
   cast?: string[];
   castMembers?: { id: number; name: string; character?: string; profileUrl?: string }[];
   synopsis?: string;
+  tagline?: string;
   language?: string;
   countries?: string[];
   rating?: number;
   voteCount?: number;
   backdropUrl?: string;
   trailerUrl?: string;
+  // OMDb / IMDb Data
+  imdbId?: string;
+  imdbRating?: string;
+  imdbVotes?: string;
+  awards?: string;
   // Enhanced Media
   videos?: { key: string; name: string; type: string; official?: boolean }[];
   backdrops?: { url: string; width: number; height: number }[];
@@ -55,6 +61,13 @@ export interface Movie {
   collectionName?: string;
   collectionPosterUrl?: string;
   collectionBackdropUrl?: string;
+}
+
+export interface CommunityData {
+  averageRating: number;
+  totalRatings: number;
+  topGenres: string[];
+  genreVotes?: Record<string, number>;
 }
 
 export interface Collection {
@@ -105,6 +118,27 @@ export interface TVProgress {
   isCompleted: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface TVEpisode {
+  id: number;
+  name: string;
+  overview: string;
+  still_path?: string;
+  episode_number: number;
+  air_date: string;
+  runtime?: number;
+  vote_average?: number;
+}
+
+export interface TVSeasonDetails {
+  id: number;
+  name: string;
+  overview: string;
+  poster_path: string;
+  season_number: number;
+  air_date: string;
+  episodes: TVEpisode[];
 }
 
 export interface MovieList {

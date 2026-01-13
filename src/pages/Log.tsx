@@ -236,7 +236,7 @@ export default function Log() {
               ) : (
                 <div className="flex items-center gap-6 p-6 bg-white/[0.02] border border-white/5 relative group transition-all hover:bg-white/[0.04]">
                   <div className="w-20 aspect-[2/3] border border-white/10 overflow-hidden shadow-2xl shrink-0">
-                    {movie.posterUrl && <img src={movie.posterUrl} alt="" className="w-full h-full object-cover transition-all duration-[1.5s] grayscale group-hover:grayscale-0" />}
+                    {movie.posterUrl && <img src={movie.posterUrl} alt="" className="w-full h-full object-cover transition-all [transition-duration:1500ms] grayscale group-hover:grayscale-0" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-serif text-2xl font-bold uppercase tracking-tighter leading-none mb-2">{movie.title}</h3>

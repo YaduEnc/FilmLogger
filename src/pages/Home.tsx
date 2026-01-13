@@ -288,7 +288,7 @@ export default function Home() {
             {/* Backdrop Image with Ken Burns Effect */}
             <div
               key={`backdrop-${currentFeatured.id}`}
-              className="absolute inset-0 bg-cover bg-center transition-all duration-[6000ms] ease-out scale-100"
+              className="absolute inset-0 bg-cover bg-center transition-all [transition-duration:6000ms] ease-out scale-100"
               style={{
                 backgroundImage: `url(${currentFeatured.backdropUrl})`,
               }}
@@ -330,8 +330,15 @@ export default function Home() {
                     </span>
                     <div className="flex items-center gap-2 px-3 py-1.5 border border-white/5 bg-white/[0.02] backdrop-blur-sm">
                       <Star className="h-3 w-3 fill-primary text-primary" />
-                      <span className="font-mono text-[10px] font-bold tracking-[0.2em]">{currentFeatured.rating?.toFixed(1)}</span>
+                      <span className="font-mono text-[10px] font-bold tracking-[0.2em]">{currentFeatured.imdbRating || currentFeatured.rating?.toFixed(1)}</span>
                     </div>
+                    {currentFeatured.awards && currentFeatured.awards !== "N/A" && (
+                      <div className="hidden sm:flex items-center px-4 py-1.5 border border-[#f5c518]/20 bg-[#f5c518]/5">
+                        <span className="font-mono text-[9px] font-bold text-[#f5c518] uppercase tracking-[0.2em] leading-none">
+                          {currentFeatured.awards}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Cinematic Title */}
@@ -410,7 +417,7 @@ export default function Home() {
                               src={currentFeatured.castMembers.find(c => c.name === currentFeatured.director)?.profileUrl}
                               alt={currentFeatured.director}
                               className={cn(
-                                "w-full h-full object-cover transition-all duration-[1.5s] ease-out",
+                                "w-full h-full object-cover transition-all [transition-duration:1500ms] ease-out",
                                 "scale-100 grayscale-[0.4] group-hover/dir:scale-110 group-hover/dir:grayscale-0"
                               )}
                             />

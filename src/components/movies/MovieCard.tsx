@@ -163,17 +163,6 @@ export function MovieCard({ movie, showRating, rating, size = "md", className }:
 
           {/* Top Gradient for contrast if needed (optional, keeping minimal) */}
 
-          {/* Rating Badge - Top Right */}
-          {displayRating !== undefined && displayRating > 0 && (
-            <div className="absolute top-3 right-3 z-20">
-              <div className="flex items-center gap-1.5 bg-black/80 backdrop-blur-md border border-white/10 px-2.5 py-1.5 shadow-lg">
-                <Star className="h-3 w-3 fill-primary text-primary" />
-                <span className="font-mono text-[10px] font-bold text-white tracking-widest">
-                  {displayRating.toFixed(1)}
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* Action Touchpoint Overlay (Glassmorphic Strip) */}
           <div className={cn(

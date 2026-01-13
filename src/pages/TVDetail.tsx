@@ -5,7 +5,7 @@ import { H1, H2, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
 import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart, Tv, X, ChevronLeft } from "lucide-react";
-import { Movie, LogEntry } from "@/types/movie";
+import { Movie, LogEntry, CommunityData, TVSeasonDetails, TVEpisode } from "@/types/movie";
 import { getTVDetails, getTVSeasonDetails } from "@/lib/tmdb";
 import { useAuth } from "@/hooks/useAuth";
 import { getMovieLogs, toggleWatchlist, isInWatchlist, toggleFavorite, isFavorite } from "@/lib/db";
@@ -27,7 +27,7 @@ export default function TVDetail() {
     const [userLogs, setUserLogs] = useState<LogEntry[]>([]);
     const [inWatchlist, setInWatchlist] = useState(false);
     const [inFavorites, setInFavorites] = useState(false);
-    const [communityData, setCommunityData] = useState<any>(null);
+    const [communityData, setCommunityData] = useState<CommunityData | null>(null);
     const [userInteraction, setUserInteraction] = useState<{ rating: number | null, genres: string[] }>({ rating: null, genres: [] });
     const [isLoading, setIsLoading] = useState(true);
     const [isHovered, setIsHovered] = useState(false);
@@ -42,7 +42,7 @@ export default function TVDetail() {
     const [selectedBackdropIndex, setSelectedBackdropIndex] = useState(0);
     const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
     const [expandedSeasons, setExpandedSeasons] = useState<Set<number>>(new Set());
-    const [seasonDetails, setSeasonDetails] = useState<{ [key: number]: any }>({});
+    const [seasonDetails, setSeasonDetails] = useState<{ [key: number]: TVSeasonDetails }>({});
     const carouselIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
@@ -82,6 +82,16 @@ export default function TVDetail() {
 
         loadData();
     }, [id, user]);
+
+    const refreshCommunityData = async () => {
+        if (!id || !movie) return;
+        const newCommData = await getCommunityRating(id, 'tv');
+        setCommunityData(newCommData);
+        if (user) {
+            const interaction = await getUserCommunityInteraction(user.uid, id, 'tv');
+            setUserInteraction(interaction);
+        }
+    };
 
     const handleToggleWatchlist = async () => {
         if (!user || !movie) {
@@ -142,7 +152,7 @@ export default function TVDetail() {
                 movie: movie
             });
             // Instant update for this page
-            setUserLogs([{ id: 'temp', watchedDate: new Date().toISOString() } as any]);
+            setUserLogs([{ id: 'temp', watchedDate: new Date().toISOString() } as unknown as LogEntry]);
             toast.success(`Logged ${movie.title} as watched`);
         } catch (err) {
             toast.error("Failed to log show");
@@ -224,10 +234,10 @@ export default function TVDetail() {
                                 {movie.numberOfSeasons && (
                                     <span>{movie.numberOfSeasons} {movie.numberOfSeasons === 1 ? 'Season' : 'Seasons'}</span>
                                 )}
-                                {movie.rating && (
-                                    <div className="flex items-center gap-1">
-                                        <Star className="h-3 w-3 fill-primary text-primary" />
-                                        <span className="text-foreground font-medium">{movie.rating.toFixed(1)}</span>
+                                {movie.imdbRating && (
+                                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-[#f5c518] rounded text-black font-bold">
+                                        <span className="text-[10px] leading-none">IMDb</span>
+                                        <span className="text-xs leading-none">{movie.imdbRating}</span>
                                     </div>
                                 )}
                             </div>
@@ -261,15 +271,15 @@ export default function TVDetail() {
                         <div className="hidden lg:block space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
-                                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Rating</p>
+                                    <p className="text-xs font-semibold uppercase tracking-widest text-[#f5c518] mb-1">IMDb RATING</p>
                                     <div className="flex items-baseline gap-1">
-                                        <span className="text-xl font-serif font-medium">{movie.rating?.toFixed(1) || "—"}</span>
+                                        <span className="text-xl font-serif font-medium">{movie.imdbRating || "—"}</span>
                                         <span className="text-xs text-muted-foreground">/ 10</span>
                                     </div>
                                 </div>
                                 <div className="p-4 bg-muted/30 rounded-lg border border-border/50">
                                     <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">Votes</p>
-                                    <p className="text-xl font-serif font-medium">{movie.voteCount?.toLocaleString() || "—"}</p>
+                                    <p className="text-xl font-serif font-medium">{movie.imdbVotes || "—"}</p>
                                 </div>
                             </div>
                         </div>
@@ -365,8 +375,10 @@ export default function TVDetail() {
                                     <span>{movie.numberOfSeasons} {movie.numberOfSeasons === 1 ? 'Season' : 'Seasons'}</span>
                                 )}
                                 <div className="flex items-center gap-1.5 ml-auto md:ml-0">
-                                    <Star className="h-4 w-4 fill-primary text-primary" />
-                                    <span className="text-foreground font-bold">{movie.rating?.toFixed(1)}</span>
+                                    <div className="flex items-center gap-1.5 px-2 py-1 bg-[#f5c518] rounded text-black font-bold shadow-lg shadow-amber-500/10">
+                                        <span className="text-[10px] leading-none tracking-tight">IMDb</span>
+                                        <span className="text-sm leading-none">{movie.imdbRating || "N/A"}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -479,7 +491,7 @@ export default function TVDetail() {
                                         userRating={userInteraction.rating}
                                     />
                                     {!communityData?.totalRatings && (
-                                        <p className="text-xs text-muted-foreground italic mt-1">Be the first to rate this show!</p>
+                                        <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 mt-2 font-mono">Archive awaiting entry</p>
                                     )}
                                 </div>
                                 <div>
@@ -522,6 +534,18 @@ export default function TVDetail() {
                                 </Button>
                             </Link>
 
+                            {/* Awards Section - Archival Style */}
+                            {movie.awards && movie.awards !== "N/A" && (
+                                <div className="w-full mt-12 mb-8 py-8 border-y border-border/30">
+                                    <div className="flex flex-col md:flex-row md:items-baseline gap-4 md:gap-12 text-left">
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-[#f5c518] shrink-0">Archival Recognition</p>
+                                        <p className="text-xl md:text-2xl font-serif italic text-foreground/90 leading-relaxed tracking-tight max-w-2xl">
+                                            {movie.awards}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
                             <Button
                                 variant={inWatchlist ? "secondary" : "outline"}
                                 size="lg"
@@ -558,12 +582,19 @@ export default function TVDetail() {
                             </Button>
                         </div>
 
-                        {/* Synopsis */}
-                        {movie.synopsis && (
-                            <div className="mb-16">
-                                <p className="text-lg leading-relaxed text-foreground/90 max-w-prose italic font-serif opacity-90">
-                                    {movie.synopsis}
-                                </p>
+                        {/* Synopsis & Tagline */}
+                        {(movie.tagline || movie.synopsis) && (
+                            <div className="mb-16 space-y-4">
+                                {movie.tagline && (
+                                    <p className="text-xl md:text-2xl font-serif font-medium text-foreground tracking-tight italic">
+                                        {movie.tagline}
+                                    </p>
+                                )}
+                                {movie.synopsis && (
+                                    <p className="text-lg leading-relaxed text-foreground/90 max-w-prose font-sans opacity-90">
+                                        {movie.synopsis}
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -672,7 +703,7 @@ export default function TVDetail() {
                                                 </button>
                                                 {isExpanded && hasEpisodes && (
                                                     <div className="border-t border-border/40 p-4 space-y-3 max-h-[600px] overflow-y-auto">
-                                                        {seasonDetails[season.season_number].episodes.map((episode: any) => (
+                                                        {seasonDetails[season.season_number].episodes.map((episode: TVEpisode) => (
                                                             <div key={episode.id} className="flex gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                                                                 {episode.still_path && (
                                                                     <img
@@ -722,7 +753,7 @@ export default function TVDetail() {
                         <Divider className="my-12 opacity-50" />
 
                         {/* Community Reviews Section */}
-                        <ReviewSection movie={movie} />
+                        <ReviewSection movie={movie} onReviewSubmitted={refreshCommunityData} />
 
                     </main>
                 </div>

@@ -169,7 +169,7 @@ export function PopularSection() {
                   src={movie.posterUrl}
                   alt={movie.title}
                   loading="lazy"
-                  className="w-full h-full object-cover transition-all duration-[1.5s] ease-out group-hover/rank:scale-110 grayscale-[0.4] group-hover/rank:grayscale-0"
+                  className="w-full h-full object-cover transition-all [transition-duration:1500ms] ease-out group-hover/rank:scale-110 grayscale-[0.4] group-hover/rank:grayscale-0"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-white/5">

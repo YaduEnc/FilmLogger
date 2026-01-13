@@ -304,7 +304,7 @@ export default function Auth() {
               <img
                 src={backdropMovie.backdropUrl}
                 alt=""
-                className="w-full h-full object-cover grayscale opacity-40 mix-blend-overlay scale-100 animate-in fade-in zoom-in-110 duration-[3000ms]"
+                className="w-full h-full object-cover grayscale opacity-40 mix-blend-overlay scale-100 animate-in fade-in zoom-in-110 [animation-duration:3000ms]"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-black/20" />
               <div className="absolute inset-0 bg-radial-vignette opacity-80" />

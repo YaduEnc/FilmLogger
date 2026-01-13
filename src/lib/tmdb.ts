@@ -1,4 +1,5 @@
-import { Movie, Collection } from "@/types/movie";
+import { Movie, Collection, TVSeasonDetails } from "@/types/movie";
+import { fetchOmdbData } from "./omdb";
 
 const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN;
@@ -19,6 +20,7 @@ interface TMDBMovie {
   production_countries?: { iso_3166_1: string; name: string }[];
   production_companies?: { id: number; name: string; logo_path?: string; origin_country?: string }[];
   overview?: string;
+  tagline?: string;
   original_language?: string;
   vote_average?: number;
   vote_count?: number;
@@ -138,6 +140,7 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
     cast,
     castMembers,
     synopsis: tmdbMovie.overview,
+    tagline: tmdbMovie.tagline,
     language: tmdbMovie.original_language?.toUpperCase(),
     rating: tmdbMovie.vote_average,
     voteCount: tmdbMovie.vote_count,
@@ -221,14 +224,28 @@ export async function searchMovies(query: string, page = 1): Promise<{ movies: M
   }
 }
 
-export async function getMovieDetails(movieId: number): Promise<Movie> {
-  try {
-    const data = await fetchTMDB(`/movie/${movieId}?append_to_response=credits,videos,images&region=IN`);
-    return transformMovie(data);
-  } catch (error) {
-    console.error("TMDB movie error:", error);
-    throw new Error("Failed to fetch movie details");
+export async function getMovieDetails(id: number): Promise<Movie> {
+  // Fetch TMDB data with external IDs
+  const tmdbData = await fetchTMDB(`/movie/${id}?append_to_response=videos,credits,images,external_ids,release_dates,recommendations,similar,production_companies,belongs_to_collection`);
+
+  // Transform TMDB data
+  const movie = transformMovie(tmdbData);
+
+  // Fetch OMDb Data if IMDb ID exists
+  if (tmdbData.external_ids?.imdb_id) {
+    const omdbData = await fetchOmdbData(tmdbData.external_ids.imdb_id);
+    if (omdbData) {
+      movie.imdbId = tmdbData.external_ids.imdb_id;
+      movie.imdbRating = omdbData.imdbRating;
+      movie.imdbVotes = omdbData.imdbVotes;
+      movie.awards = omdbData.Awards;
+    }
   }
+
+  // DEPRECATE TMDB RATING for UI
+  // We keep it in the object for internal sorting if absolutely needed, 
+  // but we should ensure UI prefers IMDb.
+  return movie;
 }
 
 export async function getPopularMovies(page = 1): Promise<{ movies: Movie[]; totalPages: number }> {
@@ -300,6 +317,25 @@ export async function getSimilarTV(tvId: number, page = 1): Promise<{ movies: Mo
 
 // TV API Methods
 
+export async function getTVDetails(id: number): Promise<Movie> {
+  const tmdbData = await fetchTMDB(`/tv/${id}?append_to_response=videos,credits,images,external_ids,content_ratings,recommendations,similar,production_companies,aggregate_credits`);
+
+  const movie = transformMovie(tmdbData);
+
+  // Fetch OMDb Data
+  if (tmdbData.external_ids?.imdb_id) {
+    const omdbData = await fetchOmdbData(tmdbData.external_ids.imdb_id);
+    if (omdbData) {
+      movie.imdbId = tmdbData.external_ids.imdb_id;
+      movie.imdbRating = omdbData.imdbRating;
+      movie.imdbVotes = omdbData.imdbVotes;
+      movie.awards = omdbData.Awards;
+    }
+  }
+
+  return movie;
+}
+
 export async function searchTV(query: string, page = 1): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
   try {
     const data = await fetchTMDB(`/search/tv?query=${encodeURIComponent(query)}&page=${page}&include_adult=false&region=IN`);
@@ -311,16 +347,6 @@ export async function searchTV(query: string, page = 1): Promise<{ movies: Movie
   } catch (error) {
     console.error("TMDB search tv error:", error);
     throw new Error("Failed to search tv shows");
-  }
-}
-
-export async function getTVDetails(tvId: number): Promise<Movie> {
-  try {
-    const data = await fetchTMDB(`/tv/${tvId}?append_to_response=credits,videos,images&region=IN`);
-    return transformMovie(data);
-  } catch (error) {
-    console.error("TMDB tv details error:", error);
-    throw new Error("Failed to fetch tv details");
   }
 }
 
@@ -404,7 +430,7 @@ export async function getUpcomingTV(page = 1): Promise<{ movies: Movie[]; totalP
   }
 }
 
-export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<any> {
+export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Promise<TVSeasonDetails> {
   try {
     const data = await fetchTMDB(`/tv/${tvId}/season/${seasonNumber}?region=IN`);
     return {
