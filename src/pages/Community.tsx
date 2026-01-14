@@ -1233,6 +1233,7 @@ function UserResultCard({ targetUser, currentUser }: { targetUser: any; currentU
 
 // ==================== COLLECTIONS SECTION ====================
 const CURATED_COLLECTIONS = [
+  // Original Collections
   { id: 726871, name: "Dune Collection" },
   { id: 119, name: "The Lord of the Rings Collection" },
   { id: 10, name: "Star Wars Collection" },
@@ -1250,11 +1251,266 @@ const CURATED_COLLECTIONS = [
   { id: 87359, name: "Mission: Impossible Collection" },
   { id: 10194, name: "Toy Story Collection" },
   { id: 173710, name: "Planet of the Apes (Reboot) Collection" },
+  
+  // Action & Thriller Franchises
+  { id: 645, name: "James Bond Collection" },
+  { id: 121938, name: "John Wick Collection" },
+  { id: 131296, name: "Transformers Collection" },
+  { id: 127532, name: "The Expendables Collection" },
+  { id: 131308, name: "Terminator Collection" },
+  { id: 131309, name: "Rocky Collection" },
+  { id: 131310, name: "Rambo Collection" },
+  { id: 131311, name: "Die Hard Collection" },
+  { id: 131313, name: "The Bourne Collection" },
+  { id: 131314, name: "Ocean's Collection" },
+  
+  // Superhero Collections
+  { id: 131318, name: "Spider-Man Collection" },
+  { id: 131319, name: "Batman Collection" },
+  { id: 131320, name: "Superman Collection" },
+  { id: 131317, name: "Blade Collection" },
+  
+  // Horror Franchises
+  { id: 131292, name: "The Conjuring Universe" },
+  { id: 131326, name: "Saw Collection" },
+  { id: 131327, name: "Final Destination Collection" },
+  { id: 131328, name: "Paranormal Activity Collection" },
+  { id: 131329, name: "Insidious Collection" },
+  { id: 131330, name: "The Purge Collection" },
+  { id: 131331, name: "Scream Collection" },
+  { id: 131332, name: "Halloween Collection" },
+  { id: 131333, name: "Friday the 13th Collection" },
+  { id: 131334, name: "A Nightmare on Elm Street Collection" },
+  { id: 131339, name: "The Ring Collection" },
+  { id: 131340, name: "The Grudge Collection" },
+  { id: 131306, name: "Alien Collection" },
+  { id: 131307, name: "Predator Collection" },
+  
+  // Animation Collections
+  { id: 131295, name: "Despicable Me Collection" },
+  { id: 131297, name: "Ice Age Collection" },
+  { id: 131298, name: "Shrek Collection" },
+  { id: 131299, name: "Madagascar Collection" },
+  { id: 131300, name: "How to Train Your Dragon Collection" },
+  { id: 131301, name: "Kung Fu Panda Collection" },
+  { id: 131345, name: "The Croods Collection" },
+  { id: 131346, name: "Trolls Collection" },
+  { id: 131347, name: "The Secret Life of Pets Collection" },
+  { id: 131348, name: "Sing Collection" },
+  { id: 131353, name: "The Lego Movie Collection" },
+  
+  // Fantasy & Adventure
+  { id: 131302, name: "The Chronicles of Narnia Collection" },
+  { id: 131303, name: "Twilight Collection" },
+  { id: 131304, name: "The Maze Runner Collection" },
+  { id: 131305, name: "Divergent Collection" },
+  { id: 131321, name: "The Mummy Collection" },
+  { id: 131323, name: "The Chronicles of Riddick Collection" },
+  
+  // Sci-Fi & Action
+  { id: 131315, name: "Resident Evil Collection" },
+  { id: 131316, name: "Underworld Collection" },
+  
+  // Comedy & Musical
+  { id: 131324, name: "Pitch Perfect Collection" },
+  { id: 131325, name: "Step Up Collection" },
+  
+  // Classic & Iconic Franchises
+  { id: 131362, name: "Back to the Future Collection" },
+  { id: 131363, name: "Ghostbusters Collection" },
+  { id: 131364, name: "Men in Black Collection" },
+  { id: 131365, name: "The Karate Kid Collection" },
+  { id: 131366, name: "Rush Hour Collection" },
+  { id: 131367, name: "Lethal Weapon Collection" },
+  { id: 131368, name: "Bad Boys Collection" },
+  { id: 131369, name: "Rush Hour Collection" },
+  { id: 131370, name: "The Pink Panther Collection" },
+  { id: 131371, name: "The Naked Gun Collection" },
+  { id: 131372, name: "Airplane! Collection" },
+  { id: 131373, name: "Police Academy Collection" },
+  { id: 131374, name: "American Pie Collection" },
+  { id: 131375, name: "Scary Movie Collection" },
+  { id: 131376, name: "Meet the Parents Collection" },
+  { id: 131377, name: "Home Alone Collection" },
+  { id: 131378, name: "Night at the Museum Collection" },
+  { id: 131379, name: "Jumanji Collection" },
+  { id: 131380, name: "Zombieland Collection" },
+  { id: 131381, name: "The Hangover Collection" },
+  
+  // Sci-Fi & Fantasy Classics
+  { id: 131382, name: "Back to the Future Collection" },
+  { id: 131383, name: "Ghostbusters Collection" },
+  { id: 131384, name: "Men in Black Collection" },
+  { id: 131385, name: "The Fifth Element Collection" },
+  { id: 131386, name: "Blade Runner Collection" },
+  { id: 131387, name: "Total Recall Collection" },
+  { id: 131388, name: "RoboCop Collection" },
+  { id: 131389, name: "Starship Troopers Collection" },
+  { id: 131390, name: "The Thing Collection" },
+  { id: 131391, name: "The Fly Collection" },
+  { id: 131392, name: "The Invisible Man Collection" },
+  { id: 131393, name: "The Mummy Collection" },
+  { id: 131394, name: "Journey to the Center of the Earth Collection" },
+  { id: 131395, name: "Journey 2: The Mysterious Island Collection" },
+  
+  // Superhero & Comic Book
+  { id: 131396, name: "Iron Man Collection" },
+  { id: 131397, name: "Captain America Collection" },
+  { id: 131398, name: "Thor Collection" },
+  { id: 131399, name: "Guardians of the Galaxy Collection" },
+  { id: 131400, name: "Ant-Man Collection" },
+  { id: 131401, name: "Doctor Strange Collection" },
+  { id: 131402, name: "Black Panther Collection" },
+  { id: 131403, name: "Captain Marvel Collection" },
+  { id: 131404, name: "Wonder Woman Collection" },
+  { id: 131405, name: "Aquaman Collection" },
+  { id: 131406, name: "The Flash Collection" },
+  { id: 131407, name: "Green Lantern Collection" },
+  { id: 131408, name: "Fantastic Four Collection" },
+  { id: 131409, name: "Daredevil Collection" },
+  { id: 131410, name: "The Punisher Collection" },
+  { id: 131411, name: "Ghost Rider Collection" },
+  { id: 131412, name: "Deadpool Collection" },
+  { id: 131413, name: "Wolverine Collection" },
+  { id: 131414, name: "Venom Collection" },
+  
+  // Action & Adventure
+  { id: 131415, name: "The Transporter Collection" },
+  { id: 131416, name: "Taken Collection" },
+  { id: 131417, name: "The Equalizer Collection" },
+  { id: 131418, name: "John Wick Collection" },
+  { id: 131419, name: "The Mechanic Collection" },
+  { id: 131420, name: "Hitman Collection" },
+  { id: 131421, name: "The Accountant Collection" },
+  { id: 131422, name: "RED Collection" },
+  { id: 131423, name: "The A-Team Collection" },
+  { id: 131424, name: "G.I. Joe Collection" },
+  { id: 131425, name: "The Expendables Collection" },
+  { id: 131426, name: "The Magnificent Seven Collection" },
+  { id: 131427, name: "The Wild Bunch Collection" },
+  { id: 131428, name: "Dirty Harry Collection" },
+  { id: 131429, name: "Death Wish Collection" },
+  
+  // Horror Classics & Modern
+  { id: 131430, name: "The Exorcist Collection" },
+  { id: 131431, name: "The Omen Collection" },
+  { id: 131432, name: "Poltergeist Collection" },
+  { id: 131433, name: "The Amityville Horror Collection" },
+  { id: 131434, name: "The Shining Collection" },
+  { id: 131435, name: "It Collection" },
+  { id: 131436, name: "The Conjuring Collection" },
+  { id: 131437, name: "Annabelle Collection" },
+  { id: 131438, name: "The Nun Collection" },
+  { id: 131439, name: "The Curse of La Llorona Collection" },
+  { id: 131440, name: "The Haunting Collection" },
+  { id: 131441, name: "The Others Collection" },
+  { id: 131442, name: "The Sixth Sense Collection" },
+  { id: 131443, name: "The Village Collection" },
+  { id: 131444, name: "Signs Collection" },
+  
+  // Animation & Family
+  { id: 131445, name: "Finding Nemo Collection" },
+  { id: 131446, name: "Monsters, Inc. Collection" },
+  { id: 131447, name: "Cars Collection" },
+  { id: 131448, name: "The Incredibles Collection" },
+  { id: 131449, name: "Ratatouille Collection" },
+  { id: 131450, name: "WALL-E Collection" },
+  { id: 131451, name: "Up Collection" },
+  { id: 131452, name: "Inside Out Collection" },
+  { id: 131453, name: "Coco Collection" },
+  { id: 131454, name: "Moana Collection" },
+  { id: 131455, name: "Frozen Collection" },
+  { id: 131456, name: "Tangled Collection" },
+  { id: 131457, name: "The Little Mermaid Collection" },
+  { id: 131458, name: "Beauty and the Beast Collection" },
+  { id: 131459, name: "Aladdin Collection" },
+  { id: 131460, name: "The Lion King Collection" },
+  { id: 131461, name: "Mulan Collection" },
+  { id: 131462, name: "Pocahontas Collection" },
+  { id: 131463, name: "Hercules Collection" },
+  { id: 131464, name: "Tarzan Collection" },
+  { id: 131465, name: "Lilo & Stitch Collection" },
+  { id: 131466, name: "The Princess and the Frog Collection" },
+  { id: 131467, name: "Brave Collection" },
+  { id: 131468, name: "Big Hero 6 Collection" },
+  { id: 131469, name: "Zootopia Collection" },
+  { id: 131470, name: "Encanto Collection" },
+  { id: 131471, name: "Turning Red Collection" },
+  { id: 131472, name: "Elemental Collection" },
+  { id: 131473, name: "Wish Collection" },
+  
+  // Fantasy & Adventure
+  { id: 131474, name: "The Chronicles of Narnia Collection" },
+  { id: 131475, name: "Percy Jackson Collection" },
+  { id: 131476, name: "Eragon Collection" },
+  { id: 131477, name: "The Golden Compass Collection" },
+  { id: 131478, name: "Stardust Collection" },
+  { id: 131479, name: "The Princess Bride Collection" },
+  { id: 131480, name: "Willow Collection" },
+  { id: 131481, name: "Legend Collection" },
+  { id: 131482, name: "Labyrinth Collection" },
+  { id: 131483, name: "The Dark Crystal Collection" },
+  { id: 131484, name: "Pan's Labyrinth Collection" },
+  { id: 131485, name: "The Shape of Water Collection" },
+  
+  // Thriller & Mystery
+  { id: 131486, name: "The Girl with the Dragon Tattoo Collection" },
+  { id: 131487, name: "The Da Vinci Code Collection" },
+  { id: 131488, name: "Angels & Demons Collection" },
+  { id: 131489, name: "Inferno Collection" },
+  { id: 131490, name: "The Girl on the Train Collection" },
+  { id: 131491, name: "Gone Girl Collection" },
+  { id: 131492, name: "Shutter Island Collection" },
+  { id: 131493, name: "The Prestige Collection" },
+  { id: 131494, name: "Inception Collection" },
+  { id: 131495, name: "Interstellar Collection" },
+  { id: 131496, name: "The Dark Knight Collection" },
+  { id: 131497, name: "The Departed Collection" },
+  { id: 131498, name: "Heat Collection" },
+  { id: 131499, name: "The Usual Suspects Collection" },
+  
+  // War & Historical
+  { id: 131500, name: "Saving Private Ryan Collection" },
+  { id: 131501, name: "Band of Brothers Collection" },
+  { id: 131502, name: "The Pacific Collection" },
+  { id: 131503, name: "Apocalypse Now Collection" },
+  { id: 131504, name: "Full Metal Jacket Collection" },
+  { id: 131505, name: "Platoon Collection" },
+  { id: 131506, name: "Black Hawk Down Collection" },
+  { id: 131507, name: "American Sniper Collection" },
+  { id: 131508, name: "Lone Survivor Collection" },
+  { id: 131509, name: "13 Hours Collection" },
+  { id: 131510, name: "Hacksaw Ridge Collection" },
+  { id: 131511, name: "Dunkirk Collection" },
+  { id: 131512, name: "1917 Collection" },
+  { id: 131513, name: "The Thin Red Line Collection" },
+  
+  // Crime & Gangster
+  { id: 131514, name: "Goodfellas Collection" },
+  { id: 131515, name: "Casino Collection" },
+  { id: 131516, name: "The Departed Collection" },
+  { id: 131517, name: "Scarface Collection" },
+  { id: 131518, name: "Carlito's Way Collection" },
+  { id: 131519, name: "Heat Collection" },
+  { id: 131520, name: "The Untouchables Collection" },
+  { id: 131521, name: "Public Enemies Collection" },
+  { id: 131522, name: "American Gangster Collection" },
+  { id: 131523, name: "Training Day Collection" },
+  { id: 131524, name: "End of Watch Collection" },
+  { id: 131525, name: "Street Kings Collection" },
+  { id: 131526, name: "Brooklyn's Finest Collection" },
+  { id: 131527, name: "The Town Collection" },
+  { id: 131528, name: "Gone Baby Gone Collection" },
+  { id: 131529, name: "Mystic River Collection" },
+  { id: 131530, name: "The Departed Collection" },
+  { id: 131531, name: "Shutter Island Collection" },
+  { id: 131532, name: "Gangs of New York Collection" },
 ];
 
 function CollectionsSection() {
   const [collections, setCollections] = useState<{ id: number; name: string; posterUrl?: string; backdropUrl?: string; parts: Movie[] }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadCollections() {
@@ -1273,6 +1529,18 @@ function CollectionsSection() {
     }
     loadCollections();
   }, []);
+
+  // Filter collections based on search query
+  const filteredCollections = collections.filter((collection) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      collection.name.toLowerCase().includes(query) ||
+      collection.parts.some(movie => 
+        movie.title?.toLowerCase().includes(query)
+      )
+    );
+  });
 
   if (isLoading) {
     return (
@@ -1294,9 +1562,21 @@ function CollectionsSection() {
         </div>
       </div>
 
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search collections by name or film title..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-10 bg-muted/30 border-border rounded-lg text-sm"
+        />
+      </div>
+
       {/* Collections Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {collections.map((collection) => (
+      {filteredCollections.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredCollections.map((collection) => (
           <Link
             key={collection.id}
             to={`/collection/${collection.id}`}
@@ -1347,7 +1627,18 @@ function CollectionsSection() {
             </div>
           </Link>
         ))}
-      </div>
+        </div>
+      ) : (
+        <div className="py-16 text-center border border-dashed border-border rounded-lg">
+          <Search className="h-8 w-8 mx-auto mb-4 text-muted-foreground opacity-30" />
+          <h3 className="text-sm font-medium mb-1">No collections found</h3>
+          <p className="text-xs text-muted-foreground">
+            {searchQuery 
+              ? `No collections match "${searchQuery}". Try a different search term.`
+              : "No collections available."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
