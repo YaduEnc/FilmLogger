@@ -123,6 +123,12 @@ export function ShareableImage({ movie, children }: ShareableImageProps) {
       return;
     }
 
+    // Ensure we have base64 images (no CORS issues)
+    if (!posterBase64) {
+      toast.error("Image not ready. Please wait for images to load completely.");
+      return;
+    }
+
     setIsExporting(true);
     try {
       // Small delay to ensure DOM is ready
@@ -158,23 +164,79 @@ export function ShareableImage({ movie, children }: ShareableImageProps) {
         },
       });
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          toast.error("Failed to generate image");
-          return;
-        }
+      // Convert canvas to blob
+      const blob = await new Promise<Blob | null>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) {
+            resolve(blob);
+          } else {
+            reject(new Error("Failed to generate blob"));
+          }
+        }, "image/png");
+      });
 
-        const url = URL.createObjectURL(blob);
+      if (!blob) {
+        toast.error("Failed to generate image");
+        return;
+      }
+
+      // Detect mobile devices
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const file = new File([blob], `${movie.title.replace(/[^a-z0-9]/gi, "_")}-story-${Date.now()}.png`, { type: "image/png" });
+
+      // On mobile, prefer Share API
+      if (isMobile && navigator.share && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: `Check out ${movie.title}`,
+            text: note || `Loving ${movie.title}!`,
+            files: [file],
+          });
+          toast.success("Image shared successfully!");
+          return;
+        } catch (error: any) {
+          if (error.name === "AbortError") {
+            return; // User cancelled
+          }
+          // Fall through to download method
+        }
+      }
+
+      // Try download method (works on desktop, limited on mobile)
+      const url = URL.createObjectURL(blob);
+      
+      // For mobile, fallback to opening in new tab or using data URL
+      if (isMobile) {
+        // Mobile fallback: open image in new tab or use data URL for long-press save
+        const dataUrl = canvas.toDataURL("image/png");
+        const newWindow = window.open();
+        if (newWindow) {
+          newWindow.document.write(`<img src="${dataUrl}" style="width:100%;height:auto;" />`);
+          toast.success("Image opened in new tab - long press to save!");
+        } else {
+          // Pop-up blocked, try clipboard
+          try {
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
+            toast.success("Image copied to clipboard!");
+          } catch (clipboardError) {
+            toast.error("Please allow pop-ups or use the Share button");
+          }
+        }
+        URL.revokeObjectURL(url);
+      } else {
+        // Desktop: use download link
         const link = document.createElement("a");
         link.href = url;
         link.download = `${movie.title.replace(/[^a-z0-9]/gi, "_")}-story-${Date.now()}.png`;
+        link.style.display = "none";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-
         toast.success("Image exported successfully!");
-      }, "image/png");
+      }
     } catch (error) {
       console.error("Export error:", error);
       toast.error("Failed to export image. Please try again.");
