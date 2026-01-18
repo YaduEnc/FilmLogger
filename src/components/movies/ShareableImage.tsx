@@ -370,12 +370,12 @@ const ShareableImagePreview = React.forwardRef<
       {backdropBase64 && (
         <div
           data-backdrop
-          className="absolute inset-0 opacity-[0.06] z-0"
+          className="absolute inset-0 opacity-[0.05] z-0"
           style={{
             backgroundImage: `url(${backdropBase64})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            filter: "blur(80px) brightness(0.15)",
+            filter: "blur(100px) brightness(0.12)",
           }}
         />
       )}
@@ -384,7 +384,7 @@ const ShareableImagePreview = React.forwardRef<
       <div 
         className="absolute inset-0 z-5 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 1000px 1400px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.3) 800px)",
+          background: "radial-gradient(ellipse 1100px 1500px at 540px 850px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.25) 900px)",
         }}
       />
 
@@ -392,13 +392,13 @@ const ShareableImagePreview = React.forwardRef<
       <div 
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 1200px 1800px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.4) 800px, rgba(0,0,0,0.8) 1080px)",
+          background: "radial-gradient(ellipse 1400px 2000px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.35) 900px, rgba(0,0,0,0.75) 1080px)",
         }}
       />
 
-      {/* Subtle film grain */}
+      {/* Fine film grain */}
       <div
-        className="absolute inset-0 opacity-[0.12] pointer-events-none z-20"
+        className="absolute inset-0 opacity-[0.1] pointer-events-none z-20"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           backgroundSize: "300px 300px",
@@ -406,15 +406,15 @@ const ShareableImagePreview = React.forwardRef<
         }}
       />
 
-      {/* Content - Perfectly centered layout */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-24">
-        {/* Floating central poster - vertically oriented */}
-        <div className="flex justify-center mb-24">
+      {/* Content - Strict layout with zero overlap */}
+      <div className="relative z-10 h-full flex flex-col items-center" style={{ justifyContent: "flex-start", paddingTop: "280px" }}>
+        {/* Poster - Centered horizontally, slightly above center vertically */}
+        <div className="flex justify-center mb-32">
           {posterBase64 ? (
             <div 
               className="relative"
               style={{
-                filter: "drop-shadow(0 20px 60px rgba(0,0,0,0.6)) drop-shadow(0 10px 30px rgba(0,0,0,0.4))",
+                filter: "drop-shadow(0 25px 70px rgba(0,0,0,0.7)) drop-shadow(0 15px 35px rgba(0,0,0,0.5))",
               }}
             >
               <img
@@ -426,7 +426,6 @@ const ShareableImagePreview = React.forwardRef<
                   width: "480px",
                   height: "720px",
                   borderRadius: "8px",
-                  boxShadow: "0 0 100px rgba(0,0,0,0.9)",
                 }}
                 crossOrigin="anonymous"
                 onError={(e) => {
@@ -450,101 +449,87 @@ const ShareableImagePreview = React.forwardRef<
           )}
         </div>
 
-        {/* Text below poster - All center-aligned on same vertical axis */}
-        <div className="w-full flex flex-col items-center space-y-6">
-          {/* Movie Title - Elegant cinematic serif */}
+        {/* Text stack - Clean vertical stack with minimum one line spacing */}
+        <div className="w-full flex flex-col items-center" style={{ maxWidth: "900px", paddingLeft: "24px", paddingRight: "24px" }}>
+          {/* Movie Title - Appears only once, clean and sharp */}
           <h2 
             className="text-center"
             style={{
               fontFamily: "'Cinzel', 'Trajan Pro', serif",
-              fontSize: "84px",
+              fontSize: "80px",
               fontWeight: "600",
               letterSpacing: "0.02em",
               lineHeight: "1.1",
               color: "#F5F5F0",
-              textShadow: "0 2px 20px rgba(0,0,0,0.8)",
+              textShadow: "0 2px 20px rgba(0,0,0,0.9)",
+              marginBottom: "32px", // Minimum one text line spacing
             }}
           >
             {movie.title}
           </h2>
 
-          {/* Release Year - Smaller muted text */}
+          {/* Release Year - Smaller and muted, minimum spacing */}
           {movie.year && (
             <p 
               className="text-center"
               style={{
                 fontFamily: "'Cinzel', serif",
-                fontSize: "24px",
+                fontSize: "22px",
                 fontWeight: "300",
-                letterSpacing: "0.3em",
-                color: "rgba(255, 255, 255, 0.45)",
-                marginTop: "8px",
+                letterSpacing: "0.35em",
+                color: "rgba(255, 255, 255, 0.4)",
+                marginBottom: "32px", // Minimum one text line spacing
               }}
             >
               {movie.year}
             </p>
           )}
 
-          {/* Tagline/Note - Lighter opacity, clean and readable */}
+          {/* Tagline/Note - Lighter opacity, on its own line, minimum spacing */}
           {note && (
             <p 
-              className="text-center max-w-[800px] mx-auto"
+              className="text-center"
               style={{
                 fontFamily: "'Cinzel', serif",
-                fontSize: "28px",
+                fontSize: "26px",
                 fontWeight: "300",
-                letterSpacing: "0.08em",
-                lineHeight: "1.6",
-                color: "rgba(255, 255, 255, 0.6)",
-                marginTop: "16px",
+                letterSpacing: "0.06em",
+                lineHeight: "1.5",
+                color: "rgba(255, 255, 255, 0.55)",
+                marginBottom: "36px", // Minimum one text line spacing + extra for badge separation
               }}
             >
               {note}
             </p>
           )}
 
-          {/* IMDb Rating Badge - Subtle, centered, at bottom */}
+          {/* IMDb Rating Badge - Small, subtle, at bottom with clear separation */}
           {movie.imdbRating && (
             <div 
-              className="mt-12"
+              className="inline-block"
               style={{
-                paddingTop: "24px",
+                padding: "8px 16px",
+                borderRadius: "20px",
+                backgroundColor: "rgba(245, 197, 24, 0.12)",
+                border: "1px solid rgba(245, 197, 24, 0.25)",
               }}
             >
-              <div 
-                className="inline-block px-6 py-2 rounded-full"
+              <span 
                 style={{
-                  backgroundColor: "rgba(245, 197, 24, 0.15)",
-                  border: "1px solid rgba(245, 197, 24, 0.3)",
+                  fontFamily: "'Cinzel', serif",
+                  fontSize: "16px",
+                  fontWeight: "400",
+                  letterSpacing: "0.12em",
+                  color: "rgba(245, 197, 24, 0.85)",
                 }}
               >
-                <span 
-                  style={{
-                    fontFamily: "'Cinzel', serif",
-                    fontSize: "18px",
-                    fontWeight: "500",
-                    letterSpacing: "0.1em",
-                    color: "rgba(245, 197, 24, 0.9)",
-                  }}
-                >
-                  IMDb {movie.imdbRating}
-                </span>
-              </div>
+                IMDb {movie.imdbRating}
+              </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Subtle warm highlight on poster */}
-      <div 
-        className="absolute top-[240px] left-1/2 -translate-x-1/2 pointer-events-none z-5"
-        style={{
-          width: "520px",
-          height: "740px",
-          background: "radial-gradient(ellipse at center, rgba(251, 191, 36, 0.08) 0px, transparent 70%)",
-          mixBlendMode: "overlay",
-        }}
-      />
     </div>
   );
 });
