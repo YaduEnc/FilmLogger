@@ -14,9 +14,6 @@ interface ShareableImageProps {
 // Helper to convert image URL to base64 via server-side API (bypasses CORS/tainted canvas)
 const imageToBase64 = async (url: string): Promise<string> => {
   try {
-    // Call our serverless API endpoint to fetch image server-side
-    // In production: uses Vercel serverless function
-    // In dev: requires 'vercel dev' to be running, or falls back to CORS proxy
     const apiUrl = `/api/image-to-base64?url=${encodeURIComponent(url)}`;
     const response = await fetch(apiUrl);
     
@@ -373,27 +370,35 @@ const ShareableImagePreview = React.forwardRef<
       {backdropBase64 && (
         <div
           data-backdrop
-          className="absolute inset-0 opacity-[0.08] z-0"
+          className="absolute inset-0 opacity-[0.06] z-0"
           style={{
             backgroundImage: `url(${backdropBase64})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            filter: "blur(60px) brightness(0.2)",
+            filter: "blur(80px) brightness(0.15)",
           }}
         />
       )}
 
-      {/* Soft vignette overlay */}
+      {/* Subtle radial gradient for depth */}
+      <div 
+        className="absolute inset-0 z-5 pointer-events-none"
+        style={{
+          background: "radial-gradient(ellipse 1000px 1400px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.3) 800px)",
+        }}
+      />
+
+      {/* Soft vignette around edges */}
       <div 
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse 800px 1200px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.4) 600px, rgba(0,0,0,0.9) 1080px)",
+          background: "radial-gradient(ellipse 1200px 1800px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.4) 800px, rgba(0,0,0,0.8) 1080px)",
         }}
       />
 
       {/* Subtle film grain */}
       <div
-        className="absolute inset-0 opacity-[0.15] pointer-events-none z-20"
+        className="absolute inset-0 opacity-[0.12] pointer-events-none z-20"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.5' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
           backgroundSize: "300px 300px",
@@ -401,111 +406,143 @@ const ShareableImagePreview = React.forwardRef<
         }}
       />
 
-      {/* Content - Centered floating poster */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-20">
-        {/* Floating central poster */}
-        <div className="flex justify-center mb-16">
+      {/* Content - Perfectly centered layout */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center px-24">
+        {/* Floating central poster - vertically oriented */}
+        <div className="flex justify-center mb-24">
           {posterBase64 ? (
             <div 
               className="relative"
               style={{
-                filter: "drop-shadow(0 0 80px rgba(59, 130, 246, 0.3)) drop-shadow(0 0 40px rgba(251, 191, 36, 0.2))",
+                filter: "drop-shadow(0 20px 60px rgba(0,0,0,0.6)) drop-shadow(0 10px 30px rgba(0,0,0,0.4))",
               }}
             >
               <img
                 data-poster-img
                 src={posterBase64}
                 alt={movie.title}
-                className="w-[520px] h-[780px] object-cover"
+                className="object-cover"
                 style={{
-                  boxShadow: "0 0 120px rgba(0,0,0,0.8), inset 0 0 60px rgba(59, 130, 246, 0.1)",
+                  width: "480px",
+                  height: "720px",
+                  borderRadius: "8px",
+                  boxShadow: "0 0 100px rgba(0,0,0,0.9)",
                 }}
                 crossOrigin="anonymous"
                 onError={(e) => {
                   (e.target as HTMLImageElement).style.display = "none";
                 }}
               />
-              {/* Cool blue shadow / warm highlight overlay */}
-              <div 
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0px, rgba(59, 130, 246, 0) 390px, rgba(251, 191, 36, 0.1) 780px)",
-                  mixBlendMode: "overlay",
-                }}
-              />
             </div>
           ) : (
-            <div className="w-[520px] h-[780px] bg-gradient-to-br from-slate-900/50 to-black flex items-center justify-center border border-white/5">
-              <span className="text-4xl font-serif text-center px-12 text-white/40 tracking-wider">
+            <div 
+              className="bg-gradient-to-br from-slate-900/40 to-black flex items-center justify-center border border-white/5"
+              style={{
+                width: "480px",
+                height: "720px",
+                borderRadius: "8px",
+              }}
+            >
+              <span className="text-3xl font-serif text-center px-12 text-white/30 tracking-wider">
                 {movie.title}
               </span>
             </div>
           )}
         </div>
 
-        {/* Lower third - Title in warm gold */}
-        <div className="absolute bottom-0 left-0 right-0 pb-32 px-20">
-          <div className="text-center space-y-4">
-            {/* Year (subtle, above title) */}
-            {movie.year && (
-              <p 
-                className="text-2xl font-light tracking-[0.3em] text-white/40 uppercase"
-                style={{
-                  letterSpacing: "0.4em",
-                  fontFamily: "'Cinzel', serif",
-                }}
-              >
-                {movie.year}
-              </p>
-            )}
-            
-            {/* Title - Warm gold with soft glow */}
-            <h2 
-              className="text-7xl font-bold leading-none tracking-tight"
+        {/* Text below poster - All center-aligned on same vertical axis */}
+        <div className="w-full flex flex-col items-center space-y-6">
+          {/* Movie Title - Elegant cinematic serif */}
+          <h2 
+            className="text-center"
+            style={{
+              fontFamily: "'Cinzel', 'Trajan Pro', serif",
+              fontSize: "84px",
+              fontWeight: "600",
+              letterSpacing: "0.02em",
+              lineHeight: "1.1",
+              color: "#F5F5F0",
+              textShadow: "0 2px 20px rgba(0,0,0,0.8)",
+            }}
+          >
+            {movie.title}
+          </h2>
+
+          {/* Release Year - Smaller muted text */}
+          {movie.year && (
+            <p 
+              className="text-center"
               style={{
-                fontFamily: "'Cinzel', 'Trajan Pro', serif",
-                color: "#D4AF37",
-                textShadow: "0 0 40px rgba(212, 175, 55, 0.5), 0 0 80px rgba(212, 175, 55, 0.3), 0 4px 20px rgba(0,0,0,0.8)",
-                letterSpacing: "0.02em",
-                fontWeight: "700",
+                fontFamily: "'Cinzel', serif",
+                fontSize: "24px",
+                fontWeight: "300",
+                letterSpacing: "0.3em",
+                color: "rgba(255, 255, 255, 0.45)",
+                marginTop: "8px",
               }}
             >
-              {movie.title}
-            </h2>
+              {movie.year}
+            </p>
+          )}
 
-            {/* Note (if provided) - Elegant and minimal */}
-            {note && (
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <p 
-                  className="text-2xl font-light leading-relaxed text-white/70 max-w-2xl mx-auto"
+          {/* Tagline/Note - Lighter opacity, clean and readable */}
+          {note && (
+            <p 
+              className="text-center max-w-[800px] mx-auto"
+              style={{
+                fontFamily: "'Cinzel', serif",
+                fontSize: "28px",
+                fontWeight: "300",
+                letterSpacing: "0.08em",
+                lineHeight: "1.6",
+                color: "rgba(255, 255, 255, 0.6)",
+                marginTop: "16px",
+              }}
+            >
+              {note}
+            </p>
+          )}
+
+          {/* IMDb Rating Badge - Subtle, centered, at bottom */}
+          {movie.imdbRating && (
+            <div 
+              className="mt-12"
+              style={{
+                paddingTop: "24px",
+              }}
+            >
+              <div 
+                className="inline-block px-6 py-2 rounded-full"
+                style={{
+                  backgroundColor: "rgba(245, 197, 24, 0.15)",
+                  border: "1px solid rgba(245, 197, 24, 0.3)",
+                }}
+              >
+                <span 
                   style={{
                     fontFamily: "'Cinzel', serif",
-                    letterSpacing: "0.05em",
-                    lineHeight: "1.8",
+                    fontSize: "18px",
+                    fontWeight: "500",
+                    letterSpacing: "0.1em",
+                    color: "rgba(245, 197, 24, 0.9)",
                   }}
                 >
-                  {note}
-                </p>
+                  IMDb {movie.imdbRating}
+                </span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Additional depth layers */}
-      {/* Cool blue ambient light (top) */}
+      {/* Subtle warm highlight on poster */}
       <div 
-        className="absolute top-0 left-0 right-0 h-[600px] pointer-events-none z-5"
+        className="absolute top-[240px] left-1/2 -translate-x-1/2 pointer-events-none z-5"
         style={{
-          background: "radial-gradient(ellipse 800px 600px at 540px 0px, rgba(59, 130, 246, 0.12) 0px, rgba(59, 130, 246, 0) 420px)",
-        }}
-      />
-      
-      {/* Warm highlight (bottom) */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 h-[400px] pointer-events-none z-5"
-        style={{
-          background: "radial-gradient(ellipse 800px 400px at 540px 400px, rgba(251, 191, 36, 0.08) 0px, rgba(251, 191, 36, 0) 280px)",
+          width: "520px",
+          height: "740px",
+          background: "radial-gradient(ellipse at center, rgba(251, 191, 36, 0.08) 0px, transparent 70%)",
+          mixBlendMode: "overlay",
         }}
       />
     </div>
