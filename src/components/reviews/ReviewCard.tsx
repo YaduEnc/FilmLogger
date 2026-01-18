@@ -29,11 +29,20 @@ export function ReviewCard({ review }: ReviewCardProps) {
             toast.error("Please sign in to like reviews");
             return;
         }
+
+        // Optimistic update - update UI immediately (assume toggle)
+        const previousLikes = likes;
+        const optimisticLikes = likes + 1; // Optimistically increment
+        setLikes(optimisticLikes);
         setIsLiking(true);
+
         try {
             const added = await toggleEntityLike(user.uid, review.id, 'review', user.displayName || 'Someone', user.photoURL || undefined);
-            setLikes(prev => added ? prev + 1 : prev - 1);
+            // Correct based on actual result (added = +1, removed = -1)
+            setLikes(added ? previousLikes + 1 : previousLikes - 1);
         } catch (error) {
+            // Rollback on error
+            setLikes(previousLikes);
             toast.error("Action failed");
         } finally {
             setIsLiking(false);
@@ -138,7 +147,7 @@ export function ReviewCard({ review }: ReviewCardProps) {
                         Hide spoilers
                     </Button>
                 )}
-            </div>
+            </div>           
 
             <div className="flex items-center gap-6 pt-4 border-t border-border/30">
                 <button
@@ -175,11 +184,20 @@ export function ReviewCard({ review }: ReviewCardProps) {
                                         toast.error("Please sign in to like comments");
                                         return;
                                     }
+
+                                    // Optimistic update - update UI immediately
+                                    const previousLikes = commentLikes;
+                                    const optimisticLikes = commentLikes + 1; // Optimistically increment
+                                    setCommentLikes(optimisticLikes);
                                     setIsLikingComment(true);
+
                                     try {
                                         const added = await toggleEntityLike(user.uid, comment.id, 'comment', user.displayName || 'Someone', user.photoURL || undefined);
-                                        setCommentLikes(prev => added ? prev + 1 : prev - 1);
+                                        // Correct based on actual result
+                                        setCommentLikes(added ? previousLikes + 1 : previousLikes - 1);
                                     } catch (error) {
+                                        // Rollback on error
+                                        setCommentLikes(previousLikes);
                                         toast.error("Action failed");
                                     } finally {
                                         setIsLikingComment(false);

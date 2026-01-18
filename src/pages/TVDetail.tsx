@@ -99,12 +99,22 @@ export default function TVDetail() {
             return;
         }
 
+        // Optimistic update - update UI immediately
+        const previousState = inWatchlist;
+        const optimisticState = !inWatchlist;
+        setInWatchlist(optimisticState);
         setIsWatchlistActionLoading(true);
+
         try {
             const added = await toggleWatchlist(user.uid, movie);
-            setInWatchlist(added);
+            // Only update if server response differs (safety check)
+            if (added !== optimisticState) {
+                setInWatchlist(added);
+            }
             toast.success(added ? `${movie.title} added to watchlist` : `${movie.title} removed from watchlist`);
         } catch (error) {
+            // Rollback on error
+            setInWatchlist(previousState);
             console.error("Watchlist error:", error);
             toast.error("Failed to update watchlist");
         } finally {
@@ -118,12 +128,22 @@ export default function TVDetail() {
             return;
         }
 
+        // Optimistic update - update UI immediately
+        const previousState = inFavorites;
+        const optimisticState = !inFavorites;
+        setInFavorites(optimisticState);
         setIsFavoriteActionLoading(true);
+
         try {
             const added = await toggleFavorite(user.uid, movie);
-            setInFavorites(added);
+            // Only update if server response differs (safety check)
+            if (added !== optimisticState) {
+                setInFavorites(added);
+            }
             toast.success(added ? `${movie.title} added to favorites` : `${movie.title} removed from favorites`);
         } catch (error) {
+            // Rollback on error
+            setInFavorites(previousState);
             console.error("Favorite error:", error);
             toast.error("Failed to update favorites");
         } finally {
@@ -137,7 +157,24 @@ export default function TVDetail() {
         if (!user || !movie) return toast.error("Sign in to log shows");
         if (hasWatched) return toast.info("Already logged");
 
+        // Optimistic update - update UI immediately
+        const previousLogs = userLogs;
+        const tempLog: LogEntry = {
+            id: 'temp',
+            watchedDate: new Date().toISOString(),
+            movieId: movie.id,
+            mediaType: 'tv',
+            rating: 0,
+            reviewShort: "",
+            tags: [],
+            visibility: "public",
+            isRewatch: false,
+            rewatchCount: 0,
+            movie: movie
+        } as unknown as LogEntry;
+        setUserLogs([tempLog]);
         setIsActionLoading('log');
+
         try {
             await createLogEntry(user.uid, {
                 movieId: movie.id,
@@ -151,10 +188,11 @@ export default function TVDetail() {
                 rewatchCount: 0,
                 movie: movie
             });
-            // Instant update for this page
-            setUserLogs([{ id: 'temp', watchedDate: new Date().toISOString() } as unknown as LogEntry]);
+            // Keep optimistic update - real data will sync on next page load
             toast.success(`Logged ${movie.title} as watched`);
         } catch (err) {
+            // Rollback on error
+            setUserLogs(previousLogs);
             toast.error("Failed to log show");
         } finally {
             setIsActionLoading(null);

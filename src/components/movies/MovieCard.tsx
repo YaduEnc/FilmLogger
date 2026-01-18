@@ -48,12 +48,22 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
     e.stopPropagation();
     if (!user) return toast.error("Sign in to like films");
 
+    // Optimistic update - update UI immediately
+    const previousState = isLiked;
+    const optimisticState = !isLiked;
+    setIsLiked(optimisticState);
     setIsActionLoading('like');
+
     try {
       const newState = await toggleFavorite(user.uid, movie);
-      setIsLiked(newState);
+      // Only update if server response differs (shouldn't happen, but safety check)
+      if (newState !== optimisticState) {
+        setIsLiked(newState);
+      }
       toast.success(newState ? `Added ${movie.title} to favorites` : `Removed ${movie.title} from favorites`);
     } catch (err) {
+      // Rollback on error
+      setIsLiked(previousState);
       toast.error("Failed to update favorite");
     } finally {
       setIsActionLoading(null);
@@ -66,7 +76,11 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
     if (!user) return toast.error("Sign in to log films");
     if (isLogged) return toast.info("Already logged");
 
+    // Optimistic update - update UI immediately
+    const previousState = isLogged;
+    setIsLogged(true);
     setIsActionLoading('log');
+
     try {
       await createLogEntry(user.uid, {
         movieId: movie.id,
@@ -80,9 +94,10 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
         rewatchCount: 0,
         movie: movie
       });
-      setIsLogged(true);
       toast.success(`Logged ${movie.title} as watched`);
     } catch (err) {
+      // Rollback on error
+      setIsLogged(previousState);
       toast.error("Failed to log film");
     } finally {
       setIsActionLoading(null);
