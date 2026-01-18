@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { H1 } from "@/components/ui/typography";
 import { LogEntryCard } from "@/components/movies/LogEntryCard";
@@ -41,18 +41,55 @@ export default function Diary() {
     return Object.entries(counts).map(([date, count]) => ({ date, count }));
   }, [logs]);
 
-  // Group logs by month
-  const groupedLogs = logs.reduce((acc, log) => {
-    const date = new Date(log.watchedDate);
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(log);
-    return acc;
-  }, {} as Record<string, LogEntry[]>);
+  // Group logs by month - memoized to prevent recomputation
+  const groupedLogs = useMemo(() => {
+    return logs.reduce((acc, log) => {
+      const date = new Date(log.watchedDate);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(log);
+      return acc;
+    }, {} as Record<string, LogEntry[]>);
+  }, [logs]);
 
-  const sortedMonths = Object.keys(groupedLogs).sort().reverse();
+  const sortedMonths = useMemo(() => Object.keys(groupedLogs).sort().reverse(), [groupedLogs]);
+  const [visibleMonths, setVisibleMonths] = useState<Set<string>>(new Set());
+  const monthRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Lazy load months using Intersection Observer (virtualization-like behavior)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const monthKey = entry.target.getAttribute('data-month-key');
+          if (monthKey) {
+            setVisibleMonths((prev) => {
+              const next = new Set(prev);
+              if (entry.isIntersecting) {
+                next.add(monthKey);
+              }
+              return next;
+            });
+          }
+        });
+      },
+      { rootMargin: '200px' } // Load 200px before entering viewport
+    );
+
+    sortedMonths.forEach((monthKey) => {
+      const element = monthRefs.current.get(monthKey);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    // Initially show first 2 months
+    setVisibleMonths(new Set(sortedMonths.slice(0, 2)));
+
+    return () => observer.disconnect();
+  }, [sortedMonths]);
 
   const formatMonth = (key: string) => {
     const [year, month] = key.split("-");
@@ -80,18 +117,36 @@ export default function Diary() {
         )}
 
         {logs.length > 0 ? (
-          sortedMonths.map((monthKey) => (
-            <div key={monthKey} className="mb-12">
-              <h2 className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-6 pb-2 border-b border-border/50">
-                {formatMonth(monthKey)}
-              </h2>
-              <div className="space-y-4">
-                {groupedLogs[monthKey].map((entry) => (
-                  <LogEntryCard key={entry.id} entry={entry} />
-                ))}
+          sortedMonths.map((monthKey) => {
+            const isVisible = visibleMonths.has(monthKey);
+            const entries = groupedLogs[monthKey];
+            
+            return (
+              <div
+                key={monthKey}
+                ref={(el) => {
+                  if (el) monthRefs.current.set(monthKey, el);
+                }}
+                data-month-key={monthKey}
+                className="mb-12"
+              >
+                <h2 className="text-xs text-muted-foreground uppercase tracking-widest font-semibold mb-6 pb-2 border-b border-border/50">
+                  {formatMonth(monthKey)}
+                </h2>
+                {isVisible ? (
+                  <div className="space-y-4">
+                    {entries.map((entry) => (
+                      <LogEntryCard key={entry.id} entry={entry} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4 min-h-[200px] flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground opacity-30" />
+                  </div>
+                )}
               </div>
-            </div>
-          ))
+            );
+          })
         ) : (
           <div className="py-24 text-center border-2 border-dashed border-border rounded-xl">
             <Film className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-20" />

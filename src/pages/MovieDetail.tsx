@@ -46,17 +46,25 @@ export default function MovieDetail() {
   const backdropRef = useRef<HTMLDivElement>(null);
   const carouselIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Parallax scroll effect
+  // Parallax scroll effect - throttled with requestAnimationFrame
   useEffect(() => {
+    let ticking = false;
+    
     const handleScroll = () => {
-      if (backdropRef.current) {
-        const scrolled = window.pageYOffset;
-        const parallaxSpeed = 0.5;
-        backdropRef.current.style.transform = `translateY(${scrolled * parallaxSpeed}px)`;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (backdropRef.current) {
+            const scrolled = window.pageYOffset;
+            const parallaxSpeed = 0.5;
+            backdropRef.current.style.transform = `translateY(${scrolled * parallaxSpeed}px)`;
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 

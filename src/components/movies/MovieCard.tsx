@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Movie } from "@/types/movie";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useCallback, memo } from "react";
 import { Star, Heart, Check, Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { toggleFavorite, isFavorite, getMovieLogs, createLogEntry } from "@/lib/db";
@@ -14,10 +14,10 @@ interface MovieCardProps {
   showRating?: boolean;
   rating?: number;
   size?: "sm" | "md" | "lg";
-  className?: string; // Added className prop
+  className?: string;
 }
 
-export function MovieCard({ movie, showRating, rating, size = "md", className }: MovieCardProps) {
+function MovieCardComponent({ movie, showRating, rating, size = "md", className }: MovieCardProps) {
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -28,23 +28,20 @@ export function MovieCard({ movie, showRating, rating, size = "md", className }:
 
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    async function checkStatus() {
-      if (user && isHovered) {
-        try {
-          const [fav, logs] = await Promise.all([
-            isFavorite(user.uid, movie.id, movie.mediaType || 'movie'),
-            getMovieLogs(user.uid, movie.id, movie.mediaType || 'movie')
-          ]);
-          setIsLiked(fav);
-          setIsLogged(logs.length > 0);
-        } catch (error) {
-          console.error("Error checking card status:", error);
-        }
-      }
+  // Check status when user clicks/interacts (not on hover)
+  const checkStatusOnInteraction = useCallback(async () => {
+    if (!user || isLiked !== false || isLogged !== false) return;
+    try {
+      const [fav, logs] = await Promise.all([
+        isFavorite(user.uid, movie.id, movie.mediaType || 'movie'),
+        getMovieLogs(user.uid, movie.id, movie.mediaType || 'movie')
+      ]);
+      setIsLiked(fav);
+      setIsLogged(logs.length > 0);
+    } catch (error) {
+      // Silently fail - status will be checked on interaction
     }
-    checkStatus();
-  }, [user, movie.id, movie.mediaType, isHovered]);
+  }, [user, movie.id, movie.mediaType, isLiked, isLogged]);
 
   const handleToggleLike = async (e: React.MouseEvent | React.FocusEvent) => {
     e.preventDefault();
@@ -128,13 +125,17 @@ export function MovieCard({ movie, showRating, rating, size = "md", className }:
   return (
     <Link
       to={`/${movie.mediaType === 'tv' ? 'tv' : 'movie'}/${movie.id}`}
-      className={cn("block group/card outline-none", className)} // Added className here
+      className={cn("block group/card outline-none", className)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onFocus={() => setIsHovered(true)}
+      onFocus={() => {
+        setIsHovered(true);
+        checkStatusOnInteraction();
+      }}
       onBlur={() => setIsHovered(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onClick={checkStatusOnInteraction}
     >
       <div className={cn("relative transition-all duration-500 group/container", sizeClasses[size], "w-full")}>
         {/* Poster Container */}
@@ -281,3 +282,10 @@ export function MovieCard({ movie, showRating, rating, size = "md", className }:
     </Link>
   );
 }
+
+export const MovieCard = memo(MovieCardComponent, (prevProps, nextProps) => {
+  return prevProps.movie.id === nextProps.movie.id &&
+    prevProps.rating === nextProps.rating &&
+    prevProps.size === nextProps.size &&
+    prevProps.className === nextProps.className;
+});
