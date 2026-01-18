@@ -10,6 +10,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OnboardingProvider } from "@/contexts/OnboardingContext";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 const Landing = lazy(() => import("./pages/Landing"));
@@ -51,27 +52,43 @@ const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Status = lazy(() => import("./pages/Status"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes - data stays fresh
+      gcTime: 1000 * 60 * 30, // 30 minutes - cache time (formerly cacheTime)
+      retry: 2, // Retry failed requests 2 times
+      refetchOnWindowFocus: false, // Don't refetch on window focus
+      refetchOnReconnect: true, // Refetch when network reconnects
+      refetchOnMount: true, // Refetch on component mount
+    },
+    mutations: {
+      retry: 1, // Retry mutations once on failure
+    },
+  },
+});
 
 const App = () => (
-  <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <HelmetProvider>
-          <OnboardingProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <BrowserRouter>
-                <ScrollToTop />
-                <Suspense
-                  fallback={
-                    <div className="min-h-screen flex items-center justify-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                    </div>
-                  }
-                >
-                  <Routes>
+  <ErrorBoundary>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <HelmetProvider>
+            <OnboardingProvider>
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                <BrowserRouter>
+                  <ScrollToTop />
+                  <Suspense
+                    fallback={
+                      <div className="min-h-screen flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                      </div>
+                    }
+                  >
+                    <ErrorBoundary>
+                      <Routes>
                     <Route path="/" element={<Landing />} />
                     <Route path="/auth" element={<Auth />} />
                     <Route path="/home" element={<Home />} />
@@ -112,16 +129,18 @@ const App = () => (
                     <Route path="/payment-cancel" element={<PaymentCancel />} />
                     <Route path="/status" element={<Status />} />
                     <Route path="*" element={<NotFound />} />
-                  </Routes>
-                </Suspense>
-                <OnboardingTour />
-              </BrowserRouter>
-            </TooltipProvider>
-          </OnboardingProvider>
-        </HelmetProvider>
-      </AuthProvider>
-    </QueryClientProvider>
-  </ThemeProvider>
+                      </Routes>
+                    </ErrorBoundary>
+                  </Suspense>
+                  <OnboardingTour />
+                </BrowserRouter>
+              </TooltipProvider>
+            </OnboardingProvider>
+          </HelmetProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
+  </ErrorBoundary>
 );
 
 export default App;

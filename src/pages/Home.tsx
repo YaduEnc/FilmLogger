@@ -100,6 +100,13 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
   );
 };
 
+// Cache for home page data to prevent refetching on navigation
+const homeDataCache = {
+  data: null as any,
+  timestamp: 0,
+  staleTime: 1000 * 60 * 5, // 5 minutes - matches QueryClient config
+};
+
 export default function Home() {
   const { user } = useAuth();
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
@@ -125,6 +132,36 @@ export default function Home() {
 
   useEffect(() => {
     async function loadData() {
+      // Check cache first - avoid refetch if data is fresh
+      const now = Date.now();
+      const cacheAge = now - homeDataCache.timestamp;
+      const isCacheValid = homeDataCache.data && cacheAge < homeDataCache.staleTime;
+
+      if (isCacheValid) {
+        // Use cached data immediately
+        const cached = homeDataCache.data;
+        setFeaturedMovies(cached.featuredMovies);
+        setPopularMovies(cached.popularMovies);
+        setTopRatedMovies(cached.topRatedMovies);
+        setPopularTV(cached.popularTV);
+        setTopRatedTV(cached.topRatedTV);
+        setOnTheAirTV(cached.onTheAirTV);
+        setTrendingAll(cached.trendingAll);
+        setTrendingBollywood(cached.trendingBollywood);
+        setPopularBollywood(cached.popularBollywood);
+        setPopularHollywood(cached.popularHollywood);
+        setAnnouncements(cached.announcements);
+        setRecentLogs(cached.recentLogs || []);
+        setFriendActivity(cached.friendActivity || {});
+        setIsLoading(false);
+        // Background refetch if cache is getting stale (50% of stale time)
+        if (cacheAge > homeDataCache.staleTime / 2) {
+          // Continue to load fresh data in background
+        } else {
+          return; // Cache is fresh, skip refetch
+        }
+      }
+
       setIsLoading(true);
       try {
         const [
@@ -181,25 +218,46 @@ export default function Home() {
         const announcementsData = await getActiveAnnouncements(5);
         setAnnouncements(announcementsData as Announcement[]);
 
+        let recentLogsData: LogEntry[] = [];
+        let activityMapData: Record<number, any[]> = {};
+
         if (user) {
           const [fetchedLogs, friends] = await Promise.all([
             getUserLogs(user.uid, { limitCount: 50 }),
             getUserFriends(user.uid)
           ]);
-          setRecentLogs(fetchedLogs.slice(0, 5));
+          recentLogsData = fetchedLogs.slice(0, 5);
+          setRecentLogs(recentLogsData);
 
           // Fetch social context for featured movies
-          const activityMap: Record<number, any[]> = {};
           await Promise.all(featuredFull.map(async (movie) => {
             const watcherPromises = (friends as any[]).map(async (friend) => {
               const logs = await getMovieLogs(friend.uid, movie.id, movie.mediaType || 'movie');
               return logs.length > 0 ? friend : null;
             });
             const movieWatchers = (await Promise.all(watcherPromises)).filter(Boolean);
-            activityMap[movie.id] = movieWatchers;
+            activityMapData[movie.id] = movieWatchers;
           }));
-          setFriendActivity(activityMap);
+          setFriendActivity(activityMapData);
         }
+
+        // Update cache
+        homeDataCache.data = {
+          featuredMovies: featuredFull,
+          popularMovies: popularMoviesData.movies.slice(0, 12),
+          topRatedMovies: popularMoviesData.movies.slice(12, 24),
+          popularTV: popularTVData.movies.slice(0, 12),
+          topRatedTV: topRatedTVData.movies.slice(0, 12),
+          onTheAirTV: onTheAirTVData.movies.slice(0, 12),
+          trendingAll: trendingAllData.movies.slice(0, 15),
+          trendingBollywood: trendingBollywoodData.movies.slice(0, 12),
+          popularBollywood: popularBollywoodData.movies.slice(0, 12),
+          popularHollywood: popularHollywoodData.movies.slice(0, 12),
+          announcements: announcementsData as Announcement[],
+          recentLogs: recentLogsData,
+          friendActivity: activityMapData,
+        };
+        homeDataCache.timestamp = Date.now();
       } catch (error) {
         console.error("Failed to load home data:", error);
       } finally {
