@@ -1,5 +1,3 @@
 User-agent: *
-Disallow: /search
-Disallow: /community
 Allow: /
-Sitemap: https://cinelunatic.com/sitemap.xml
+Sitemap: https://cine.yaduraj.me/sitemap.xml

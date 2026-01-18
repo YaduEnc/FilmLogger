@@ -19,9 +19,17 @@ export function SEOHead({
     structuredData,
     children
 }: SEOHeadProps) {
-    const siteUrl = 'https://cine.yaduraj.me/'; // Replace with actual domain
-    const fullUrl = canonicalUrl ? canonicalUrl : typeof window !== 'undefined' ? window.location.href : siteUrl;
-    const fullImage = image.startsWith('http') ? image : `${siteUrl}${image}`;
+    const siteUrl = 'https://cine.yaduraj.me';
+    let fullUrl: string;
+    if (canonicalUrl) {
+        fullUrl = canonicalUrl;
+    } else if (typeof window !== 'undefined') {
+        const pathname = window.location.pathname;
+        fullUrl = `${siteUrl}${pathname}${window.location.search}`;
+    } else {
+        fullUrl = siteUrl;
+    }
+    const fullImage = image.startsWith('http') ? image : `${siteUrl}${image.startsWith('/') ? image : '/' + image}`;
 
     return (
         <Helmet>
