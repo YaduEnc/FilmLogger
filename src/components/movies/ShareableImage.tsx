@@ -85,24 +85,29 @@ export function ShareableImage({ movie, children }: ShareableImageProps) {
             promises.push(Promise.resolve(null));
           }
           
-          // Wait max 5 seconds for images
+          // Wait max 10 seconds for images (serverless functions might be cold starting)
           const [poster, backdrop] = await Promise.race([
             Promise.all(promises),
             new Promise<[string | null, string | null]>(resolve => 
-              setTimeout(() => resolve([null, null]), 5000)
+              setTimeout(() => resolve([null, null]), 10000)
             )
           ]) as [string | null, string | null];
           
-          setPosterBase64(poster || movie.posterUrl || null);
-          setBackdropBase64(backdrop || movie.backdropUrl || null);
+          // Only use base64 if conversion succeeded (has data: prefix), otherwise null
+          const posterB64 = poster && poster.startsWith('data:') ? poster : null;
+          const backdropB64 = backdrop && backdrop.startsWith('data:') ? backdrop : null;
+          
+          setPosterBase64(posterB64);
+          setBackdropBase64(backdropB64);
           
           // Small delay to ensure DOM is updated
           setTimeout(() => setImagesLoaded(true), 200);
         } catch (error) {
           console.error("Failed to load images:", error);
-          // Fallback to original URLs
-          setPosterBase64(movie.posterUrl || null);
-          setBackdropBase64(movie.backdropUrl || null);
+          // Don't fall back to original URLs - they cause CORS/tainted canvas issues
+          // Only set imagesLoaded so user can try again
+          setPosterBase64(null);
+          setBackdropBase64(null);
           setImagesLoaded(true);
         }
       };
@@ -364,13 +369,13 @@ const ShareableImagePreview = React.forwardRef<
       {/* Deep black background */}
       <div className="absolute inset-0 bg-black" />
 
-      {/* Subtle backdrop for depth (very subtle) */}
-      {(backdropBase64 || movie.backdropUrl) && (
+      {/* Subtle backdrop for depth (very subtle) - only use base64 to avoid CORS */}
+      {backdropBase64 && (
         <div
           data-backdrop
           className="absolute inset-0 opacity-[0.08] z-0"
           style={{
-            backgroundImage: `url(${backdropBase64 || movie.backdropUrl})`,
+            backgroundImage: `url(${backdropBase64})`,
             backgroundSize: "cover",
             backgroundPosition: "center",
             filter: "blur(60px) brightness(0.2)",
@@ -382,7 +387,7 @@ const ShareableImagePreview = React.forwardRef<
       <div 
         className="absolute inset-0 z-10 pointer-events-none"
         style={{
-          background: "radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.9) 100%)",
+          background: "radial-gradient(ellipse 800px 1200px at 540px 960px, rgba(0,0,0,0) 0px, rgba(0,0,0,0.4) 600px, rgba(0,0,0,0.9) 1080px)",
         }}
       />
 
@@ -400,7 +405,7 @@ const ShareableImagePreview = React.forwardRef<
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-20">
         {/* Floating central poster */}
         <div className="flex justify-center mb-16">
-          {(posterBase64 || movie.posterUrl) ? (
+          {posterBase64 ? (
             <div 
               className="relative"
               style={{
@@ -409,7 +414,7 @@ const ShareableImagePreview = React.forwardRef<
             >
               <img
                 data-poster-img
-                src={posterBase64 || movie.posterUrl || ""}
+                src={posterBase64}
                 alt={movie.title}
                 className="w-[520px] h-[780px] object-cover"
                 style={{
@@ -424,7 +429,7 @@ const ShareableImagePreview = React.forwardRef<
               <div 
                 className="absolute inset-0 pointer-events-none"
                 style={{
-                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, transparent 50%, rgba(251, 191, 36, 0.1) 100%)",
+                  background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0px, rgba(59, 130, 246, 0) 390px, rgba(251, 191, 36, 0.1) 780px)",
                   mixBlendMode: "overlay",
                 }}
               />
@@ -492,7 +497,7 @@ const ShareableImagePreview = React.forwardRef<
       <div 
         className="absolute top-0 left-0 right-0 h-[600px] pointer-events-none z-5"
         style={{
-          background: "radial-gradient(ellipse at center top, rgba(59, 130, 246, 0.12) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse 800px 600px at 540px 0px, rgba(59, 130, 246, 0.12) 0px, rgba(59, 130, 246, 0) 420px)",
         }}
       />
       
@@ -500,7 +505,7 @@ const ShareableImagePreview = React.forwardRef<
       <div 
         className="absolute bottom-0 left-0 right-0 h-[400px] pointer-events-none z-5"
         style={{
-          background: "radial-gradient(ellipse at center bottom, rgba(251, 191, 36, 0.08) 0%, transparent 70%)",
+          background: "radial-gradient(ellipse 800px 400px at 540px 400px, rgba(251, 191, 36, 0.08) 0px, rgba(251, 191, 36, 0) 280px)",
         }}
       />
     </div>
