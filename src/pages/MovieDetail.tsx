@@ -4,7 +4,7 @@ import { Layout } from "@/components/layout/Layout";
 import { H1, H2, H3 } from "@/components/ui/typography";
 import { Button } from "@/components/ui/button";
 import { Divider } from "@/components/ui/divider";
-import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart, ChevronLeft, X } from "lucide-react";
+import { Plus, Clock, List, RotateCcw, Loader2, Play, Star, ChevronRight, Check, Heart, ChevronLeft, X, Share2 } from "lucide-react";
 import { Movie, LogEntry, CommunityData } from "@/types/movie";
 import { getMovieDetails, getSimilarMovies, getSimilarTV } from "@/lib/tmdb";
 import { MovieCard } from "@/components/movies/MovieCard";
@@ -17,6 +17,7 @@ import { AddToListModal } from "@/components/movies/AddToListModal";
 import { ReviewSection } from "@/components/reviews/ReviewSection";
 import { CommunityRatingMeter } from "@/components/movies/CommunityRatingMeter";
 import { GenreTagger } from "@/components/movies/GenreTagger";
+import { ShareableImage } from "@/components/movies/ShareableImage";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getCommunityRating, getUserCommunityInteraction, createLogEntry } from "@/lib/db";
@@ -671,6 +672,14 @@ export default function MovieDetail() {
                 <List className="h-4 w-4" />
                 Add to list
               </Button>
+              {movie && (
+                <ShareableImage movie={movie}>
+                  <Button variant="outline" size="lg" className="px-6 gap-2">
+                    <Share2 className="h-4 w-4" />
+                    Create Story
+                  </Button>
+                </ShareableImage>
+              )}
               <Button
                 variant={inFavorites ? "secondary" : "ghost"}
                 size="icon"
