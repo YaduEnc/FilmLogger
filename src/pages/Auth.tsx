@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import "@/styles/cinematic-auth.css";
+import "@/styles/cinematic.css";
 
 export default function Auth() {
   const navigate = useNavigate();

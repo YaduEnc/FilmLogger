@@ -19,10 +19,9 @@ export default function Landing() {
         type="website"
       />
       <SmoothScroll>
-        <main className="relative min-h-screen selection:bg-primary selection:text-primary-foreground">
+        <main className="relative min-h-screen bg-black selection:bg-primary selection:text-primary-foreground">
           <SideNav />
-          <div className="grid-bg fixed inset-0 opacity-30 pointer-events-none" aria-hidden="true" />
-          <div className="noise-overlay" aria-hidden="true" />
+          <div className="grid-bg fixed inset-0 opacity-[0.05] pointer-events-none" aria-hidden="true" />
 
           <div className="relative z-10">
             <HeroSection />
