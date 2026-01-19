@@ -608,7 +608,7 @@ export const createCustomList = async (
         const userData = userDoc.data();
 
         const listsRef = collection(db, "users", userId, "lists");
-        const docRef = await addDoc(listsRef, {
+        const listData = cleanUndefinedFields({
             name,
             description,
             movies: [],
@@ -622,10 +622,12 @@ export const createCustomList = async (
             viewCount: 0,
             userId,
             userName: userData?.displayName || 'Anonymous',
-            userPhoto: userData?.photoURL,
+            userPhoto: userData?.photoURL || null,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
         });
+
+        const docRef = await addDoc(listsRef, listData);
         return docRef.id;
     } catch (error) {
         console.error("Error creating custom list:", error);
@@ -990,10 +992,11 @@ export const logActivity = async (activity: {
     tvProgress?: string;
 }) => {
     try {
-        await addDoc(collection(db, "user_activities"), {
+        const cleanedActivity = cleanUndefinedFields({
             ...activity,
             createdAt: serverTimestamp()
         });
+        await addDoc(collection(db, "user_activities"), cleanedActivity);
     } catch (error) {
         console.error("Error logging activity:", error);
     }
@@ -1423,12 +1426,13 @@ export const getIncomingRequests = async (userId: string) => {
 export const submitReview = async (review: Omit<Review, "id" | "createdAt" | "likeCount" | "commentCount">) => {
     try {
         const reviewsRef = collection(db, "reviews");
-        const docRef = await addDoc(reviewsRef, {
+        const cleanedReview = cleanUndefinedFields({
             ...review,
             likeCount: 0,
             commentCount: 0,
             createdAt: serverTimestamp()
         });
+        const docRef = await addDoc(reviewsRef, cleanedReview);
 
         // Update community rating if rating is provided
         if (review.rating > 0) {
@@ -1551,11 +1555,12 @@ export const getGlobalRecentReviews = async (limitCount: number = 10) => {
 export const submitComment = async (comment: Omit<ReviewComment, "id" | "createdAt" | "likeCount">) => {
     try {
         const commentsRef = collection(db, "comments");
-        const docRef = await addDoc(commentsRef, {
+        const cleanedComment = cleanUndefinedFields({
             ...comment,
             likeCount: 0,
             createdAt: serverTimestamp()
         });
+        const docRef = await addDoc(commentsRef, cleanedComment);
 
         // Increment comment count on review
         const reviewRef = doc(db, "reviews", comment.reviewId);

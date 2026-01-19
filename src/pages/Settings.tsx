@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { getUserData, updateUserData, checkUsernameAvailable, deleteUserAccount, isAdmin, getAllUserDataForExport } from "@/lib/db";
 import { updateProfile, deleteUser } from "firebase/auth";
 import { toast } from "sonner";
+import { ImportHandler } from "@/components/profile/ImportHandler";
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -425,6 +426,23 @@ export default function Settings() {
             <Divider className="my-12 opacity-50" />
           </>
         )}
+
+        <Divider className="my-12 opacity-50" />
+
+        <Divider className="my-12 opacity-50" />
+
+        {/* Migration Section */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <H3 className="text-xl">Migration Protocol</H3>
+            <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-mono text-[8px] uppercase tracking-widest">v1.0</span>
+          </div>
+          <div className="bg-muted/5 p-6 rounded-2xl border border-border/50">
+            <ImportHandler />
+          </div>
+        </section>
+
+        <Divider className="my-12 opacity-50" />
 
         {/* Data & Export */}
         <section className="space-y-4">

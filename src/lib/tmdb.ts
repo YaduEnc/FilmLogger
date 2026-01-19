@@ -211,9 +211,13 @@ async function fetchTMDB(endpoint: string): Promise<any> {
   return response.json();
 }
 
-export async function searchMovies(query: string, page = 1): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
+export async function searchMovies(query: string, page = 1, year?: number): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {
   try {
-    const data = await fetchTMDB(`/search/movie?query=${encodeURIComponent(query)}&page=${page}&include_adult=false&region=IN`);
+    let endpoint = `/search/movie?query=${encodeURIComponent(query)}&page=${page}&include_adult=false`;
+    if (year) {
+      endpoint += `&primary_release_year=${year}`;
+    }
+    const data = await fetchTMDB(endpoint);
 
     return {
       movies: data.results.map(transformMovie),
@@ -441,6 +445,7 @@ export async function getTVSeasonDetails(tvId: number, seasonNumber: number): Pr
       overview: data.overview,
       poster_path: data.poster_path,
       season_number: data.season_number,
+      air_date: data.air_date || '',
       episodes: data.episodes?.map((ep: any) => ({
         id: ep.id,
         name: ep.name,
