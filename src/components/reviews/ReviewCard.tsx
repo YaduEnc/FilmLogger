@@ -2,15 +2,79 @@ import { useState } from "react";
 import { Review, ReviewComment } from "@/types/movie";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Heart, MessageSquare, AlertTriangle, Eye, EyeOff, Loader2, Send } from "lucide-react";
 import { toggleEntityLike, submitComment, getReviewComments } from "@/lib/db";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface ReviewCardProps {
     review: Review;
+}
+
+interface ReviewCommentItemProps {
+    comment: ReviewComment;
+}
+
+function ReviewCommentItem({ comment }: ReviewCommentItemProps) {
+    const { user } = useAuth();
+    const [commentLikes, setCommentLikes] = useState(comment.likeCount || 0);
+    const [isLikingComment, setIsLikingComment] = useState(false);
+
+    const handleLikeComment = async () => {
+        if (!user) {
+            toast.error("Please sign in to like comments");
+            return;
+        }
+
+        const previousLikes = commentLikes;
+        const optimisticLikes = commentLikes + 1;
+        setCommentLikes(optimisticLikes);
+        setIsLikingComment(true);
+
+        try {
+            const added = await toggleEntityLike(
+                user.uid,
+                comment.id,
+                "comment",
+                user.displayName || "Someone",
+                user.photoURL || undefined
+            );
+            setCommentLikes(added ? previousLikes + 1 : previousLikes - 1);
+        } catch (error) {
+            setCommentLikes(previousLikes);
+            toast.error("Action failed");
+        } finally {
+            setIsLikingComment(false);
+        }
+    };
+
+    return (
+        <div className="space-y-2 group/comment">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                        <AvatarImage src={comment.authorPhoto} />
+                        <AvatarFallback className="text-[8px]">{comment.authorName.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-[11px] font-serif font-medium">{comment.authorName}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                        {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : "just now"}
+                    </span>
+                </div>
+                <button
+                    onClick={handleLikeComment}
+                    disabled={isLikingComment}
+                    className="flex items-center gap-1.5 opacity-0 group-hover/comment:opacity-100 transition-opacity"
+                >
+                    <Heart className={cn("h-3 w-3 text-muted-foreground hover:text-destructive", commentLikes > 0 && "fill-destructive text-destructive")} />
+                    <span className="text-[10px] text-muted-foreground">{commentLikes}</span>
+                </button>
+            </div>
+            <p className="text-sm text-foreground/80 pl-8 leading-relaxed">{comment.text}</p>
+        </div>
+    );
 }
 
 export function ReviewCard({ review }: ReviewCardProps) {
@@ -175,61 +239,9 @@ export function ReviewCard({ review }: ReviewCardProps) {
                         </div>
                     ) : (
                         <>
-                            {comments.map((comment) => {
-                                const [commentLikes, setCommentLikes] = useState(comment.likeCount || 0);
-                                const [isLikingComment, setIsLikingComment] = useState(false);
-
-                                const handleLikeComment = async () => {
-                                    if (!user) {
-                                        toast.error("Please sign in to like comments");
-                                        return;
-                                    }
-
-                                    // Optimistic update - update UI immediately
-                                    const previousLikes = commentLikes;
-                                    const optimisticLikes = commentLikes + 1; // Optimistically increment
-                                    setCommentLikes(optimisticLikes);
-                                    setIsLikingComment(true);
-
-                                    try {
-                                        const added = await toggleEntityLike(user.uid, comment.id, 'comment', user.displayName || 'Someone', user.photoURL || undefined);
-                                        // Correct based on actual result
-                                        setCommentLikes(added ? previousLikes + 1 : previousLikes - 1);
-                                    } catch (error) {
-                                        // Rollback on error
-                                        setCommentLikes(previousLikes);
-                                        toast.error("Action failed");
-                                    } finally {
-                                        setIsLikingComment(false);
-                                    }
-                                };
-
-                                return (
-                                    <div key={comment.id} className="space-y-2 group/comment">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <Avatar className="h-6 w-6">
-                                                    <AvatarImage src={comment.authorPhoto} />
-                                                    <AvatarFallback className="text-[8px]">{comment.authorName.charAt(0)}</AvatarFallback>
-                                                </Avatar>
-                                                <span className="text-[11px] font-serif font-medium">{comment.authorName}</span>
-                                                <span className="text-[10px] text-muted-foreground">
-                                                    {comment.createdAt ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true }) : "just now"}
-                                                </span>
-                                            </div>
-                                            <button
-                                                onClick={handleLikeComment}
-                                                disabled={isLikingComment}
-                                                className="flex items-center gap-1.5 opacity-0 group-hover/comment:opacity-100 transition-opacity"
-                                            >
-                                                <Heart className={cn("h-3 w-3 text-muted-foreground hover:text-destructive", commentLikes > 0 && "fill-destructive text-destructive")} />
-                                                <span className="text-[10px] text-muted-foreground">{commentLikes}</span>
-                                            </button>
-                                        </div>
-                                        <p className="text-sm text-foreground/80 pl-8 leading-relaxed">{comment.text}</p>
-                                    </div>
-                                );
-                            })}
+                            {comments.map((comment) => (
+                                <ReviewCommentItem key={comment.id} comment={comment} />
+                            ))}
 
                             {user ? (
                                 <div className="flex gap-3 pt-2">
@@ -267,8 +279,4 @@ export function ReviewCard({ review }: ReviewCardProps) {
 
 function Input(props: any) {
     return <input {...props} className={cn("flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50", props.className)} />;
-}
-
-function cn(...classes: any[]) {
-    return classes.filter(Boolean).join(" ");
 }
