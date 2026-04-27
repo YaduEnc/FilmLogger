@@ -1846,11 +1846,20 @@ export const getMovieReviews = async (movieId: number) => {
         const reviewsRef = collection(db, "reviews");
         const q = query(reviewsRef, where("movieId", "==", movieId));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
+        const reviews = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
-        } as Review)).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        } as Review));
+
+        const likeCounts = await getEntityLikeCounts("review", reviews.map((review) => review.id));
+
+        return reviews
+            .map((review) => ({
+                ...review,
+                likeCount: likeCounts.get(review.id) ?? review.likeCount ?? 0
+            }))
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (error) {
         console.error("Error getting reviews:", error);
         return [];
@@ -1975,15 +1984,58 @@ export const getReviewComments = async (reviewId: string) => {
         const commentsRef = collection(db, "comments");
         const q = query(commentsRef, where("reviewId", "==", reviewId));
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
+        const comments = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
             createdAt: safeTimestampToISO(doc.data().createdAt)
-        } as unknown as ReviewComment)).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+        } as unknown as ReviewComment));
+
+        const likeCounts = await getEntityLikeCounts("comment", comments.map((comment) => comment.id));
+
+        return comments
+            .map((comment) => ({
+                ...comment,
+                likeCount: likeCounts.get(comment.id) ?? comment.likeCount ?? 0
+            }))
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } catch (error) {
         console.error("Error getting comments:", error);
         return [];
     }
+};
+
+const chunkArray = <T,>(items: T[], chunkSize: number) => {
+    const chunks: T[][] = [];
+    for (let index = 0; index < items.length; index += chunkSize) {
+        chunks.push(items.slice(index, index + chunkSize));
+    }
+    return chunks;
+};
+
+const getEntityLikeCounts = async (entityType: 'review' | 'comment', entityIds: string[]) => {
+    const counts = new Map<string, number>();
+    if (entityIds.length === 0) return counts;
+
+    try {
+        const likesRef = collection(db, `${entityType}_likes`);
+        const chunks = chunkArray(Array.from(new Set(entityIds)), 10);
+
+        await Promise.all(chunks.map(async (idsChunk) => {
+            const q = query(likesRef, where("entityId", "in", idsChunk));
+            const snapshot = await getDocs(q);
+
+            snapshot.docs.forEach((likeDoc) => {
+                const data = likeDoc.data();
+                const entityId = data.entityId as string | undefined;
+                if (!entityId) return;
+                counts.set(entityId, (counts.get(entityId) || 0) + 1);
+            });
+        }));
+    } catch (error) {
+        console.error(`Error getting ${entityType} like counts:`, error);
+    }
+
+    return counts;
 };
 
 export const toggleEntityLike = async (
@@ -2016,20 +2068,19 @@ export const toggleEntityLike = async (
 
         if (likeSnap.exists()) {
             await deleteDoc(likeRef);
-            await updateDoc(entityRef, {
-                likeCount: Math.max(0, ((entityData as any).likeCount || 0) - 1)
-            });
             return false;
         } else {
-            await setDoc(likeRef, { userId, entityId, createdAt: serverTimestamp() });
-            await updateDoc(entityRef, {
-                likeCount: ((entityData as any).likeCount || 0) + 1
+            await setDoc(likeRef, {
+                userId,
+                entityId,
+                entityType,
+                createdAt: serverTimestamp()
             });
 
             // Trigger Notification
             const recipientId = (entityData as any).authorUid || (entityData as any).senderId;
             if (recipientId && recipientId !== userId) {
-                await createNotification({
+                createNotification({
                     recipientId,
                     senderId: userId,
                     senderName: senderName || 'Someone',
@@ -2037,7 +2088,7 @@ export const toggleEntityLike = async (
                     type: entityType === 'review' ? 'like_review' : 'like_comment',
                     reviewId: entityType === 'review' ? entityId : (entityData as any).reviewId,
                     movieTitle: (entityData as any).movieTitle
-                });
+                }).catch((notificationError) => console.error("Failed to create like notification:", notificationError));
             }
 
             // Log social activity for the community feed
