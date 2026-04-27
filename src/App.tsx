@@ -100,6 +100,8 @@ const App = () => (
                     <Route path="/collection/:id" element={<CollectionDetail />} />
                     <Route path="/log" element={<Log />} />
                     <Route path="/diary" element={<Diary />} />
+                    <Route path="/profile/:username/diary" element={<Diary />} />
+                    <Route path="/u/:username/diary" element={<Diary />} />
                     <Route path="/lists" element={<Lists />} />
                     <Route path="/lists/community" element={<CommunityLists />} />
                     <Route path="/lists/:userId/:listId" element={<ListDetail />} />

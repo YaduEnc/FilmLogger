@@ -822,28 +822,67 @@ export const getUserByUsername = async (username: string) => {
     }
 };
 
+const normalizeUsername = (username?: string) => username?.trim().toLowerCase() || "";
+
 export const updateUserData = async (userId: string, data: any) => {
     try {
         const userRef = doc(db, "users", userId);
+        const hasUsernameUpdate = typeof data.username === "string";
 
-        // If updating username, also update the usernames collection
-        if (data.username) {
-            const usernameRef = doc(db, "usernames", data.username.toLowerCase());
-            await setDoc(usernameRef, { uid: userId });
+        if (hasUsernameUpdate) {
+            const nextUsername = normalizeUsername(data.username);
+
+            await runTransaction(db, async (transaction) => {
+                const userDoc = await transaction.get(userRef);
+                const currentUsername = normalizeUsername(userDoc.data()?.username);
+                const updatePayload = {
+                    ...data,
+                    username: nextUsername,
+                    updatedAt: serverTimestamp()
+                };
+
+                if (nextUsername) {
+                    const nextUsernameRef = doc(db, "usernames", nextUsername);
+                    const nextUsernameDoc = await transaction.get(nextUsernameRef);
+                    const claimedBy = nextUsernameDoc.data()?.uid;
+
+                    if (nextUsernameDoc.exists() && claimedBy !== userId) {
+                        throw new Error("Username is already claimed");
+                    }
+
+                    transaction.set(nextUsernameRef, { uid: userId });
+                }
+
+                if (currentUsername && currentUsername !== nextUsername) {
+                    transaction.delete(doc(db, "usernames", currentUsername));
+                }
+
+                transaction.set(userRef, updatePayload, { merge: true });
+            });
+
+            return;
         }
 
-        await setDoc(userRef, data, { merge: true });
+        await setDoc(userRef, {
+            ...data,
+            updatedAt: serverTimestamp()
+        }, { merge: true });
     } catch (error) {
         console.error("Error updating user data:", error);
         throw error;
     }
 };
 
-export const checkUsernameAvailable = async (username: string) => {
+export const checkUsernameAvailable = async (username: string, currentUserId?: string) => {
     try {
-        const usernameRef = doc(db, "usernames", username.toLowerCase());
+        const normalizedUsername = normalizeUsername(username);
+        if (!normalizedUsername) return true;
+
+        const usernameRef = doc(db, "usernames", normalizedUsername);
         const usernameDoc = await getDoc(usernameRef);
-        return !usernameDoc.exists();
+        if (!usernameDoc.exists()) return true;
+
+        return usernameDoc.data()?.uid === currentUserId;
     } catch (error) {
         console.error("Error checking username:", error);
         return false;

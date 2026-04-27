@@ -416,7 +416,7 @@ export default function Profile() {
                       ))}
                       {logs.length > 5 && (
                         <div className="text-center pt-8">
-                          <Link to={`/u/${targetUser.username}/diary`}>
+                          <Link to={targetUser.username ? `/profile/${targetUser.username}/diary` : "/diary"}>
                             <Button variant="ghost" className="font-mono text-xs uppercase tracking-widest text-white/50 hover:text-white">View Full Diary</Button>
                           </Link>
                         </div>

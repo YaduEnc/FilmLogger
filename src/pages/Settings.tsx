@@ -58,30 +58,33 @@ export default function Settings() {
   }, [user]);
 
   useEffect(() => {
-    if (!username || username === currentUsername) {
+    const normalizedUsername = username.trim().toLowerCase();
+
+    if (!normalizedUsername || normalizedUsername === currentUsername) {
       setUsernameStatus('idle');
       return;
     }
 
-    if (username.length < 3) {
+    if (normalizedUsername.length < 3) {
       setUsernameStatus('invalid');
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsCheckingUsername(true);
-      const available = await checkUsernameAvailable(username);
+      const available = await checkUsernameAvailable(normalizedUsername, user?.uid);
       setUsernameStatus(available ? 'available' : 'taken');
       setIsCheckingUsername(false);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [username, currentUsername]);
+  }, [username, currentUsername, user?.uid]);
 
   const handleUpdateProfile = async () => {
     if (!user) return;
+    const normalizedUsername = username.trim().toLowerCase();
 
-    if (username && username !== currentUsername && usernameStatus !== 'available') {
+    if (normalizedUsername && normalizedUsername !== currentUsername && usernameStatus !== 'available') {
       toast.error("Please choose a valid, available username");
       return;
     }
@@ -96,17 +99,17 @@ export default function Settings() {
       // Update Firestore user data
       await updateUserData(user.uid, {
         displayName,
-        username: username.toLowerCase(),
+        username: normalizedUsername,
         bio,
-        isPublic,
-        updatedAt: new Date().toISOString()
+        isPublic
       });
 
-      setCurrentUsername(username.toLowerCase());
+      setUsername(normalizedUsername);
+      setCurrentUsername(normalizedUsername);
       toast.success("Profile updated successfully");
     } catch (error) {
       console.error("Failed to update profile:", error);
-      toast.error("Failed to update profile");
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
