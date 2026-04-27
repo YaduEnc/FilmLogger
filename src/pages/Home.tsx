@@ -73,13 +73,13 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
 
   return (
     <div className="mb-20 group/scroll">
-      <div className="flex items-end justify-between mb-4 px-2">
+      <div className="flex items-end justify-between mb-4 px-1">
         <div className="flex flex-col gap-2">
-          <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">{title}</h2>
+          <h2 className="font-serif text-3xl sm:text-[2.1rem] font-bold tracking-tight uppercase">{title}</h2>
         </div>
         {link && (
           <Link to={link}>
-            <Button variant="ghost" size="sm" className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground/60 hover:text-primary hover:bg-transparent transition-all group/btn">
+            <Button variant="ghost" size="sm" className="h-8 px-2 font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground/56 hover:text-primary hover:bg-transparent transition-all group/btn">
               Explore Collection
             </Button>
           </Link>
@@ -88,11 +88,11 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
       <div className="relative">
         <div
           ref={scrollRef}
-          className="flex gap-8 overflow-x-auto scrollbar-hide scroll-smooth pb-8"
+          className="flex gap-5 sm:gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-6"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}
         >
           {React.Children.map(children, (child, index) => (
-            <div className="flex-none transition-all duration-500 hover:scale-105">
+            <div className="flex-none transition-all duration-500 hover:scale-[1.02]">
               {child}
             </div>
           ))}
@@ -106,6 +106,7 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
 const HOME_CACHE_STALE_TIME = 1000 * 60 * 5;
 const homeDataCache = new Map<string, { data: any; timestamp: number }>();
 const getMediaActivityKey = (movie: Movie) => `${movie.mediaType || 'movie'}_${movie.id}`;
+const shelfCardWidthClass = "w-[152px] sm:w-[168px] lg:w-[176px]";
 
 export default function Home() {
   const { user } = useAuth();
@@ -413,7 +414,7 @@ export default function Home() {
                 <div ref={heroContentRef} className="max-w-4xl">
                   {/* Upper Metadata */}
                   <div className="flex flex-wrap items-center gap-6 mb-8 hero-animate">
-                    <span className="font-mono text-[10px] uppercase tracking-[0.4em] text-primary font-bold px-4 py-1.5 border border-primary/20 bg-primary/5 rounded-none">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary font-bold px-4 py-1.5 border border-primary/20 bg-primary/5 rounded-none">
                       {currentFeatured.mediaType === 'tv' ? 'Series' : 'Film'}
                     </span>
                     <div className="flex items-center gap-2 px-3 py-1.5 border border-white/5 bg-white/[0.02] backdrop-blur-sm">
@@ -572,7 +573,7 @@ export default function Home() {
             <div className="mb-20">
               <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-4">
                 <div className="flex flex-col gap-2">
-                  <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Trending</h2>
+                  <h2 className="font-serif text-3xl sm:text-[2.1rem] font-bold tracking-tight uppercase">Trending</h2>
                 </div>
 
                 {/* Premium Toggle Filter */}
@@ -609,7 +610,7 @@ export default function Home() {
               ) : (
                 <HorizontalScroll title="" link="/search">
                   {trendingAll.map((item) => (
-                    <div key={`${item.id}-${trendingTimeWindow}`} className="w-[180px] sm:w-[200px]">
+                    <div key={`${item.id}-${trendingTimeWindow}`} className={shelfCardWidthClass}>
                       <MovieCard movie={item} size="md" />
                     </div>
                   ))}
@@ -626,10 +627,10 @@ export default function Home() {
           <div className="container mx-auto px-6 pb-20">
             <div className="flex items-end justify-between mb-4">
               <div className="flex flex-col gap-2">
-                <h2 className="font-serif text-3xl font-bold tracking-tight uppercase">Cinema News</h2>
+                <h2 className="font-serif text-[1.85rem] font-bold tracking-tight uppercase">Cinema News</h2>
               </div>
-              <Link to="/announcements" className="font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground/60 hover:text-foreground transition-colors">
-                Archive Archive
+              <Link to="/announcements" className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/56 hover:text-foreground transition-colors">
+                News Archive
               </Link>
             </div>
             <div className="flex gap-6 overflow-x-auto scrollbar-hide scroll-smooth pb-4">
@@ -651,7 +652,7 @@ export default function Home() {
             <div className="flex items-center justify-center py-40">
               <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
-                <span className="font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground/40 text-center">Reading Archive...</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/40 text-center">Reading Archive...</span>
               </div>
             </div>
           )}
@@ -664,9 +665,9 @@ export default function Home() {
                 <div className="mb-24">
                   <div className="flex items-end justify-between mb-4">
                     <div className="flex flex-col gap-2">
-                      <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Recent Activity</h2>
+                      <h2 className="font-serif text-3xl sm:text-[2.1rem] font-bold tracking-tight uppercase">Recent Activity</h2>
                     </div>
-                    <Link to="/diary" className="font-mono text-[10px] uppercase tracking-[0.4em] text-muted-foreground/60 hover:text-foreground transition-colors">
+                    <Link to="/diary" className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/56 hover:text-foreground transition-colors">
                       View Diary
                     </Link>
                   </div>
@@ -684,7 +685,7 @@ export default function Home() {
               {trendingBollywood.length > 0 && (
                 <HorizontalScroll title="Trending Bollywood" link="/search?original_language=hi">
                   {trendingBollywood.map((item) => (
-                    <div key={item.id} className="w-[180px] sm:w-[200px]">
+                    <div key={item.id} className={shelfCardWidthClass}>
                       <MovieCard movie={item} size="md" />
                     </div>
                   ))}
@@ -694,7 +695,7 @@ export default function Home() {
               {popularBollywood.length > 0 && (
                 <HorizontalScroll title="Popular Indian Cinema" link="/search?region=IN">
                   {popularBollywood.map((item) => (
-                    <div key={item.id} className="w-[180px] sm:w-[200px]">
+                    <div key={item.id} className={shelfCardWidthClass}>
                       <MovieCard movie={item} size="md" />
                     </div>
                   ))}
@@ -704,7 +705,7 @@ export default function Home() {
               {popularHollywood.length > 0 && (
                 <HorizontalScroll title="Hollywood Spotlight" link="/search?original_language=en">
                   {popularHollywood.map((item) => (
-                    <div key={item.id} className="w-[180px] sm:w-[200px]">
+                    <div key={item.id} className={shelfCardWidthClass}>
                       <MovieCard movie={item} size="md" />
                     </div>
                   ))}
@@ -714,7 +715,7 @@ export default function Home() {
               {/* Popular Films */}
               <HorizontalScroll title="Popular Films" link="/search">
                 {popularMovies.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
+                  <div key={item.id} className={shelfCardWidthClass}>
                     <MovieCard movie={item} size="md" />
                   </div>
                 ))}
@@ -723,7 +724,7 @@ export default function Home() {
               {/* Top Rated Films */}
               <HorizontalScroll title="Top Rated Films" link="/search">
                 {topRatedMovies.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
+                  <div key={item.id} className={shelfCardWidthClass}>
                     <MovieCard movie={item} size="md" />
                   </div>
                 ))}
@@ -732,7 +733,7 @@ export default function Home() {
               {/* Popular Series */}
               <HorizontalScroll title="Popular Series" link="/search?type=tv">
                 {popularTV.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
+                  <div key={item.id} className={shelfCardWidthClass}>
                     <MovieCard movie={item} size="md" />
                   </div>
                 ))}
@@ -741,7 +742,7 @@ export default function Home() {
               {/* Top Rated Series */}
               <HorizontalScroll title="Top Rated Series" link="/search?type=tv">
                 {topRatedTV.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
+                  <div key={item.id} className={shelfCardWidthClass}>
                     <MovieCard movie={item} size="md" />
                   </div>
                 ))}
@@ -750,7 +751,7 @@ export default function Home() {
               {/* Currently Airing */}
               <HorizontalScroll title="Currently Airing" link="/search?type=tv">
                 {onTheAirTV.map((item) => (
-                  <div key={item.id} className="w-[180px] sm:w-[200px]">
+                  <div key={item.id} className={shelfCardWidthClass}>
                     <MovieCard movie={item} size="md" />
                   </div>
                 ))}
@@ -767,7 +768,7 @@ export default function Home() {
                       Begin your cinematic documentation. Your first entry awaits in the archive.
                     </p>
                     <Link to="/search">
-                      <Button className="font-mono text-[10px] uppercase tracking-[0.4em] bg-primary text-black font-black px-10 h-14 rounded-none hover:bg-primary/90 transition-all duration-500 shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]">
+                      <Button className="font-mono text-[10px] uppercase tracking-[0.18em] bg-primary text-black font-black px-10 h-14 rounded-none hover:bg-primary/90 transition-all duration-500 shadow-[0_0_30px_rgba(var(--primary-rgb),0.2)]">
                         Explore Collection
                       </Button>
                     </Link>

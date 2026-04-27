@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { DisplayH2 } from '@/components/ui/typography';
 import { getUnifiedTrending } from '@/lib/db';
-import { TrendingUp, Heart, MessageSquare, Star, Film, Loader2, Eye } from 'lucide-react';
+import { TrendingUp, Star, Film, Loader2 } from 'lucide-react';
+import { MovieCard } from './MovieCard';
 
 interface PopularMovie {
   id: string;
@@ -41,94 +40,6 @@ export function PopularSection() {
     }
   };
 
-  const renderMovieGrid = (movies: PopularMovie[]) => {
-    if (movies.length === 0) {
-      return (
-        <Card className="p-6 text-center text-muted-foreground">
-          <p className="text-sm">No data yet</p>
-          <p className="text-xs mt-1">Start logging movies to see popular content!</p>
-        </Card>
-      );
-    }
-
-    return (
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-2 sm:gap-3">
-        {movies.map((movie, index) => (
-          <Link
-            key={movie.id}
-            to={`/${movie.mediaType}/${movie.movieId}`}
-            className="group relative"
-          >
-            {/* Rank Badge */}
-            <div className="absolute -top-1 -left-1 z-10 bg-primary text-primary-foreground rounded-full w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[9px] sm:text-[10px] font-bold shadow-lg">
-              #{index + 1}
-            </div>
-
-            {/* Poster */}
-            <div className="relative aspect-[2/3] rounded-md overflow-hidden bg-muted">
-              {movie.posterUrl ? (
-                <img
-                  src={movie.posterUrl}
-                  alt={movie.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Film className="h-8 w-8 text-muted-foreground" />
-                </div>
-              )}
-
-              {/* Overlay with combined stats */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <div className="absolute bottom-0 left-0 right-0 p-2 space-y-1">
-                  <p className="text-white text-[10px] font-medium line-clamp-2">{movie.title}</p>
-
-                  {/* Combined metrics */}
-                  <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-white text-[9px]">
-                    {movie.weeklyLogs > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <TrendingUp className="h-2.5 w-2.5" />
-                        <span>{movie.weeklyLogs}</span>
-                      </div>
-                    )}
-                    {movie.favoriteCount > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <Heart className="h-2.5 w-2.5 fill-current" />
-                        <span>{movie.favoriteCount}</span>
-                      </div>
-                    )}
-                    {movie.avgRating > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <Star className="h-2.5 w-2.5 fill-yellow-500 text-yellow-500" />
-                        <span>{movie.avgRating.toFixed(1)}</span>
-                      </div>
-                    )}
-                    {movie.commentCount > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <MessageSquare className="h-2.5 w-2.5" />
-                        <span>{movie.commentCount}</span>
-                      </div>
-                    )}
-                    {movie.logCount > 0 && (
-                      <div className="flex items-center gap-0.5">
-                        <Eye className="h-2.5 w-2.5" />
-                        <span>{movie.logCount}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Title below poster (always visible) */}
-            <p className="mt-1 text-[10px] sm:text-xs font-medium line-clamp-2 text-center">{movie.title}</p>
-          </Link>
-        ))}
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -138,72 +49,51 @@ export function PopularSection() {
   }
 
   return (
-    <div className="space-y-12">
-      <div className="flex flex-col gap-3 mb-12">
-        <h2 className="font-serif text-4xl font-bold tracking-tight uppercase">Trending on CineLunatic</h2>
+    <div className="space-y-10">
+      <div className="flex flex-col gap-2 mb-8">
+        <h2 className="font-serif text-3xl sm:text-[2.1rem] font-bold tracking-tight uppercase">Trending on CineLunatic</h2>
+        <p className="font-serif text-sm text-foreground/58 max-w-xl">
+          A cleaner read on what the network is actually watching.
+        </p>
       </div>
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 2xl:grid-cols-10 gap-x-8 gap-y-12">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-x-5 gap-y-8">
         {trendingMovies.map((movie, index) => (
           <Link
             key={movie.id}
             to={`/${movie.mediaType}/${movie.movieId}`}
-            className="group/rank relative"
+            className="group/rank relative max-w-[176px]"
           >
-            {/* Rank Badge - Archival Mono Style */}
-            <div className="absolute -top-4 -left-4 z-30">
-              <div className="bg-primary text-primary-foreground font-mono text-sm font-bold px-3 py-1 rounded-none shadow-2xl border border-white/10">
-                RANK / {String(index + 1).padStart(2, '0')}
+            <div className="absolute top-2 left-2 z-30">
+              <div className="bg-black/70 backdrop-blur-md text-white font-mono text-[10px] font-bold px-2 py-1 rounded-none border border-white/10 tracking-[0.14em]">
+                {String(index + 1).padStart(2, '0')}
               </div>
             </div>
 
-            {/* Poster Container with Premium Treatment */}
-            <div className="relative aspect-[2/3] rounded-none overflow-hidden transition-all duration-700 bg-muted group-hover/rank:scale-[1.02] group-hover/rank:shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-10 transform-gpu">
-              {/* Persistent Border Overlay */}
-              <div className="absolute inset-0 border border-white/5 rounded-none pointer-events-none z-50" />
-              {/* Subtle Reflection Overlay on Hover */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-transparent opacity-0 transition-opacity duration-700 pointer-events-none z-10 group-hover/rank:opacity-100" />
+            <MovieCard
+              movie={{
+                id: movie.movieId,
+                title: movie.title,
+                posterUrl: movie.posterUrl,
+                year: undefined,
+                mediaType: movie.mediaType
+              }}
+              size="md"
+            />
 
-              {movie.posterUrl ? (
-                <img
-                  src={movie.posterUrl}
-                  alt={movie.title}
-                  loading="lazy"
-                  className="w-full h-full object-cover transition-all [transition-duration:1500ms] ease-out group-hover/rank:scale-110 grayscale-[0.4] group-hover/rank:grayscale-0"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center bg-white/5">
-                  <Film className="h-8 w-8 text-white/10" />
-                </div>
+            <div className="mt-2 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/50">
+              {movie.weeklyLogs > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-primary" />
+                  {movie.weeklyLogs}
+                </span>
               )}
-
-              {/* Kinetic Stats Overlay - Theme Aware */}
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent opacity-0 group-hover/rank:opacity-100 transition-all duration-500 flex flex-col justify-end p-4 z-20 translate-y-3 group-hover/rank:translate-y-0">
-                <div className="flex flex-wrap gap-2 text-foreground">
-                  {movie.weeklyLogs > 0 && (
-                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-none border border-white/10">
-                      <TrendingUp className="h-2.5 w-2.5 text-primary" />
-                      <span className="font-mono text-[9px] font-bold tracking-widest">{movie.weeklyLogs}</span>
-                    </div>
-                  )}
-                  {movie.avgRating > 0 && (
-                    <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-none border border-white/10">
-                      <Star className="h-2.5 w-2.5 fill-primary text-primary" />
-                      <span className="font-mono text-[9px] font-bold tracking-widest">{movie.avgRating.toFixed(1)}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Meta Data */}
-            <div className="mt-4 px-1 group-hover/rank:translate-y-1 transition-transform duration-500">
-              <p className="font-serif text-[12px] font-bold leading-tight truncate tracking-tight text-foreground group-hover/rank:text-primary uppercase">
-                {movie.title}
-              </p>
-              <div className="flex items-center gap-3 mt-1.5">
-                <div className="h-px w-4 bg-primary/30" />
-              </div>
+              {movie.avgRating > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <Star className="h-3 w-3 text-primary" />
+                  {movie.avgRating.toFixed(1)}
+                </span>
+              )}
             </div>
           </Link>
         ))}

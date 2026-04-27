@@ -124,9 +124,9 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
     }
   };
   const sizeClasses = {
-    sm: "w-24",
-    md: "w-36",
-    lg: "w-44",
+    sm: "w-[138px] sm:w-[148px]",
+    md: "w-[152px] sm:w-[168px] lg:w-[176px]",
+    lg: "w-[176px] sm:w-[200px] lg:w-[216px]",
   };
 
   // Get director or creator
@@ -155,8 +155,8 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
       <div className={cn("relative transition-all duration-500 group/container", sizeClasses[size], "w-full")}>
         {/* Poster Container */}
         <div className={cn(
-          "aspect-[2/3] bg-muted/20 relative overflow-hidden shadow-md transition-all duration-500",
-          isHovered ? "shadow-[0_20px_50px_rgba(0,0,0,0.5)] scale-[1.02] z-30" : "z-0"
+          "aspect-[2/3] bg-muted/20 relative overflow-hidden border border-white/8 shadow-md transition-all duration-500",
+          isHovered ? "shadow-[0_20px_50px_rgba(0,0,0,0.42)] scale-[1.02] z-30" : "z-0"
         )}>
           {/* Poster Image */}
           {movie.posterUrl ? (
@@ -164,11 +164,11 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
               src={movie.posterUrl}
               alt={movie.title}
               loading="lazy"
-              className={cn(
-                "w-full h-full object-cover transition-all duration-700",
-                isHovered ? "scale-105 grayscale-[0.2]" : "scale-100 grayscale-[0.5]"
-              )}
-            />
+                className={cn(
+                  "w-full h-full object-cover transition-all duration-700",
+                  isHovered ? "scale-105 grayscale-[0.08]" : "scale-100 grayscale-[0.28]"
+                )}
+              />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-white/5">
               <span className="text-xs text-center px-2 font-mono uppercase tracking-widest text-muted-foreground/60">
@@ -181,7 +181,7 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
           <div className="absolute top-2 left-2 z-20 flex flex-col gap-1">
             {movie.language && movie.language !== 'EN' && (
               <div className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 border border-white/10 rounded-none">
-                <span className="font-mono text-[8px] font-bold text-white tracking-widest uppercase">
+                <span className="font-mono text-[8px] font-bold text-white tracking-[0.18em] uppercase">
                   {movie.language === 'HI' ? 'Hindi' :
                     movie.language === 'TA' ? 'Tamil' :
                       movie.language === 'TE' ? 'Telugu' :
@@ -205,7 +205,7 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
 
           {/* Action Touchpoint Overlay (Glassmorphic Strip) */}
           <div className={cn(
-            "absolute bottom-0 left-0 right-0 p-3 z-20 transition-all duration-300 ease-out translate-y-full opacity-0",
+            "absolute bottom-0 left-0 right-0 p-2.5 z-20 transition-all duration-300 ease-out translate-y-full opacity-0",
             (isHovered || isActionLoading) && "translate-y-0 opacity-100"
           )}>
             <div className="flex items-center justify-between gap-1 bg-black/70 backdrop-blur-xl border border-white/10 p-1 shadow-2xl">
@@ -256,23 +256,23 @@ function MovieCardComponent({ movie, showRating, rating, size = "md", className 
 
         {/* Info Section */}
         {size !== "sm" && (
-          <div className="mt-4 space-y-1">
+          <div className="mt-3 space-y-1">
             <h3 className={cn(
-              "font-serif text-sm font-bold leading-tight uppercase tracking-tight text-foreground transition-colors duration-300",
+              "font-serif text-[15px] font-bold leading-tight uppercase tracking-tight text-foreground transition-colors duration-300",
               isHovered ? "text-primary" : "text-foreground"
             )}>
               <span className="line-clamp-1">{movie.title}</span>
             </h3>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 min-h-[1rem]">
               {movie.year && (
-                <span className="font-mono text-[10px] text-muted-foreground/60 tracking-[0.2em] uppercase">
+                <span className="font-mono text-[10px] text-muted-foreground/60 tracking-[0.16em] uppercase">
                   {movie.year}
                 </span>
               )}
-              {directorOrCreator && (
+              {directorOrCreator && size === "lg" && (
                 <>
                   <div className="h-px w-3 bg-white/10" />
-                  <span className="font-mono text-[9px] text-muted-foreground/40 tracking-[0.2em] uppercase truncate max-w-[80px]">
+                  <span className="font-mono text-[9px] text-muted-foreground/40 tracking-[0.16em] uppercase truncate max-w-[96px]">
                     {directorOrCreator}
                   </span>
                 </>
