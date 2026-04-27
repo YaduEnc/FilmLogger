@@ -10,11 +10,12 @@ import { MovieCard } from "@/components/movies/MovieCard";
 import { PopularSection } from "@/components/movies/PopularSection";
 import { UpcomingReleases } from "@/components/movies/UpcomingReleases";
 import { AnnouncementCard } from "@/components/announcements/AnnouncementCard";
+import { SocialRecommendationsSection } from "@/components/home/SocialRecommendationsSection";
 import { Divider } from "@/components/ui/divider";
 import { Plus, Search, Clock, Film, Loader2, Tv, Clapperboard, TrendingUp, Star, Calendar, ChevronLeft, ChevronRight, Play, Info, Megaphone, ArrowRight, Newspaper, User } from "lucide-react";
 import gsap from "gsap";
 import { AnimatedNoise } from "@/components/landing/AnimatedNoise";
-import { LogEntry, Movie, Announcement } from "@/types/movie";
+import { LogEntry, Movie, Announcement, SocialRecommendations } from "@/types/movie";
 import {
   getTrendingMovies,
   getPopularMovies,
@@ -34,7 +35,8 @@ import {
   getUserLists,
   getActiveAnnouncements,
   getUserFriends,
-  getMovieLogs
+  getFriendActivityForMedia,
+  getSocialMovieRecommendations
 } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
@@ -101,17 +103,15 @@ const HorizontalScroll = ({ children, title, link }: { children: React.ReactNode
 };
 
 // Cache for home page data to prevent refetching on navigation
-const homeDataCache = {
-  data: null as any,
-  timestamp: 0,
-  staleTime: 1000 * 60 * 5, // 5 minutes - matches QueryClient config
-};
+const HOME_CACHE_STALE_TIME = 1000 * 60 * 5;
+const homeDataCache = new Map<string, { data: any; timestamp: number }>();
+const getMediaActivityKey = (movie: Movie) => `${movie.mediaType || 'movie'}_${movie.id}`;
 
 export default function Home() {
   const { user } = useAuth();
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
   const [currentFeaturedIndex, setCurrentFeaturedIndex] = useState(0);
-  const [friendActivity, setFriendActivity] = useState<Record<number, any[]>>({});
+  const [friendActivity, setFriendActivity] = useState<Record<string, any[]>>({});
   const [popularMovies, setPopularMovies] = useState<Movie[]>([]);
   const [topRatedMovies, setTopRatedMovies] = useState<Movie[]>([]);
   const [popularTV, setPopularTV] = useState<Movie[]>([]);
@@ -125,6 +125,7 @@ export default function Home() {
   const [isTrendingLoading, setIsTrendingLoading] = useState(false);
   const [recentLogs, setRecentLogs] = useState<LogEntry[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [socialRecommendations, setSocialRecommendations] = useState<SocialRecommendations | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const heroRef = useRef<HTMLDivElement>(null);
   const heroContentRef = useRef<HTMLDivElement>(null);
@@ -132,14 +133,17 @@ export default function Home() {
 
   useEffect(() => {
     async function loadData() {
+      const cacheKey = `${user?.uid || 'anonymous'}:home`;
+      const cachedEntry = homeDataCache.get(cacheKey);
+
       // Check cache first - avoid refetch if data is fresh
       const now = Date.now();
-      const cacheAge = now - homeDataCache.timestamp;
-      const isCacheValid = homeDataCache.data && cacheAge < homeDataCache.staleTime;
+      const cacheAge = cachedEntry ? now - cachedEntry.timestamp : Number.POSITIVE_INFINITY;
+      const isCacheValid = cachedEntry && cacheAge < HOME_CACHE_STALE_TIME;
 
       if (isCacheValid) {
         // Use cached data immediately
-        const cached = homeDataCache.data;
+        const cached = cachedEntry.data;
         setFeaturedMovies(cached.featuredMovies);
         setPopularMovies(cached.popularMovies);
         setTopRatedMovies(cached.topRatedMovies);
@@ -153,9 +157,10 @@ export default function Home() {
         setAnnouncements(cached.announcements);
         setRecentLogs(cached.recentLogs || []);
         setFriendActivity(cached.friendActivity || {});
+        setSocialRecommendations(cached.socialRecommendations || null);
         setIsLoading(false);
         // Background refetch if cache is getting stale (50% of stale time)
-        if (cacheAge > homeDataCache.staleTime / 2) {
+        if (cacheAge > HOME_CACHE_STALE_TIME / 2) {
           // Continue to load fresh data in background
         } else {
           return; // Cache is fresh, skip refetch
@@ -219,30 +224,42 @@ export default function Home() {
         setAnnouncements(announcementsData as Announcement[]);
 
         let recentLogsData: LogEntry[] = [];
-        let activityMapData: Record<number, any[]> = {};
+        let activityMapData: Record<string, any[]> = {};
+        let recommendationData: SocialRecommendations | null = null;
 
         if (user) {
-          const [fetchedLogs, friends] = await Promise.all([
+          const [fetchedLogs, friends, socialData] = await Promise.all([
             getUserLogs(user.uid, { limitCount: 50 }),
-            getUserFriends(user.uid)
+            getUserFriends(user.uid),
+            getSocialMovieRecommendations(user.uid, 6)
           ]);
           recentLogsData = fetchedLogs.slice(0, 5);
           setRecentLogs(recentLogsData);
+          recommendationData = socialData;
+          setSocialRecommendations(socialData);
 
-          // Fetch social context for featured movies
-          await Promise.all(featuredFull.map(async (movie) => {
-            const watcherPromises = (friends as any[]).map(async (friend) => {
-              const logs = await getMovieLogs(friend.uid, movie.id, movie.mediaType || 'movie');
-              return logs.length > 0 ? friend : null;
-            });
-            const movieWatchers = (await Promise.all(watcherPromises)).filter(Boolean);
-            activityMapData[movie.id] = movieWatchers;
-          }));
+          const featuredActivity = await getFriendActivityForMedia(
+            (friends as any[]).map((friend) => friend.uid),
+            featuredFull.map((movie) => ({
+              id: movie.id,
+              mediaType: movie.mediaType || 'movie'
+            })),
+            user.uid
+          );
+
+          const friendMap = new Map((friends as any[]).map((friend) => [friend.uid, friend]));
+          Object.entries(featuredActivity).forEach(([mediaKey, friendIds]) => {
+            activityMapData[mediaKey] = friendIds
+              .map((friendId) => friendMap.get(friendId))
+              .filter(Boolean);
+          });
+
           setFriendActivity(activityMapData);
         }
 
         // Update cache
-        homeDataCache.data = {
+        homeDataCache.set(cacheKey, {
+          data: {
           featuredMovies: featuredFull,
           popularMovies: popularMoviesData.movies.slice(0, 12),
           topRatedMovies: popularMoviesData.movies.slice(12, 24),
@@ -256,8 +273,10 @@ export default function Home() {
           announcements: announcementsData as Announcement[],
           recentLogs: recentLogsData,
           friendActivity: activityMapData,
-        };
-        homeDataCache.timestamp = Date.now();
+          socialRecommendations: recommendationData,
+          },
+          timestamp: Date.now()
+        });
       } catch (error) {
         console.error("Failed to load home data:", error);
       } finally {
@@ -343,7 +362,7 @@ export default function Home() {
   };
 
   const currentFeatured = featuredMovies[currentFeaturedIndex];
-  const currentMovieFriends = currentFeatured ? (friendActivity[currentFeatured.id] || []) : [];
+  const currentMovieFriends = currentFeatured ? (friendActivity[getMediaActivityKey(currentFeatured)] || []) : [];
 
   return (
     <Layout>
@@ -659,6 +678,8 @@ export default function Home() {
                 </div>
               )}
 
+              {socialRecommendations && <SocialRecommendationsSection recommendations={socialRecommendations} />}
+
               {/* Bollywood Expansion */}
               {trendingBollywood.length > 0 && (
                 <HorizontalScroll title="Trending Bollywood" link="/search?original_language=hi">
@@ -761,4 +782,3 @@ export default function Home() {
     </Layout>
   );
 }
-

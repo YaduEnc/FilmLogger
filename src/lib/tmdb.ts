@@ -5,6 +5,9 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const TMDB_ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p";
+const TMDB_CACHE_TTL_MS = 1000 * 60 * 5;
+const tmdbResponseCache = new Map<string, { data: any; expiresAt: number }>();
+const tmdbInFlightRequests = new Map<string, Promise<any>>();
 
 interface TMDBMovie {
   id: number;
@@ -192,6 +195,16 @@ function transformMovie(tmdbMovie: TMDBMovie): Movie {
 }
 
 async function fetchTMDB(endpoint: string): Promise<any> {
+  const cachedResponse = tmdbResponseCache.get(endpoint);
+  if (cachedResponse && cachedResponse.expiresAt > Date.now()) {
+    return cachedResponse.data;
+  }
+
+  const inFlightRequest = tmdbInFlightRequests.get(endpoint);
+  if (inFlightRequest) {
+    return inFlightRequest;
+  }
+
   const url = `${TMDB_BASE_URL}${endpoint}`;
 
   const options = {
@@ -202,13 +215,28 @@ async function fetchTMDB(endpoint: string): Promise<any> {
     }
   };
 
-  const response = await fetch(url, options);
+  const request = (async () => {
+    const response = await fetch(url, options);
 
-  if (!response.ok) {
-    throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    tmdbResponseCache.set(endpoint, {
+      data,
+      expiresAt: Date.now() + TMDB_CACHE_TTL_MS
+    });
+    return data;
+  })();
+
+  tmdbInFlightRequests.set(endpoint, request);
+
+  try {
+    return await request;
+  } finally {
+    tmdbInFlightRequests.delete(endpoint);
   }
-
-  return response.json();
 }
 
 export async function searchMovies(query: string, page = 1, year?: number): Promise<{ movies: Movie[]; totalPages: number; totalResults: number }> {

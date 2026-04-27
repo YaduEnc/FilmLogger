@@ -240,15 +240,6 @@ export default function Search() {
     }
   }, [mediaType]);
 
-  // Initial load
-  useEffect(() => {
-    if (initialQuery) {
-      handleSearch(initialQuery);
-    } else {
-      loadInitialContent();
-    }
-  }, []); // Run once
-
   const onSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     handleSearch(query);

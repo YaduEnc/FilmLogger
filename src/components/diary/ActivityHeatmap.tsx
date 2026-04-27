@@ -6,12 +6,15 @@ interface ActivityHeatmapProps {
     logs: { date: string; count: number }[];
     className?: string;
     isPublic?: boolean;
+    year?: number;
 }
 
-export const ActivityHeatmap = ({ logs, className, isPublic = true }: ActivityHeatmapProps) => {
+export const ActivityHeatmap = ({ logs, className, isPublic = true, year }: ActivityHeatmapProps) => {
     const today = new Date();
-    const startDate = startOfYear(today);
-    const endDate = endOfYear(today);
+    const targetYear = year || today.getFullYear();
+    const referenceDate = new Date(targetYear, 0, 1);
+    const startDate = startOfYear(referenceDate);
+    const endDate = endOfYear(referenceDate);
     const [hoveredDay, setHoveredDay] = useState<{ day: Date; count: number; x: number; y: number } | null>(null);
 
     const allDays = useMemo(() => {

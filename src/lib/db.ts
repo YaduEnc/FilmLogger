@@ -19,7 +19,7 @@ import {
 } from "firebase/firestore";
 import type { User as FirebaseUser } from "firebase/auth";
 import { db } from "./firebase";
-import { LogEntry, Movie, MovieList, Notification, Review, ReviewComment, TVProgress } from "@/types/movie";
+import { LogEntry, Movie, MovieList, Notification, Review, ReviewComment, SocialMovieRecommendation, SocialRecommendations, TVProgress } from "@/types/movie";
 
 // Community Ratings & Genres
 export const updateCommunityRating = async (userId: string, mediaId: string, mediaType: 'movie' | 'tv', rating: number) => {
@@ -202,7 +202,8 @@ export const createLogEntry = async (userId: string, entry: Omit<LogEntry, "id" 
         // Check if this is a rewatch
         const existingLogsQuery = query(
             logsRef,
-            where('movieId', '==', entry.movieId)
+            where('movieId', '==', entry.movieId),
+            where('mediaType', '==', entry.mediaType)
         );
         const existingLogs = await getDocs(existingLogsQuery);
         const isRewatch = existingLogs.size > 0;
@@ -302,6 +303,58 @@ export const getUserActivityData = async (userId: string) => {
     } catch (error) {
         console.error("Error getting activity data:", error);
         return [];
+    }
+};
+
+export const getFriendActivityForMedia = async (
+    friendIds: string[],
+    mediaItems: Array<{ id: number; mediaType: 'movie' | 'tv' }>,
+    viewerUserId?: string,
+    limitCount = 250
+) => {
+    try {
+        if (friendIds.length === 0 || mediaItems.length === 0) {
+            return {};
+        }
+
+        const targetMediaKeys = new Set(
+            mediaItems.map((item) => `${item.mediaType}_${item.id}`)
+        );
+
+        const activityMap: Record<string, string[]> = {};
+        const friendLogGroups = await Promise.all(
+            friendIds.map(async (friendId) => ({
+                friendId,
+                logs: await getUserLogs(friendId, {
+                    currentUserId: viewerUserId,
+                    isConnection: true,
+                    limitCount
+                })
+            }))
+        );
+
+        friendLogGroups.forEach(({ friendId, logs }) => {
+            const seenForFriend = new Set<string>();
+
+            logs.forEach((log) => {
+                const mediaKey = `${log.mediaType}_${log.movieId}`;
+                if (!targetMediaKeys.has(mediaKey) || seenForFriend.has(mediaKey)) {
+                    return;
+                }
+
+                if (!activityMap[mediaKey]) {
+                    activityMap[mediaKey] = [];
+                }
+
+                activityMap[mediaKey].push(friendId);
+                seenForFriend.add(mediaKey);
+            });
+        });
+
+        return activityMap;
+    } catch (error) {
+        console.error("Error getting friend activity for media:", error);
+        return {};
     }
 };
 
@@ -1351,6 +1404,293 @@ export const getRecommendedUsers = async (currentUserId: string, limitCount: num
     } catch (error) {
         console.error("Error getting recommended users:", error);
         return [];
+    }
+};
+
+const getRecommendationMovieKey = (movie: Movie) => `${movie.mediaType || 'movie'}_${movie.id}`;
+
+const formatRecommendationNames = (names: string[]) => {
+    if (names.length === 0) return "your network";
+    if (names.length === 1) return names[0];
+    if (names.length === 2) return `${names[0]} and ${names[1]}`;
+    return `${names[0]}, ${names[1]} +${names.length - 2}`;
+};
+
+const buildRecommendationReason = (
+    prefix: string,
+    names: string[],
+    fallback: string
+) => `${prefix} ${names.length > 0 ? formatRecommendationNames(names) : fallback}`;
+
+const rankRecommendationEntries = (entries: SocialMovieRecommendation[], limitCount: number) =>
+    entries
+        .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            if (b.userCount !== a.userCount) return b.userCount - a.userCount;
+            return b.averageRating - a.averageRating;
+        })
+        .slice(0, limitCount);
+
+export const getSocialMovieRecommendations = async (currentUserId: string, limitCount: number = 8): Promise<SocialRecommendations> => {
+    const emptyRecommendations: SocialRecommendations = {
+        becauseFriendsLiked: [],
+        similarTaste: [],
+        networkTopThisWeek: [],
+        hiddenGems: []
+    };
+
+    try {
+        const currentUserLogs = await getUserLogs(currentUserId, { limitCount: 500 });
+        if (currentUserLogs.length === 0) {
+            return emptyRecommendations;
+        }
+
+        const watchedKeys = new Set(currentUserLogs.map((log) => `${log.mediaType}_${log.movieId}`));
+        const highlyRatedLogs = currentUserLogs.filter((log) => log.rating >= 7);
+        const topGenreCounts: Record<string, number> = {};
+        highlyRatedLogs.forEach((log) => {
+            log.movie.genres?.forEach((genre) => {
+                topGenreCounts[genre] = (topGenreCounts[genre] || 0) + 1;
+            });
+        });
+
+        const preferredGenres = Object.entries(topGenreCounts)
+            .sort(([, left], [, right]) => right - left)
+            .slice(0, 3)
+            .map(([genre]) => genre);
+
+        const [friends, similarUsers] = await Promise.all([
+            getUserFriends(currentUserId),
+            getRecommendedUsers(currentUserId, 4)
+        ]);
+
+        const friendLogGroups = await Promise.all(
+            friends.map(async (friend: any) => ({
+                user: friend,
+                logs: await getUserLogs(friend.uid, {
+                    currentUserId,
+                    isConnection: true,
+                    limitCount: 300
+                })
+            }))
+        );
+
+        const similarLogGroups = await Promise.all(
+            similarUsers.map(async (similarUser: any) => ({
+                user: similarUser,
+                logs: await getUserLogs(similarUser.uid, {
+                    currentUserId,
+                    limitCount: 250
+                })
+            }))
+        );
+
+        const becauseFriendsMap = new Map<string, {
+            movie: Movie;
+            score: number;
+            userIds: Set<string>;
+            userNames: Set<string>;
+            ratingTotal: number;
+            ratingCount: number;
+        }>();
+        const networkThisWeekMap = new Map<string, {
+            movie: Movie;
+            score: number;
+            userIds: Set<string>;
+            userNames: Set<string>;
+            ratingTotal: number;
+            ratingCount: number;
+        }>();
+        const similarTasteMap = new Map<string, {
+            movie: Movie;
+            score: number;
+            userIds: Set<string>;
+            userNames: Set<string>;
+            ratingTotal: number;
+            ratingCount: number;
+        }>();
+        const hiddenGemsMap = new Map<string, {
+            movie: Movie;
+            score: number;
+            userIds: Set<string>;
+            userNames: Set<string>;
+            ratingTotal: number;
+            ratingCount: number;
+        }>();
+
+        const collectRecommendation = (
+            targetMap: Map<string, {
+                movie: Movie;
+                score: number;
+                userIds: Set<string>;
+                userNames: Set<string>;
+                ratingTotal: number;
+                ratingCount: number;
+            }>,
+            log: LogEntry,
+            userId: string,
+            userName: string,
+            scoreBoost: number
+        ) => {
+            const movieKey = getRecommendationMovieKey(log.movie);
+            if (watchedKeys.has(movieKey)) return;
+
+            const existing = targetMap.get(movieKey) || {
+                movie: log.movie,
+                score: 0,
+                userIds: new Set<string>(),
+                userNames: new Set<string>(),
+                ratingTotal: 0,
+                ratingCount: 0
+            };
+
+            existing.score += scoreBoost;
+            existing.userIds.add(userId);
+            existing.userNames.add(userName);
+            if (log.rating > 0) {
+                existing.ratingTotal += log.rating;
+                existing.ratingCount += 1;
+            }
+
+            targetMap.set(movieKey, existing);
+        };
+
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+        friendLogGroups.forEach(({ user, logs }) => {
+            const friendName = user.displayName || user.username || "A friend";
+
+            logs.forEach((log) => {
+                if (log.rating >= 7 || log.movie.rating || log.reviewShort) {
+                    collectRecommendation(
+                        becauseFriendsMap,
+                        log,
+                        user.uid,
+                        friendName,
+                        (log.rating || 6) + 2
+                    );
+                }
+
+                if (new Date(log.watchedDate).getTime() >= sevenDaysAgo) {
+                    collectRecommendation(
+                        networkThisWeekMap,
+                        log,
+                        user.uid,
+                        friendName,
+                        (log.rating || 5) + 3
+                    );
+                }
+            });
+        });
+
+        similarLogGroups.forEach(({ user, logs }) => {
+            const userName = user.displayName || user.username || "A cinephile";
+
+            logs.forEach((log) => {
+                if (log.rating >= 7) {
+                    collectRecommendation(
+                        similarTasteMap,
+                        log,
+                        user.uid,
+                        userName,
+                        (log.rating || 6) + (user.recommendationScore || 0) / 10
+                    );
+                }
+
+                const sharedGenreCount = log.movie.genres?.filter((genre) => preferredGenres.includes(genre)).length || 0;
+                if (sharedGenreCount > 0 && log.rating >= 8) {
+                    collectRecommendation(
+                        hiddenGemsMap,
+                        log,
+                        user.uid,
+                        userName,
+                        (log.rating || 8) + sharedGenreCount * 4
+                    );
+                }
+            });
+        });
+
+        friendLogGroups.forEach(({ user, logs }) => {
+            const friendName = user.displayName || user.username || "A friend";
+            logs.forEach((log) => {
+                const sharedGenreCount = log.movie.genres?.filter((genre) => preferredGenres.includes(genre)).length || 0;
+                if (sharedGenreCount > 0 && log.rating >= 8) {
+                    collectRecommendation(
+                        hiddenGemsMap,
+                        log,
+                        user.uid,
+                        friendName,
+                        (log.rating || 8) + sharedGenreCount * 3
+                    );
+                }
+            });
+        });
+
+        const mapToRecommendations = (
+            sourceMap: Map<string, {
+                movie: Movie;
+                score: number;
+                userIds: Set<string>;
+                userNames: Set<string>;
+                ratingTotal: number;
+                ratingCount: number;
+            }>,
+            reasonBuilder: (names: string[], movie: Movie, userCount: number) => string,
+            options?: { maxMentions?: number }
+        ) =>
+            Array.from(sourceMap.values())
+                .filter((entry) => {
+                    if (!options?.maxMentions) return true;
+                    return entry.userIds.size <= options.maxMentions;
+                })
+                .map((entry) => ({
+                    movie: entry.movie,
+                    reason: reasonBuilder(Array.from(entry.userNames), entry.movie, entry.userIds.size),
+                    score: entry.score,
+                    userCount: entry.userIds.size,
+                    averageRating: entry.ratingCount > 0 ? entry.ratingTotal / entry.ratingCount : 0
+                }));
+
+        const hiddenGemRecommendations = mapToRecommendations(
+            hiddenGemsMap,
+            (names, movie) => {
+                const matchingGenre = movie.genres?.find((genre) => preferredGenres.includes(genre));
+                return matchingGenre
+                    ? `${matchingGenre} pick from ${formatRecommendationNames(names)}`
+                    : buildRecommendationReason("Quietly loved by", names, "taste matches");
+            },
+            { maxMentions: 2 }
+        );
+
+        return {
+            becauseFriendsLiked: rankRecommendationEntries(
+                mapToRecommendations(
+                    becauseFriendsMap,
+                    (names) => buildRecommendationReason("Loved by", names, "your friends")
+                ),
+                limitCount
+            ),
+            similarTaste: rankRecommendationEntries(
+                mapToRecommendations(
+                    similarTasteMap,
+                    (names) => buildRecommendationReason("Found through", names, "similar taste")
+                ),
+                limitCount
+            ),
+            networkTopThisWeek: rankRecommendationEntries(
+                mapToRecommendations(
+                    networkThisWeekMap,
+                    (names, _movie, userCount) => userCount > 1
+                        ? `Logged ${userCount} times in your circle this week`
+                        : buildRecommendationReason("Fresh pick from", names, "your network")
+                ),
+                limitCount
+            ),
+            hiddenGems: rankRecommendationEntries(hiddenGemRecommendations, limitCount)
+        };
+    } catch (error) {
+        console.error("Error getting social movie recommendations:", error);
+        return emptyRecommendations;
     }
 };
 

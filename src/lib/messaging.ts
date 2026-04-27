@@ -5,12 +5,16 @@ import {
     addDoc,
     getDoc,
     getDocs,
+    setDoc,
     updateDoc,
     query,
     where,
     orderBy,
     onSnapshot,
-    Unsubscribe
+    Unsubscribe,
+    runTransaction,
+    writeBatch,
+    deleteDoc
 } from 'firebase/firestore';
 
 const safeTimestampToISO = (value: any): string => {
@@ -27,10 +31,98 @@ const safeTimestampToISO = (value: any): string => {
 
 // ==================== MESSAGING FUNCTIONS ====================
 
+const getConversationId = (user1Id: string, user2Id: string) => [user1Id, user2Id].sort().join('_');
+
+const buildConversationPayload = (user1Id: string, user2Id: string, user1Data: any, user2Data: any, existingData?: any) => ({
+    participants: [user1Id, user2Id].sort(),
+    participantNames: {
+        ...(existingData?.participantNames || {}),
+        [user1Id]: user1Data.displayName,
+        [user2Id]: user2Data.displayName
+    },
+    participantUsernames: {
+        ...(existingData?.participantUsernames || {}),
+        [user1Id]: user1Data.username || '',
+        [user2Id]: user2Data.username || ''
+    },
+    participantPhotos: {
+        ...(existingData?.participantPhotos || {}),
+        [user1Id]: user1Data.photoURL || '',
+        [user2Id]: user2Data.photoURL || ''
+    },
+    lastMessage: existingData?.lastMessage || '',
+    lastMessageTime: existingData?.lastMessageTime || new Date().toISOString(),
+    lastMessageSenderId: existingData?.lastMessageSenderId || '',
+    unreadCount: existingData?.unreadCount || {
+        [user1Id]: 0,
+        [user2Id]: 0
+    },
+    createdAt: existingData?.createdAt || new Date().toISOString()
+});
+
+const migrateLegacyConversation = async (legacyConversationId: string, deterministicConversationId: string, user1Id: string, user2Id: string, user1Data: any, user2Data: any) => {
+    const legacyConversationRef = doc(db, 'conversations', legacyConversationId);
+    const deterministicConversationRef = doc(db, 'conversations', deterministicConversationId);
+
+    const legacyConversationSnap = await getDoc(legacyConversationRef);
+    if (!legacyConversationSnap.exists()) {
+        return deterministicConversationId;
+    }
+
+    const legacyData = legacyConversationSnap.data();
+    await setDoc(
+        deterministicConversationRef,
+        buildConversationPayload(user1Id, user2Id, user1Data, user2Data, legacyData),
+        { merge: true }
+    );
+
+    const legacyMessagesRef = collection(db, 'conversations', legacyConversationId, 'messages');
+    const legacyMessagesSnapshot = await getDocs(legacyMessagesRef);
+
+    let batch = writeBatch(db);
+    let operationCount = 0;
+
+    const flushBatch = async () => {
+        if (operationCount === 0) return;
+        await batch.commit();
+        batch = writeBatch(db);
+        operationCount = 0;
+    };
+
+    for (const messageDoc of legacyMessagesSnapshot.docs) {
+        const nextMessageRef = doc(db, 'conversations', deterministicConversationId, 'messages', messageDoc.id);
+        batch.set(nextMessageRef, messageDoc.data(), { merge: true });
+        batch.delete(messageDoc.ref);
+        operationCount += 2;
+
+        if (operationCount >= 400) {
+            await flushBatch();
+        }
+    }
+
+    await flushBatch();
+    await deleteDoc(legacyConversationRef);
+
+    return deterministicConversationId;
+};
+
 // Create or get conversation between two users
 export const getOrCreateConversation = async (user1Id: string, user2Id: string, user1Data: any, user2Data: any) => {
     try {
-        // Check if conversation already exists
+        const conversationId = getConversationId(user1Id, user2Id);
+        const conversationRef = doc(db, 'conversations', conversationId);
+        const existingConversation = await getDoc(conversationRef);
+
+        if (existingConversation.exists()) {
+            await setDoc(
+                conversationRef,
+                buildConversationPayload(user1Id, user2Id, user1Data, user2Data, existingConversation.data()),
+                { merge: true }
+            );
+            return conversationId;
+        }
+
+        // One-time legacy fallback for old random conversation ids
         const conversationsRef = collection(db, 'conversations');
         const q = query(
             conversationsRef,
@@ -42,37 +134,18 @@ export const getOrCreateConversation = async (user1Id: string, user2Id: string, 
             doc.data().participants.includes(user2Id)
         );
 
-        if (existing) {
-            return existing.id;
+        if (existing && existing.id !== conversationId) {
+            return await migrateLegacyConversation(existing.id, conversationId, user1Id, user2Id, user1Data, user2Data);
         }
 
-        // Create new conversation
-        const newConversation = {
-            participants: [user1Id, user2Id],
-            participantNames: {
-                [user1Id]: user1Data.displayName,
-                [user2Id]: user2Data.displayName
-            },
-            participantUsernames: {
-                [user1Id]: user1Data.username || '',
-                [user2Id]: user2Data.username || ''
-            },
-            participantPhotos: {
-                [user1Id]: user1Data.photoURL || '',
-                [user2Id]: user2Data.photoURL || ''
-            },
-            lastMessage: '',
-            lastMessageTime: new Date().toISOString(),
-            lastMessageSenderId: '',
-            unreadCount: {
-                [user1Id]: 0,
-                [user2Id]: 0
-            },
-            createdAt: new Date().toISOString()
-        };
+        await runTransaction(db, async (transaction) => {
+            const conversationDoc = await transaction.get(conversationRef);
+            if (!conversationDoc.exists()) {
+                transaction.set(conversationRef, buildConversationPayload(user1Id, user2Id, user1Data, user2Data));
+            }
+        });
 
-        const docRef = await addDoc(conversationsRef, newConversation);
-        return docRef.id;
+        return conversationId;
     } catch (error) {
         console.error("Error creating conversation:", error);
         throw error;
@@ -232,4 +305,3 @@ export const markMessagesAsRead = async (conversationId: string, userId: string)
         console.error("Error marking messages as read:", error);
     }
 };
-

@@ -414,6 +414,21 @@ export interface UserRecommendation {
   recommendationScore: number; // Overall score
 }
 
+export interface SocialMovieRecommendation {
+  movie: Movie;
+  reason: string;
+  score: number;
+  userCount: number;
+  averageRating: number;
+}
+
+export interface SocialRecommendations {
+  becauseFriendsLiked: SocialMovieRecommendation[];
+  similarTaste: SocialMovieRecommendation[];
+  networkTopThisWeek: SocialMovieRecommendation[];
+  hiddenGems: SocialMovieRecommendation[];
+}
+
 // ==================== ADMIN ANALYTICS ====================
 export interface AdminStats {
   // User Metrics

@@ -7,8 +7,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/hooks/useAuth';
 import {
-  getUserConversations,
-  getConversationMessages,
   sendMessage,
   markMessagesAsRead,
   getOrCreateConversation,
@@ -106,15 +104,17 @@ export default function Messages() {
         }
       );
 
-      // No need to manually reload conversations, subscription handles it
-
-      // Find and select the conversation (we might need to wait a moment for subscription to update)
-      // For immediate feedback, we can optimistically set it from the result if we had the full obj
-      // But simpler to just wait or fetch it once directly
-      const updatedConversations = await getUserConversations(user.uid);
-      const newConversation = updatedConversations.find(c => c.id === conversationId);
-      if (newConversation) {
-        setSelectedConversation(newConversation);
+      const existingConversation = conversations.find(c => c.id === conversationId);
+      if (existingConversation) {
+        setSelectedConversation(existingConversation);
+      } else {
+        const conversationDoc = await getDoc(doc(db, 'conversations', conversationId));
+        if (conversationDoc.exists()) {
+          setSelectedConversation({
+            id: conversationDoc.id,
+            ...conversationDoc.data()
+          });
+        }
       }
 
       setIsNewMessageOpen(false);
@@ -401,4 +401,3 @@ export default function Messages() {
     </Layout>
   );
 }
-
