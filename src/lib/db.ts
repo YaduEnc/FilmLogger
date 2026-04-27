@@ -17,6 +17,7 @@ import {
     runTransaction,
     collectionGroup
 } from "firebase/firestore";
+import type { User as FirebaseUser } from "firebase/auth";
 import { db } from "./firebase";
 import { LogEntry, Movie, MovieList, Notification, Review, ReviewComment, TVProgress } from "@/types/movie";
 
@@ -1687,6 +1688,74 @@ export const getUserData = async (userId: string) => {
     } catch (error) {
         console.error("Error getting user data:", error);
         return null;
+    }
+};
+
+export const ensureUserDocument = async (user: FirebaseUser) => {
+    try {
+        const userRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userRef);
+
+        const defaultDisplayName = user.displayName || user.email?.split("@")[0] || "Film Enthusiast";
+        const defaultPhotoURL = user.photoURL ?? null;
+
+        if (!userDoc.exists()) {
+            await setDoc(userRef, {
+                uid: user.uid,
+                email: user.email || "",
+                displayName: defaultDisplayName,
+                photoURL: defaultPhotoURL,
+                username: "",
+                bio: "",
+                isPublic: true,
+                top5Movies: [],
+                subscription: null,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+                lastLoginAt: serverTimestamp()
+            }, { merge: true });
+
+            return;
+        }
+
+        const existingData = userDoc.data();
+        const updates: Record<string, any> = {
+            updatedAt: serverTimestamp(),
+            lastLoginAt: serverTimestamp()
+        };
+
+        if (existingData.createdAt === undefined) {
+            updates.createdAt = serverTimestamp();
+        }
+        if (existingData.email === undefined) {
+            updates.email = user.email || "";
+        }
+        if (!existingData.displayName) {
+            updates.displayName = defaultDisplayName;
+        }
+        if (existingData.photoURL === undefined) {
+            updates.photoURL = defaultPhotoURL;
+        }
+        if (existingData.username === undefined) {
+            updates.username = "";
+        }
+        if (existingData.bio === undefined) {
+            updates.bio = "";
+        }
+        if (existingData.isPublic === undefined) {
+            updates.isPublic = true;
+        }
+        if (existingData.top5Movies === undefined) {
+            updates.top5Movies = [];
+        }
+        if (existingData.subscription === undefined) {
+            updates.subscription = null;
+        }
+
+        await setDoc(userRef, updates, { merge: true });
+    } catch (error) {
+        console.error("Error ensuring user document:", error);
+        throw error;
     }
 };
 

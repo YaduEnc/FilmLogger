@@ -9,6 +9,7 @@ import {
     updateProfile
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
+import { ensureUserDocument } from "@/lib/db";
 
 interface AuthContextType {
     user: User | null;
@@ -26,9 +27,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUser(user);
-            setIsLoading(false);
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            try {
+                if (user) {
+                    await ensureUserDocument(user);
+                }
+                setUser(user);
+            } catch (error) {
+                console.error("Error synchronizing user profile:", error);
+                setUser(user);
+            } finally {
+                setIsLoading(false);
+            }
         });
 
         return () => unsubscribe();
@@ -36,7 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInWithGoogle = async () => {
         try {
-            await signInWithPopup(auth, googleProvider);
+            const userCredential = await signInWithPopup(auth, googleProvider);
+            await ensureUserDocument(userCredential.user);
         } catch (error) {
             console.error("Error signing in with Google:", error);
             throw error;
@@ -45,7 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signInWithEmail = async (email: string, password: string) => {
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            await ensureUserDocument(userCredential.user);
         } catch (error) {
             console.error("Error signing in with email:", error);
             throw error;
@@ -56,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             await updateProfile(userCredential.user, { displayName });
+            await ensureUserDocument(auth.currentUser || userCredential.user);
         } catch (error) {
             console.error("Error signing up with email:", error);
             throw error;
